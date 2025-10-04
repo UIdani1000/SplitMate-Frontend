@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SplitMate - Create Bill</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/js/wallet.js"></script> 
+    <script>
+        // --- Tailwind Configuration (UI Theme) ---
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                background: "#10002b",
+                card: { DEFAULT: "transparent", foreground: "hsl(210 40% 98%)" },
+                primary: {
+                  DEFAULT: "#c77dff", // Bright Electric Purple
+                  active: "#7400b8", // Deep Purple for Button Fill
+                  foreground: "hsl(210 40% 98%)",
+                },
+                secondary: {
+                  DEFAULT: "#ff9e00", // Vibrant Orange
+                  foreground: "hsl(210 40% 98%)",
+                },
+                border: "hsl(260 20% 25%)", 
+                input: "hsl(260 20% 25%)",
+                ring: "hsl(260 20% 25%)",
+                foreground: "hsl(210 40% 98%)",
+                muted: {
+                  DEFAULT: "hsl(215 27.9% 16.3%)",
+                  foreground: "hsl(215 14% 65%)",
+                },
+              },
+            },
+          },
+        };
+    </script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        /* Standard Input Styling (Maintained) */
+        .form-input {
+            width: 100%;
+            padding: 0.75rem; /* p-3 */
+            background-color: #10002b; /* bg-background */
+            border: 1px solid #4a4a58; /* border-border (approximation) */
+            border-radius: 0.5rem; /* rounded-lg */
+            color: hsl(210 40% 98%); /* text-foreground */
+            transition: all 150ms ease-in-out; 
+        }
+        .form-input:focus {
+            border-color: #c77dff; /* focus:border-primary */
+            box-shadow: 0 0 0 1px #c77dff; /* focus:ring-primary */
+            outline: none;
+        }
+        .form-input:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Counter Button Styling (Maintained) */
+        .counter-btn {
+            @apply h-10 w-10 flex items-center justify-center bg-background border border-border rounded-full text-2xl text-primary hover:bg-background/50 transition-colors;
+        }
+
+        /* Split Toggle Styling (Maintained) */
+        .split-btn {
+            @apply px-6 py-3 font-semibold rounded-xl transition-colors text-base border-2;
+        }
+        .split-btn.active {
+            background-color: #7400b8 !important; 
+            color: white !important; 
+            border-color: #c77dff !important; 
+            @apply shadow-lg shadow-primary/40; 
+        }
+        .split-btn.inactive {
+            background-color: #10002b !important; 
+            color: hsl(215 14% 65%) !important; 
+            border-color: hsl(260 20% 25%) !important; 
+        }
+        
+        /* Manual Share Input Styling (Maintained) */
+        .manual-share-input-container {
+            width: 100%;
+            display: flex; 
+            align-items: center; 
+            background-color: #10002b; 
+            border: 1px solid #4a4a58; 
+            border-radius: 0.5rem; 
+            transition: all 150ms ease-in-out;
+            box-shadow: 0 0 0 0 transparent;
+        }
+        .manual-share-input-container:focus-within {
+             border-color: #c77dff; 
+             box-shadow: 0 0 0 1px #c77dff; 
+        }
+
+        .manual-share-input {
+            flex: 1 1 0%; 
+            padding: 0.75rem; 
+            background-color: transparent; 
+            font-size: 1.125rem; 
+            font-weight: 600; 
+            outline: none;
+            border: none;
+            color: hsl(210 40% 98%);
+        }
+        .manual-currency-text {
+            @apply p-3 text-muted-foreground font-medium flex-shrink-0;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-background text-foreground">
+
+    <div class="p-4 border-b border-border/50 flex items-center justify-between">
+        <a href="index.html" class="text-2xl font-bold text-primary hover:text-secondary transition-colors">SplitMate</a>
+        <nav class="hidden md:flex items-center gap-4 text-sm font-medium">
+            <a href="index.html" class="text-muted-foreground hover:text-primary transition-colors">Dashboard</a>
+            <a href="create.html" class="text-primary transition-colors">Create Bill</a> 
+            <a href="leaderboard.html" class="text-muted-foreground hover:text-primary transition-colors">Leaderboard</a>
+        </nav>
+        <div class="flex items-center gap-4">
+            <button 
+    id="wallet-button" 
+    onclick="userAddress ? disconnectWallet() : openConnectModal()" 
+    class="text-primary-foreground font-semibold py-2 px-4 rounded-full transition-all hover:scale-[1.05]" 
+    style="background-color: #7400b8; hover-bg-primary/90;">
+                Connect Wallet
+            </button>
+            <button id="menu-toggle" class="md:hidden text-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" x2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+        </div>
+    </div>
+    <nav id="mobile-menu" class="hidden md:hidden flex flex-col p-4 bg-background border-b border-border">
+        <a href="/index" class="py-2 text-muted-foreground hover:text-primary border-b border-border">Dashboard</a>
+        <a href="/create" class="py-2 text-primary border-b border-border">Create Bill</a>
+        <a href="/leaderboard" class="py-2 text-muted-foreground hover:text-primary">Leaderboard</a>
+    </nav>
+
+    <div class="container px-4 py-8 max-w-2xl mx-auto fade-in">
+        <h1 class="text-3xl font-bold mb-1">Create New Bill</h1>
+        <p class="text-sm text-muted-foreground mb-6">Enter the details to split the expense on-chain.</p>
+
+        <form id="bill-form" class="space-y-6" onsubmit="event.preventDefault(); submitBill();">
+
+            <div class="p-6 bg-background border border-primary/50 rounded-2xl shadow-lg space-y-4 transition-all duration-300 hover:shadow-lg hover:border-primary">
+                <h2 class="text-xl font-semibold text-foreground">Bill & Merchant Details</h2>
+                
+                <p id="creator-address-display" class="text-sm font-medium text-secondary break-all">
+                    Please connect your wallet to set the bill creator address.
+                </p>
+                <p id="connect-status-message" class="text-sm text-red-500 font-medium"></p>
+                <label class="block space-y-1">
+                    <span class="text-sm font-medium text-muted-foreground">Bill Name / Description</span>
+                    <input type="text" id="bill-name" placeholder="e.g., Dinner at Olive Garden" required class="form-input" oninput="updateCalculations()">
+                </label>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <label class="block space-y-1 col-span-2">
+                        <span class="text-sm font-medium text-muted-foreground">Total Bill Amount</span>
+                        <input type="number" step="0.01" min="0.01" id="total-amount" placeholder="0.00" oninput="updateCalculations()" required class="form-input text-lg font-bold">
+                    </label>
+                    <label class="block space-y-1 col-span-1">
+                        <span class="text-sm font-medium text-muted-foreground">Token</span>
+                        <select id="bill-token" required class="form-input font-medium text-primary bg-background appearance-none pr-8" onchange="updateCalculations()">
+                            <option value="ETH" class="bg-background">ETH</option>
+                            <option value="USDC" class="bg-background">USDC</option>
+                        </select>
+                    </label>
+                </div>
+
+                <label class="block space-y-1">
+                    <span class="text-sm font-medium text-muted-foreground">Merchant/Recipient Wallet Address (Starknet L2)</span>
+                    <input type="text" id="merchant-address" placeholder="0x... (e.g., Restaurant or Creator's wallet)" required class="form-input text-sm" oninput="updateCalculations()">
+                </label>
+            </div>
+            
+            <div class="p-6 bg-background border border-primary/50 rounded-2xl shadow-lg space-y-4 transition-all duration-300 hover:shadow-lg hover:border-primary">
+                <h2 class="text-xl font-semibold text-foreground">Participants</h2>
+                
+                <div class="flex items-center justify-between">
+                    <span class="text-base text-muted-foreground">Number of Participants (excluding Creator)</span>
+                    <div class="flex items-center space-x-2">
+                        <button type="button" class="counter-btn" onclick="updateParticipants(-1)" id="minus-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                        <span id="participant-count" class="text-2xl font-bold w-10 text-center text-primary">0</span>
+                        <button type="button" class="counter-btn" onclick="updateParticipants(1)" id="plus-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="participant-addresses" class="space-y-3 pt-3 border-t border-border/50">
+                    </div>
+            </div>
+
+            <div class="p-6 bg-background border border-primary/50 rounded-2xl shadow-lg space-y-4 transition-all duration-300 hover:shadow-lg hover:border-primary">
+                <h2 class="text-xl font-semibold text-foreground">Split Method</h2>
+                
+                <div class="flex p-1 bg-background border border-border rounded-xl">
+                    <button type="button" id="btn-even" class="split-btn flex-1 inactive" onclick="toggleSplit('even')">Split Evenly</button>
+                    <button type="button" id="btn-manual" class="split-btn flex-1 inactive" onclick="toggleSplit('manual')">Manual Split</button>
+                </div>
+                
+                <div id="split-even-content" class="pt-2 space-y-3">
+                    <p class="text-sm text-muted-foreground">Total amount is divided equally among the <span id="even-participants" class="font-semibold text-primary">1</span> participants.</p>
+                    <div class="p-4 bg-background border border-border rounded-xl text-center">
+                        <p class="text-sm text-muted-foreground mb-2">Each person pays</p>
+                        <p class="text-3xl font-bold text-primary" id="split-result">0.00 ETH</p>
+                    </div>
+                </div>
+                
+                <div id="split-manual-content" class="pt-2 space-y-3 hidden">
+                    <p class="text-sm text-muted-foreground mb-3">Assign the exact amount each participant must pay.</p>
+                    
+                    <div id="manual-participants-list" class="space-y-3">
+                        </div>
+
+                    <div id="manual-validation-box" class="p-4 bg-background border rounded-xl text-center">
+                        <p class="text-sm text-muted-foreground mb-2">Total Remaining to Assign</p>
+                        <p class="text-3xl font-bold text-secondary" id="manual-remaining">0.00 ETH</p>
+                        <p id="validation-message" class="text-xs mt-1 text-red-500 hidden font-medium">Warning: Total assigned must match the bill amount.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 bg-background border border-primary/50 rounded-2xl shadow-lg space-y-4 transition-all duration-300 hover:shadow-lg hover:border-primary">
+                <h2 class="text-xl font-semibold text-foreground">Optional Note</h2>
+                <textarea id="bill-note" placeholder="Add any additional details..." rows="3" class="form-input"></textarea>
+            </div>
+
+            <div class="pt-4">
+                <button type="submit" id="submit-button" class="w-full text-primary-foreground font-bold py-4 rounded-xl text-lg transition-all hover:scale-[1.01] shadow-primary/30 shadow-lg" style="background-color: #7400b8; hover-bg-primary/90;" disabled>
+                    Create and Broadcast Bill
+                </button>
+            </div>
+            
+            <div id="message-box" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center p-4 z-50" onclick="if (event.target.id === 'message-box') closeMessageBox()">
+                <div class="bg-background border border-primary/50 p-6 rounded-xl max-w-sm w-full text-center space-y-4">
+                    <h3 id="message-title" class="text-xl font-bold text-primary"></h3>
+                    <p id="message-content" class="text-muted-foreground"></p>
+                    <button onclick="closeMessageBox()" class="w-full text-primary-foreground font-semibold py-2 rounded-lg transition-all" style="background-color: #7400b8;">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // --- Globals ---
+        let participantCount = 0; // External participants (excluding Creator)
+        let splitType = 'even'; // Default split type
+        
+        // --- PLACEHOLDER UTILITIES (assuming wallet.js provides these) ---
+        function formatAddress(address, chars = 6) {
+            if (!address || address.length < chars * 2 + 3) return address;
+            return `${address.substring(0, chars)}...${address.substring(address.length - chars)}`;
+        }
+
+        // --- Utility Functions: MESSAGE BOX FIX ---
+        function showMessageBox(title, content, onOk = null) {
+            document.getElementById('message-title').textContent = title;
+            document.getElementById('message-content').textContent = content;
+            const okButton = document.querySelector('#message-box button');
+            
+            // Clear previous handler
+            okButton.onclick = null; 
+            
+            okButton.onclick = () => {
+                closeMessageBox();
+                if (typeof onOk === 'function') {
+                    onOk();
+                }
+            };
+
+            document.getElementById('message-box').classList.remove('hidden');
+            document.getElementById('message-box').classList.add('flex');
+        }
+
+        function closeMessageBox() {
+            document.getElementById('message-box').classList.add('hidden');
+            document.getElementById('message-box').classList.remove('flex');
+        }
+
+        // --- Wallet Integration (Called by wallet.js) ---
+        // This function updates the UI based on wallet connection status
+        function loadPageContent(address) {
+            const submitBtn = document.getElementById('submit-button');
+            const creatorDisplay = document.getElementById('creator-address-display');
+            const statusMessage = document.getElementById('connect-status-message');
+            
+            const isConnected = !!window.userAddress; 
+
+            if (isConnected) {
+                creatorDisplay.textContent = 'Bill Creator: ' + formatAddress(window.userAddress);
+                statusMessage.classList.add('hidden');
+                
+                // Re-evaluate the submit button state based on connection and current calculation
+                updateCalculations();
+            } else {
+                creatorDisplay.textContent = 'Please connect your wallet to set the bill creator address.';
+                statusMessage.textContent = 'Connect your wallet to enable bill creation.';
+                statusMessage.classList.remove('hidden');
+
+                // The submit button is explicitly disabled if not connected
+                submitBtn.disabled = true;
+            }
+            // Ensure address is updated in manual split UI if active
+            if (splitType === 'manual') {
+                generateManualInputs();
+            }
+        }
+        
+        function getFormData() {
+            const totalAmountStr = document.getElementById('total-amount').value;
+            const totalAmount = parseFloat(totalAmountStr);
+            const token = document.getElementById('bill-token').value;
+            
+            const participantAddressInputs = document.querySelectorAll('.participant-address-input');
+            const nonCreatorParticipants = Array.from(participantAddressInputs).map(input => input.value.trim());
+
+            return {
+                name: document.getElementById('bill-name').value.trim(),
+                amount: isNaN(totalAmount) ? 0 : totalAmount,
+                token: token,
+                merchantAddress: document.getElementById('merchant-address').value.trim(),
+                creatorAddress: window.userAddress || "0x(Not Connected)", 
+                note: document.getElementById('bill-note').value.trim(),
+                splitType: splitType,
+                participants: nonCreatorParticipants,
+                totalCount: nonCreatorParticipants.length + 1, // Creator + Participants
+            };
+        }
+
+        // --- Core Logic: Participants and Addresses ---
+
+        function generateAddressInputs() {
+            const container = document.getElementById('participant-addresses');
+            const existingInputs = document.querySelectorAll('.participant-address-input');
+            const existingValues = Array.from(existingInputs).map(input => input.value);
+
+            container.innerHTML = ''; 
+
+            for (let i = 0; i < participantCount; i++) {
+                const value = existingValues[i] || '';
+                const inputHtml = `
+                    <label class="block space-y-1 fade-in" style="animation-delay: ${i * 0.05}s;">
+                        <span class="text-sm font-medium text-muted-foreground">Participant ${i + 1} Wallet Address</span>
+                        <input type="text" value="${value}" placeholder="0x..." required
+                                class="participant-address-input form-input text-sm w-full"
+                                oninput="updateCalculations()"> 
+                    </label>
+                `;
+                container.insertAdjacentHTML('beforeend', inputHtml);
+            }
+        }
+
+        function updateParticipants(change) {
+            const minusBtn = document.getElementById('minus-btn');
+            const plusBtn = document.getElementById('plus-btn');
+
+            let newCount = participantCount + change; 
+            
+            if (newCount > 10) { 
+                showMessageBox("Limit Reached", "The maximum number of participants (excluding the Creator) is 10.");
+                newCount = 10;
+            }
+
+            // Ensure count doesn't go below 0
+            participantCount = Math.max(0, newCount); 
+            
+            // Update button states (always enabled but visually disabled if at limit/zero)
+            if (minusBtn) minusBtn.disabled = participantCount === 0;
+            if (plusBtn) plusBtn.disabled = participantCount === 10;
+            
+
+            document.getElementById('participant-count').textContent = participantCount;
+            // Display total people (Creator + Participants)
+            document.getElementById('even-participants').textContent = participantCount + 1; 
+            
+            generateAddressInputs();
+            updateCalculations();
+        }
+
+
+        // --- Core Logic: Splitting and Validation ---
+        
+        function isManualSplitValid() {
+            const formData = getFormData();
+            const inputs = document.querySelectorAll('.manual-share-input'); 
+            let totalAssigned = 0;
+
+            inputs.forEach(input => {
+                totalAssigned += parseFloat(input.value) || 0;
+            });
+            
+            // Use Math.abs and a small epsilon (0.01) for robust float comparison
+            return Math.abs(formData.amount - totalAssigned) < 0.01;
+        }
+
+        function updateCalculations() {
+            const submitBtn = document.getElementById('submit-button');
+            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+            let isValid = false;
+            
+            // 1. Update split display and calculate validation state
+            if (splitType === 'manual') {
+                generateManualInputs(); 
+                calculateManualRemaining(); 
+                isValid = isManualSplitValid();
+            } else {
+                calculateEvenSplit();
+                // Even split is valid if the total amount is entered (> 0)
+                isValid = totalAmount > 0;
+            }
+            
+            // 2. Control the submit button based on all conditions
+            const requiredFields = ['bill-name', 'total-amount', 'merchant-address'];
+            const allFieldsFilled = requiredFields.every(id => document.getElementById(id).value.trim() !== '');
+
+            // All participant address inputs must also be filled if they exist
+            const participantInputs = document.querySelectorAll('.participant-address-input');
+            const allParticipantsFilled = Array.from(participantInputs).every(input => input.value.trim() !== '');
+            
+            // New check: We need at least one other participant to "split" a bill
+            const hasParticipants = participantCount > 0;
+
+            if (window.userAddress && isValid && allFieldsFilled && allParticipantsFilled && hasParticipants) {
+                submitBtn.disabled = false;
+            } else {
+                submitBtn.disabled = true;
+            }
+        }
+
+        function calculateEvenSplit() {
+            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+            const token = document.getElementById('bill-token').value;
+            const totalPeople = participantCount + 1; 
+            
+            let displayAmount = 0.00;
+            if (totalAmount > 0 && totalPeople > 0) {
+                // Calculation is correct for display: just divide and format
+                displayAmount = totalAmount / totalPeople;
+            }
+            
+            document.getElementById('split-result').textContent = `${displayAmount.toFixed(2)} ${token}`;
+        }
+
+        function generateManualInputs() {
+            const list = document.getElementById('manual-participants-list');
+            
+            const existingManualInputs = document.querySelectorAll('.manual-share-input');
+            const existingValuesMap = {};
+            existingManualInputs.forEach(input => {
+                existingValuesMap[input.id] = input.value;
+            });
+            
+            list.innerHTML = '';
+            const formData = getFormData();
+            
+            const participantAddressInputs = document.querySelectorAll('.participant-address-input');
+            
+            const creatorDisplayAddress = window.userAddress ? formatAddress(window.userAddress, 6) : "0x(Connect Wallet)";
+
+            const allSplitters = [
+                { address: formData.creatorAddress, label: `Creator's Share (${creatorDisplayAddress})`, inputId: 'creator-manual-share' }
+            ].concat(
+                Array.from(participantAddressInputs).map((input, i) => ({ 
+                    address: input.value.trim(), 
+                    label: `Participant ${i + 1} Share (${formatAddress(input.value.trim(), 6)})`,
+                    inputId: `participant-${i + 1}-manual-share`
+                }))
+            );
+
+            allSplitters.forEach((splitter, i) => {
+                const baseValue = existingValuesMap[splitter.inputId] || '0.00';
+                
+                const inputHtml = `
+                    <label class="block space-y-1 fade-in" style="animation-delay: ${i * 0.05}s;">
+                        <span class="text-sm font-medium text-muted-foreground">${splitter.label}</span>
+                        <div class="manual-share-input-container">
+                            <input type="number" step="0.01" id="${splitter.inputId}" value="${baseValue}" 
+                                    oninput="updateCalculations()" required
+                                    class="manual-share-input" min="0">
+                            <span class="manual-currency-text">${formData.token}</span>
+                        </div>
+                    </label>
+                `;
+                list.insertAdjacentHTML('beforeend', inputHtml);
+            });
+        }
+
+        function calculateManualRemaining() {
+            const formData = getFormData();
+            const inputs = document.querySelectorAll('.manual-share-input'); 
+            let totalAssigned = 0;
+
+            inputs.forEach(input => {
+                totalAssigned += parseFloat(input.value) || 0;
+            });
+
+            const remaining = (formData.amount - totalAssigned);
+            
+            const remainingText = document.getElementById('manual-remaining');
+            // Use Math.abs for display, but check if it's over or under
+            remainingText.textContent = `${Math.abs(remaining).toFixed(2)} ${formData.token}`;
+            
+            const validationBox = document.getElementById('manual-validation-box');
+            const validationMsg = document.getElementById('validation-message');
+            
+            // Check if the remaining amount is within 1 cent (robust check for float math) and total amount is set
+            const fullyAssigned = Math.abs(remaining) < 0.01 && formData.amount > 0; 
+
+            // Update styles and validation message
+            remainingText.classList.remove('text-red-500', 'text-green-500', 'text-secondary');
+            validationBox.classList.remove('border-red-500', 'border-green-500');
+            validationMsg.classList.add('hidden');
+            
+            if (fullyAssigned) {
+                remainingText.classList.add('text-green-500');
+                validationBox.classList.add('border-green-500');
+                remainingText.previousElementSibling.textContent = 'Perfectly Assigned';
+            } else {
+                remainingText.classList.add('text-red-500');
+                validationBox.classList.add('border-red-500');
+                remainingText.previousElementSibling.textContent = remaining > 0 ? 'Total Remaining to Assign' : 'Total Over-Assigned';
+                validationMsg.classList.remove('hidden');
+            }
+        }
+
+        function toggleSplit(type) {
+            splitType = type;
+            const btnEven = document.getElementById('btn-even');
+            const btnManual = document.getElementById('btn-manual');
+            const contentEven = document.getElementById('split-even-content');
+            const contentManual = document.getElementById('split-manual-content');
+
+            btnEven.classList.remove('active', 'inactive');
+            btnManual.classList.remove('active', 'inactive');
+            
+            if (type === 'even') {
+                btnEven.classList.add('active');
+                btnManual.classList.add('inactive'); 
+                contentEven.classList.remove('hidden');
+                contentManual.classList.add('hidden');
+            } else {
+                btnManual.classList.add('active');
+                btnEven.classList.add('inactive'); 
+                contentManual.classList.remove('hidden');
+                contentEven.classList.add('hidden');
+            }
+            updateCalculations(); 
+        }
+        
+        // --- Submission Logic (COMPLETED) ---
+        function submitBill() {
+            // Log to confirm function execution
+            console.log("Submit button clicked and function running."); 
+
+            // 1. Form Validation Check
+            if (!document.getElementById('bill-form').checkValidity()) {
+                showMessageBox("Input Error", "Please fill out all required fields. Check Bill Name, Amount, Merchant, and Participant Addresses.");
+                return;
+            }
+
+            // 2. Wallet Connection Check
+            if (!window.userAddress) {
+                showMessageBox("Wallet Required", "You must connect your wallet to submit a bill.");
+                return;
+            }
+            
+            // 3. Logic Execution
+            const formData = getFormData();
+            let shares = [];
+            const allSplitters = [window.userAddress].concat(formData.participants); 
+
+            if (formData.splitType === 'even') {
+                // Robust Even Split Logic (Integer math to handle remainder)
+                const totalCents = Math.round(formData.amount * 100); 
+                const totalSplitters = allSplitters.length;
+
+                if (totalSplitters === 0 || totalCents === 0) {
+                     showMessageBox("Validation Error", "The bill amount must be greater than 0 and there must be at least one other participant.");
+                     return;
+                }
+                
+                const baseShareCents = Math.floor(totalCents / totalSplitters);
+                let remainderCents = totalCents % totalSplitters; 
+                
+                shares = [];
+                for (let i = 0; i < totalSplitters; i++) {
+                    let share = baseShareCents;
+                    if (remainderCents > 0) {
+                        share += 1; 
+                        remainderCents--;
+                    }
+                    // Convert back to dollars, fixed to 2 decimals
+                    shares.push(parseFloat((share / 100).toFixed(2))); 
+                }
+
+            } else { 
+                // Manual Split Validation 
+                if (!isManualSplitValid()) {
+                     showMessageBox("Validation Error", "Manual shares must exactly match the Total Bill Amount (within 1 cent tolerance).");
+                     return;
+                }
+                const shareInputs = document.querySelectorAll('.manual-share-input');
+                // Ensure the order matches allSplitters: Creator first, then participants
+                shares.push(parseFloat(document.getElementById('creator-manual-share').value) || 0);
+                for (let i = 1; i <= formData.participants.length; i++) {
+                    shares.push(parseFloat(document.getElementById(`participant-${i}-manual-share`).value) || 0);
+                }
+            }
+            
+            // Use a simple, non-colliding ID for mock storage
+            const uniqueId = `bill_${Date.now()}`; 
+
+            const transactionPayload = {
+                id: uniqueId, 
+                contractCall: "createBill",
+                creator: window.userAddress, 
+                merchant: formData.merchantAddress,
+                billName: formData.name,
+                token: formData.token, // Use token string for simpler storage
+                totalAmount: formData.amount,
+                participants: allSplitters, 
+                shares: shares, 
+                note: formData.note,
+                isSettled: false,
+            };
+            
+            console.log("--- SIMULATED BLOCKCHAIN TRANSACTION PAYLOAD ---");
+            console.log(JSON.stringify(transactionPayload, null, 2));
+            console.log("--- END PAYLOAD ---");
+            
+            // *** NEW: SAVE TO LOCAL STORAGE (Simulates On-Chain Recording) ***
+            let bills = JSON.parse(localStorage.getItem('bills') || '[]');
+            bills.push(transactionPayload);
+            localStorage.setItem('bills', JSON.stringify(bills));
+            
+            // 4. Success Message and Redirection
+            showMessageBox("Bill Broadcasted!", 
+                           `Your bill "${formData.name}" has been successfully broadcasted to the SplitMate contract. Redirecting to Dashboard...`,
+                           () => {
+                               window.location.href = 'index.html';
+                           });
+        }
+        
+        // --- Initialization ---
+
+        function setupInitialUI() {
+            // Set the default split type to 'even'
+            toggleSplit('even');
+            // Ensure initial participant count is 0 and buttons are set
+            updateParticipants(0); 
+
+            // Add an event listener to the form to prevent default behavior
+            document.getElementById('bill-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitBill();
+            });
+
+            // Mobile Menu Toggle Script
+            document.getElementById('menu-toggle').addEventListener('click', function() {
+                const menu = document.getElementById('mobile-menu');
+                menu.classList.toggle('hidden');
+            });
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupInitialUI();
+            // loadPageContent is assumed to be called by wallet.js when connection status changes
+        });
+    </script>
+</body>
+</html>	

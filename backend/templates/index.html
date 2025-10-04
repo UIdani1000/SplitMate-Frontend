@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SplitMate - Dashboard</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        // --- Tailwind Configuration (UI Theme) ---
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                background: "#10002b",
+                card: { DEFAULT: "#1a0035", foreground: "hsl(210 40% 98%)" },
+                primary: {
+                  DEFAULT: "#c77dff", // Bright Electric Purple
+                  active: "#7400b8", // Deep Purple for Button Fill
+                  foreground: "hsl(210 40% 98%)",
+                },
+                secondary: {
+                  DEFAULT: "#ff9e00", // Vibrant Orange
+                  foreground: "hsl(210 40% 98%)",
+                },
+                border: "hsl(260 20% 25%)", 
+                input: "hsl(260 20% 25%)",
+                ring: "hsl(260 20% 25%)",
+                foreground: "hsl(210 40% 98%)",
+                muted: {
+                  DEFAULT: "hsl(215 27.9% 16.3%)",
+                  foreground: "hsl(215 14% 65%)",
+                },
+                success: {
+                    DEFAULT: "#34d399", // Green
+                },
+                pending: {
+                    DEFAULT: "#ff9e00", // Orange
+                },
+              },
+            },
+          },
+        };
+    </script>
+    <style>
+        /* Global Fade-In Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        /* Modal specific styles for a smooth fade-in/out */
+        .modal {
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .modal-content {
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        .modal:not(.open) {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .modal:not(.open) .modal-content {
+            transform: translateY(-20px);
+            opacity: 0;
+        }
+        .modal.open {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal.open .modal-content {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Responsive Utility for Grid Cards */
+        .grid-card {
+            @apply p-6 bg-card border border-border rounded-xl shadow-lg transition-all duration-300 hover:border-primary/50;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-background text-foreground">
+
+    <div class="p-4 border-b border-border/50 flex items-center justify-between">
+        <a href="dashboard.html" class="text-2xl font-bold text-primary hover:text-secondary transition-colors">SplitMate</a>
+        
+        <nav class="hidden md:flex items-center gap-4 text-sm font-medium">
+            <a href="dashboard.html" class="text-primary transition-colors">Dashboard</a>
+            <a href="create.html" class="text-muted-foreground hover:text-primary transition-colors">Create Bill</a>
+            <a href="leaderboard.html" class="text-muted-foreground hover:text-primary transition-colors">Leaderboard</a>
+        </nav>
+        
+        <div class="flex items-center gap-4">
+            <button id="wallet-button" class="text-primary-foreground font-semibold py-2 px-4 rounded-full transition-all hover:scale-[1.05]" style="background-color: #7400b8;">
+                Connect Wallet
+            </button>
+            <button id="menu-toggle" class="md:hidden text-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+        </div>
+    </div>
+    
+    <nav id="mobile-menu" class="hidden md:hidden flex flex-col p-4 bg-background border-b border-border">
+        <a href="dashboard.html" class="py-2 text-primary border-b border-border">Dashboard</a>
+        <a href="create.html" class="py-2 text-muted-foreground hover:text-primary border-b border-border">Create Bill</a>
+        <a href="leaderboard.html" class="py-2 text-muted-foreground hover:text-primary">Leaderboard</a>
+    </nav>
+    
+
+    <div class="container px-4 py-8 max-w-6xl mx-auto fade-in">
+        <h1 class="text-3xl font-bold mb-1" id="greeting">Good morning, User!</h1>
+        <p class="text-sm text-muted-foreground mb-8" id="wallet-display">Please connect your wallet to view your splitting overview.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="grid-card col-span-1">
+                <div class="flex items-center justify-between">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14"></path><path d="M7 9h10"></path></svg>
+                    <span class="text-muted-foreground text-xs font-semibold flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 12 12 17 17"></polyline><polyline points="7 7 12 12 17 7"></polyline></svg>
+                        ETH
+                    </span>
+                </div>
+                <div class="mt-4">
+                    <p class="text-2xl font-bold" id="total-balance">---</p>
+                    <p class="text-sm text-muted-foreground">Total Balance</p>
+                </div>
+            </div>
+            <div class="grid-card col-span-1">
+                <div class="flex items-center justify-between">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-secondary"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+                </div>
+                <div class="mt-4">
+                    <p class="text-2xl font-bold" id="active-bills-count">---</p>
+                    <p class="text-sm text-muted-foreground">Active Bills</p>
+                    <p class="text-xs text-muted-foreground" id="pending-bills-count">--- pending</p> 
+                </div>
+            </div>
+            <div class="grid-card col-span-1">
+                <div class="flex items-center justify-between">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-foreground"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                </div>
+                <div class="mt-4">
+                    <p class="text-2xl font-bold" id="friends-split-count">---</p>
+                    <p class="text-sm text-muted-foreground">Bills Created</p>
+                </div>
+            </div>
+             <div class="grid-card col-span-1 flex flex-col justify-between" style="background-color: hsl(150 60% 15%); border-color: hsl(150 60% 35%);">
+                <div class="flex items-center justify-between">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-success"><path d="M20 7.5l-8 5-8-5"></path><path d="M12 19.5v-7"></path></svg>
+                </div>
+                <div>
+                    <p class="text-2xl font-bold text-success" id="reputation-score">---</p>
+                    <p class="text-sm text-foreground/80">Reputation Score</p>
+                    <p class="text-xs text-success/70 mt-1">Reputation data will load from the chain.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="md:col-span-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold">Active Bills</h2>
+                    <a href="create.html" class="text-sm font-medium text-primary hover:text-secondary transition-colors">Create Bill</a>
+                </div>
+                <p class="text-sm text-muted-foreground mb-4">Track your ongoing splits</p>
+                <div id="bills-container" class="space-y-4">
+                    </div>
+                <div id="no-bills-message" class="text-muted-foreground text-center p-8 bg-card rounded-xl">
+                    No active bills loaded. Connect wallet and implement data fetching.
+                </div>
+            </div>
+            <div class="md:col-span-1">
+                <h2 class="text-xl font-semibold mb-4">Recent Activity</h2>
+                <div id="activity-container" class="space-y-3 p-4 bg-card rounded-xl border border-border">
+                    <div class="text-muted-foreground text-center p-4">Real data fetching logic needs to be implemented here.</div>
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="connect-modal" class="modal hidden fixed inset-0 z-50 bg-black/80 items-center justify-center p-4" aria-modal="true" role="dialog">
+        <div class="modal-content w-full max-w-sm bg-card rounded-xl border border-border p-6 shadow-2xl flex flex-col space-y-4">
+            
+            <div class="flex justify-between items-center pb-2 border-b border-border/50">
+                <h3 class="text-xl font-bold text-primary">Connect Wallet</h3>
+                <button onclick="closeConnectModal()" class="text-foreground/70 hover:text-foreground transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+
+            <p class="text-sm text-muted-foreground">SplitMate supports Starknet, EVM, and Bitcoin wallets.</p>
+
+            <div class="space-y-3">
+                <button onclick="connectMetamaskWallet()" class="flex items-center justify-between w-full p-3 bg-background/50 rounded-lg border border-transparent hover:border-primary transition-colors">
+                    <span class="font-semibold text-foreground">MetaMask (EVM)</span>
+                    <span class="text-xs text-muted-foreground bg-primary/20 text-primary py-0.5 px-2 rounded-full">EVM</span>
+                </button>
+
+                <button onclick="connectStarknetWallet()" class="flex items-center justify-between w-full p-3 bg-background/50 rounded-lg border border-transparent hover:border-primary transition-colors">
+                    <span class="font-semibold text-foreground">ArgentX / Braavos</span>
+                    <span class="text-xs text-muted-foreground bg-secondary/20 text-secondary py-0.5 px-2 rounded-full">Starknet</span>
+                </button>
+                
+                <button onclick="connectXverseWallet()" class="flex items-center justify-between w-full p-3 bg-background/50 rounded-lg border border-transparent hover:border-primary transition-colors">
+                    <span class="font-semibold text-foreground">Xverse Wallet</span>
+                    <span class="text-xs text-muted-foreground bg-success/20 text-success py-0.5 px-2 rounded-full">Bitcoin / Sponsor</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="message-box" class="hidden fixed inset-0 z-[60] bg-black/70 items-center justify-center p-4" aria-modal="true" role="alertdialog">
+        <div class="modal-content w-full max-w-md bg-background rounded-xl border border-border p-6 shadow-2xl transform scale-100 transition-transform duration-300">
+            <h3 id="message-title" class="text-xl font-bold text-primary mb-3">Message Title</h3>
+            <p id="message-content" class="text-sm text-foreground mb-6">Message Content</p>
+            <button onclick="closeMessageBox()" class="w-full py-2 bg-primary text-background font-semibold rounded-lg hover:bg-primary/80 transition duration-200">
+                Close
+            </button>
+        </div>
+    </div>
+    
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+    <script src="https://unpkg.com/starknet@5.23.0/dist/index.js"></script>
+    <script src="/static/js/wallet.js"></script> 
+
+    <script>
+        // --- UTILITIES ---
+        window.closeConnectModal = closeConnectModal; // Expose globally for use in HTML buttons
+        window.openConnectModal = openConnectModal; // Expose globally for use in JS
+
+        function openConnectModal() {
+            const modal = document.getElementById('connect-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.classList.add('open');
+        }
+
+        function closeConnectModal() {
+            const modal = document.getElementById('connect-modal');
+            modal.classList.remove('open');
+            // Hide it fully after the transition duration (300ms defined in CSS)
+            setTimeout(() => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+            }, 300);
+        }
+        
+        // --- BILL ACTION FUNCTIONS (Splitter Actions) ---
+        
+        async function settleBill(billId) {
+            const userAddress = window.userAddress; 
+            
+            const confirmed = confirm(`Are you sure you want to Settle Bill ${billId}? This action requires an on-chain transaction.`);
+            if (!confirmed) return;
+            
+            // NOTE: REPLACE MOCK CALL - Implement real smart contract call to settle the bill here.
+            window.showMessageBox("Action Pending", `Implement the **Smart Contract Call** to settle Bill **${billId}** using address **${window.formatAddress(userAddress)}** here. Then reload the dashboard.`);
+            
+            // if (success) { loadPageContent(userAddress); } 
+        }
+
+        async function rejectBill(billId) {
+            const userAddress = window.userAddress; 
+            
+            const confirmed = confirm(`Are you sure you want to Reject Bill ${billId}? This action notifies the payer.`);
+            if (!confirmed) return;
+            
+            // NOTE: REPLACE MOCK CALL - Implement real smart contract/API call to reject the bill here.
+            window.showMessageBox("Action Pending", `Implement the **Smart Contract Call** to reject Bill **${billId}** using address **${window.formatAddress(userAddress)}** here. Then reload the dashboard.`);
+            
+            // if (success) { loadPageContent(userAddress); } 
+        }
+
+        // --- BILL ACTION FUNCTIONS (Payer Actions) ---
+        
+        function editBillAction(billId) {
+            // NOTE: This functionality is kept as it only relies on the browser.
+            window.location.href = `create.html?billId=${billId}`;
+        }
+
+        async function deleteBillAction(billId) {
+            const userAddress = window.userAddress; 
+            
+            const confirmed = confirm(`WARNING: Are you sure you want to DELETE Bill ${billId}? This action cannot be undone.`);
+            if (!confirmed) return;
+            
+            // NOTE: REPLACE MOCK CALL - Implement real smart contract call to delete the bill here.
+            window.showMessageBox("Action Pending", `Implement the **Smart Contract Call** to delete Bill **${billId}** using address **${window.formatAddress(userAddress)}** here. Then reload the dashboard.`);
+            
+            // if (success) { loadPageContent(userAddress); } 
+        }
+
+        // --- MAIN DISPLAY LOGIC (Called by wallet.js) ---
+
+        /**
+         * Renders dashboard content (stats, bills, activity) based on the connected user.
+         * This function is registered as a window property for wallet.js to call.
+         * @param {string | null} address The connected wallet address.
+         */
+        window.loadPageContent = async function(address) {
+            const balanceElement = document.getElementById('total-balance'); 
+            const billsContainer = document.getElementById('bills-container'); 
+            const noBillsMessage = document.getElementById('no-bills-message');
+            const activeBillsCountElement = document.getElementById('active-bills-count');
+            const pendingBillsCountElement = document.getElementById('pending-bills-count'); 
+            const friendsSplitCountElement = document.getElementById('friends-split-count'); 
+            const reputationScoreElement = document.getElementById('reputation-score'); 
+            const activityContainer = document.getElementById('activity-container'); 
+            
+            // 1. Disconnected State
+            if (!address) {
+                document.getElementById('wallet-display').textContent = 'Please connect your wallet to view your splitting overview.';
+                document.getElementById('wallet-button').textContent = 'Connect Wallet';
+                document.getElementById('wallet-button').onclick = openConnectModal; // Re-assign initial action
+                document.getElementById('greeting').textContent = 'Good morning, User!';
+                
+                // Clear all stats
+                balanceElement.textContent = '---';
+                activeBillsCountElement.textContent = '---';
+                pendingBillsCountElement.textContent = '--- pending';
+                friendsSplitCountElement.textContent = '---';
+                reputationScoreElement.textContent = '---';
+                billsContainer.innerHTML = '';
+                activityContainer.innerHTML = `<div class="text-muted-foreground text-center p-4">Please connect your wallet to view activity.</div>`;
+                noBillsMessage.textContent = 'No active bills. Time to split an expense!';
+                noBillsMessage.classList.remove('hidden');
+                return;
+            }
+
+            // 2. Connected State - Update Header UI
+            document.getElementById('wallet-display').textContent = `Wallet: ${window.formatAddress(address)} (${window.walletType})`;
+            document.getElementById('wallet-button').textContent = `Disconnect (${window.formatAddress(address)})`;
+            document.getElementById('wallet-button').onclick = disconnectWallet; // Change button action
+            document.getElementById('greeting').textContent = 'Welcome back, Splitter!'; // Dynamic Greeting
+
+            // 3. Fetch Data & Update Stats - MOCK DATA REMOVED
+            
+            // Replace mock data fetch with placeholders
+            balanceElement.textContent = `N/A`;
+            reputationScoreElement.textContent = 'N/A';
+            
+            // Placeholder array until real fetching is implemented
+            const liveBills = []; // << MOCK DATA REMOVED. Fetch real bills here.
+            
+            billsContainer.innerHTML = '';
+            
+            // 4. RENDER LIVE BILLS (Logic is preserved but runs on empty array)
+            
+            let pendingSplitterActions = 0;
+            let billsCreatedCount = 0;
+
+            if (liveBills.length > 0) {
+                // If data was fetched, this logic would render it.
+                // It is preserved for when you integrate your smart contract call.
+                noBillsMessage.classList.add('hidden');
+                
+                liveBills.forEach(bill => {
+                    // This logic remains intact, assuming the 'bill' object structure is the same as the smart contract data model
+                    const isPayer = bill.payer.toLowerCase() === address.toLowerCase();
+                    const splitterEntry = bill.splitters.find(s => s.address.toLowerCase() === address.toLowerCase());
+                    
+                    let billStatus = '';
+                    let billAmount = 0.00;
+                    let amountColor = 'text-foreground';
+                    let actionButtonsHTML = '';
+                    
+                    if (isPayer) {
+                        billsCreatedCount++;
+                        // Payer Logic 
+                        const pendingCount = bill.splitters.filter(s => s.status === 'pending').length;
+                        const fullySettled = bill.splitters.every(s => s.status === 'settled' || s.status === 'rejected'); // A rejected bill is also considered final
+                        
+                        if (fullySettled) {
+                            billStatus = `Fully Settled.`;
+                            billAmount = bill.amount;
+                            amountColor = 'text-success';
+                        } else {
+                            billStatus = `Paid by You. Waiting on ${pendingCount} friend(s).`;
+                            billAmount = bill.amount; // Total bill amount for payer
+                            amountColor = 'text-primary'; 
+                        }
+
+                        const deleteBtn = fullySettled ? '' : `<button onclick="deleteBillAction('${bill.id}')" class="text-xs text-red-400 ml-3 hover:text-red-500 transition duration-150">Delete</button>`;
+                        
+                        actionButtonsHTML = fullySettled ? 'Settled' : `
+                            <button onclick="editBillAction('${bill.id}')" class="text-xs text-primary hover:text-primary-active transition duration-150">Edit</button>
+                            ${deleteBtn}
+                        `;
+
+                    } else if (splitterEntry && splitterEntry.status === 'pending') {
+                        // Splitter Logic
+                        pendingSplitterActions++;
+                        billStatus = `You Owe ${window.formatAddress(bill.payer)}`;
+                        billAmount = splitterEntry.share;
+                        amountColor = 'text-secondary'; 
+                        
+                        actionButtonsHTML = `
+                            <button onclick="settleBill('${bill.id}')" class="bg-secondary text-background px-3 py-1 rounded-full text-xs font-bold transition duration-150 hover:bg-opacity-80">
+                                Settle ${billAmount.toFixed(2)} ${bill.token}
+                            </button>
+                            <button onclick="rejectBill('${bill.id}')" class="text-xs text-red-400 ml-2 hover:text-red-500 transition duration-150">Reject</button>
+                        `;
+                    } else if (splitterEntry && splitterEntry.status === 'settled') {
+                           billStatus = `Settled with ${window.formatAddress(bill.payer)}`;
+                           billAmount = splitterEntry.share;
+                           amountColor = 'text-success';
+                           actionButtonsHTML = `Paid`;
+                    } else if (splitterEntry && splitterEntry.status === 'rejected') {
+                           billStatus = `Rejected by You.`;
+                           billAmount = splitterEntry.share;
+                           amountColor = 'text-red-400';
+                           actionButtonsHTML = `Rejected`;
+                    } else {
+                        return; 
+                    }
+                    
+                    const billCard = `
+                        <div class="bg-card p-4 rounded-xl shadow-lg border border-border flex items-center justify-between mb-3">
+                            <div>
+                                <p class="text-lg font-semibold text-foreground">${bill.name}</p>
+                                <p class="text-sm text-muted-foreground">${billStatus}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xl font-bold ${amountColor}">${billAmount.toFixed(2)} ${bill.token}</p>
+                                <div class="mt-1">
+                                    ${actionButtonsHTML}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    billsContainer.innerHTML += billCard;
+                });
+
+            } else {
+                noBillsMessage.textContent = 'No bills to display. Integrate your contract API to load data.';
+                noBillsMessage.classList.remove('hidden');
+            }
+            
+            // 5. Final Stats Update
+            // Stats are now placeholders until data is integrated
+            activeBillsCountElement.textContent = '0';
+            pendingBillsCountElement.textContent = `0 pending`;
+            friendsSplitCountElement.textContent = billsCreatedCount;
+
+            // 6. Render Activity
+            activityContainer.innerHTML = `
+                <div class="text-sm text-muted-foreground space-y-2">
+                    <p class="border-b border-border/50 pb-2">Data not loaded. See instructions below.</p>
+                    <p>• **Next Step**: Implement a function to fetch user's active bills from the smart contract.</p>
+                    <p>• Replace the placeholder array \`const liveBills = [];\` with the contract call.</p>
+                </div>
+            `;
+        }
+        
+        // --- INITIALIZATION LISTENERS ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Initial button setup
+            // This is the clean way to assign the initial click action
+            document.getElementById('wallet-button').addEventListener('click', openConnectModal);
+
+            // 2. Mobile Menu Toggle Script
+            document.getElementById('menu-toggle').addEventListener('click', function() {
+                const menu = document.getElementById('mobile-menu');
+                menu.classList.toggle('hidden');
+            });
+            
+            // Initial load is now handled by the DOMContentLoaded listener in wallet.js, 
+            // which calls loadPageContent if an address is found.
+            // If wallet.js didn't find an address, we call it manually for the disconnected state.
+            if (!window.userAddress) {
+                window.loadPageContent(null);
+            }
+        });
+
+
+    </script>
+</body>
+</html>

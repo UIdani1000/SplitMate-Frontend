@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SplitMate - Leaderboard</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // --- Tailwind Configuration (UI Theme) ---
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                background: "#10002b",
+                card: { DEFAULT: "transparent", foreground: "hsl(210 40% 98%)" },
+                primary: {
+                  DEFAULT: "#c77dff", // Bright Electric Purple
+                  active: "#7400b8", // Deep Purple for Button Fill
+                  foreground: "hsl(210 40% 98%)",
+                },
+                secondary: {
+                  DEFAULT: "#ff9e00", // Vibrant Orange
+                  foreground: "hsl(210 40% 98%)",
+                },
+                border: "hsl(260 20% 25%)", 
+                input: "hsl(260 20% 25%)",
+                ring: "hsl(260 20% 25%)",
+                foreground: "hsl(210 40% 98%)",
+                muted: {
+                  DEFAULT: "hsl(215 27.9% 16.3%)",
+                  foreground: "hsl(215 14% 65%)",
+                },
+                rankGold: "#FFD700", // For Rank #1
+                rankSilver: "#C0C0C0", // For Rank #2
+                rankBronze: "#CD7F32", // For Rank #3
+              },
+            },
+          },
+        };
+    </script>
+    <style>
+        /* Global Fade-In Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        /* Custom style for the progress bar background (for contrast) */
+        .progress-bar-bg {
+            background-color: hsl(260 20% 25%); /* Use the border color for the track */
+            height: 8px;
+            border-radius: 4px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            background-color: #c77dff; /* Primary color */
+            height: 100%;
+            transition: width 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-background text-foreground">
+
+    <div class="p-4 border-b border-border/50 flex items-center justify-between">
+        <a href="/index" class="text-2xl font-bold text-primary hover:text-secondary transition-colors">SplitMate</a>
+        
+        <nav class="hidden md:flex items-center gap-4 text-sm font-medium">
+            <a href="/index" class="text-muted-foreground hover:text-primary transition-colors">Dashboard</a> 
+            <a href="/create" class="text-muted-foreground hover:text-primary transition-colors">Create Bill</a>
+            <a href="/leaderboard" class="text-primary transition-colors">Leaderboard</a>
+        </nav>
+        
+        <div class="flex items-center gap-4">
+            <button class="text-primary-foreground font-semibold py-2 px-4 rounded-full transition-all hover:scale-[1.05]" style="background-color: #7400b8;" id="wallet-button">
+                Connect Wallet
+            </button>
+            <button id="menu-toggle" class="md:hidden text-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" x2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+        </div>
+    </div>
+    
+    <nav id="mobile-menu" class="hidden md:hidden flex flex-col p-4 bg-background border-b border-border">
+        <a href="/index" class="py-2 text-muted-foreground hover:text-primary border-b border-border">Dashboard</a>
+        <a href="/create" class="py-2 text-muted-foreground hover:text-primary border-b border-border">Create Bill</a>
+        <a href="/leaderboard" class="py-2 text-primary">Leaderboard</a>
+    </nav>
+    
+
+    <div class="container px-4 py-8 max-w-5xl mx-auto fade-in">
+        <h1 class="text-3xl font-bold mb-1">Reputation Leaderboard</h1>
+        <p class="text-sm text-muted-foreground mb-8">Top payers who settle bills the fastest and most reliably.</p>
+
+        <div class="bg-background border border-primary/50 rounded-2xl shadow-lg overflow-hidden">
+            
+            <div class="grid grid-cols-12 gap-4 p-4 text-sm font-semibold text-muted-foreground border-b border-border">
+                <div class="col-span-1 text-center">RANK</div>
+                <div class="col-span-4">PAYER / WALLET</div>
+                <div class="col-span-3 text-right">SETTLED BILLS</div>
+                <div class="col-span-4 text-right">REPUTATION SCORE</div>
+            </div>
+
+            <div id="leaderboard-list" class="flex items-center justify-center p-8 text-muted-foreground">
+                Loading leaderboard data...
+            </div>
+            
+        </div>
+    </div>
+    
+    <script>
+        // --- Data Fetching Placeholder ---
+
+        /**
+         * Placeholder function to fetch real leaderboard data from a smart contract.
+         * Replace this with your actual contract call.
+         * @returns {Promise<Array<Object>>} List of players with reputation data.
+         */
+        async function fetchLeaderboardData() {
+            console.log("Fetching leaderboard data from contract...");
+            
+            // NOTE: IMPLEMENTATION REQUIRED:
+            // 1. Initialize your contract instance (Reputation/Splitter contract).
+            // 2. Call the contract function (e.g., `getTopUsersReputation()`).
+            // 3. Return the array of structured data.
+            
+            // For now, return an empty array to simulate a successful but empty fetch.
+            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+            return [];
+        }
+
+        // --- Core Functions ---
+
+        /**
+         * Determines the color for the rank badge based on position.
+         * @param {number} rank - The rank number.
+         * @returns {string} Tailwind CSS class for background color.
+         */
+        function getRankColor(rank) {
+            switch (rank) {
+                case 1:
+                    return 'bg-rankGold/30 text-rankGold border-rankGold/50';
+                case 2:
+                    return 'bg-rankSilver/30 text-rankSilver border-rankSilver/50';
+                case 3:
+                    return 'bg-rankBronze/30 text-rankBronze border-rankBronze/50';
+                default:
+                    return 'bg-muted/50 text-muted-foreground border-border/50';
+            }
+        }
+        
+        /**
+         * Renders the leaderboard list based on the provided data.
+         * @param {Array<Object>} players - The list of player objects.
+         */
+        function renderLeaderboardList(players) {
+            const container = document.getElementById('leaderboard-list');
+            container.innerHTML = ''; // Clear existing list
+
+            if (players.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center p-8 text-muted-foreground">
+                        No reputation data available. Start splitting bills to earn your score!
+                    </div>
+                `;
+                return;
+            }
+            
+            players.forEach(player => {
+                const rankColor = getRankColor(player.rank);
+                
+                // You would dynamically check the connected user's address here
+                const isCurrentUser = false; 
+
+                const rowClasses = isCurrentUser 
+                    ? 'bg-primary/20 border-primary/50' // Highlight for the connected user
+                    : 'bg-background border-border/50 hover:bg-background/50';
+                
+                // Format the score for display
+                const scoreText = player.score.toFixed(2) + '%';
+                // Use the score as a percentage for the progress bar width
+                const progressBarWidth = player.score; 
+
+                const playerRow = `
+                    <div class="grid grid-cols-12 gap-4 p-4 text-sm border-b transition-colors duration-300 ${rowClasses}">
+                        
+                        <div class="col-span-1 flex items-center justify-center">
+                            <span class="font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs border ${rankColor}">
+                                #${player.rank}
+                            </span>
+                        </div>
+
+                        <div class="col-span-4 flex flex-col justify-center">
+                            <div class="font-semibold text-base ${isCurrentUser ? 'text-primary' : 'text-foreground'}">${player.name || 'Unknown Payer'}</div>
+                            <div class="text-xs text-muted-foreground truncate">${player.address}</div>
+                        </div>
+
+                        <div class="col-span-3 flex items-center justify-end text-base font-semibold">${player.settledBills}</div>
+
+                        <div class="col-span-4 flex flex-col justify-center items-end space-y-1">
+                            <div class="text-base font-bold ${isCurrentUser ? 'text-primary' : 'text-foreground'}">${scoreText}</div>
+                            <div class="progress-bar-bg w-full max-w-32">
+                                <div class="progress-bar-fill" style="width: ${progressBarWidth}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', playerRow);
+            });
+        }
+        
+        /**
+         * Main load function to fetch and display the leaderboard.
+         */
+        async function loadLeaderboard() {
+            const container = document.getElementById('leaderboard-list');
+            container.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Loading reputation scores...</div>';
+
+            try {
+                // Call the placeholder/real function
+                const leaderboardData = await fetchLeaderboardData(); 
+                
+                // Process and render the data
+                renderLeaderboardList(leaderboardData);
+
+            } catch (error) {
+                console.error("Failed to load leaderboard:", error);
+                container.innerHTML = `
+                    <div class="text-center p-8 text-red-400">
+                        Error loading data. Check console for details.
+                    </div>
+                `;
+            }
+        }
+
+
+        // --- Initialization ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLeaderboard();
+        });
+        
+        // Mobile Menu Toggle Script
+        document.getElementById('menu-toggle').addEventListener('click', function() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        });
+    </script>
+</body>
+</html>
