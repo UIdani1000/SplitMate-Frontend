@@ -1,14 +1,11 @@
 // --- FILE: wallet.js ---
 // This file contains all the core logic for connecting, disconnecting, and managing
 // wallet state for both EVM (MetaMask) and Starknet (ArgentX/Braavos).
-
 // Global State Variables (accessible by index.html)
 window.userAddress = null;
 window.walletType = null; // 'EVM', 'Starknet', or 'Xverse' (for display)
-
 // Starknet connection setup (assuming starknet.js is loaded with type="module" in index.html)
 // The 'get-starknet' library is the preferred way to handle ArgentX and Braavos.
-
 // We need a helper function to import 'get-starknet' dynamically since it's a module
 // and we are working in a single HTML/JS environment.
 // --- UTILITY FUNCTIONS ---
@@ -146,7 +143,9 @@ window.connectXverseWallet = () => {
  * Exposed globally for use by the Disconnect button.
  */
 window.disconnectWallet = async () => {
-    const starknet = await getStarknetModule();
+    // FIX: Change this line to use the global object
+    const starknet = window.starknet; 
+    
     if (starknet && starknet.isConnected) {
         try {
             // Starknet disconnect logic
