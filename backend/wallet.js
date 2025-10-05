@@ -98,10 +98,13 @@ window.connectStarknetWallet = async () => {
     // The "get-starknet" library we loaded automatically injects the active wallet's object here.
     const injectedWallet = window.starknet;
 
-    if (!injectedWallet || !injectedWallet.connect) {
-        window.showMessageBox("Wallet Error", "Starknet wallet extension (ArgentX or Braavos) not detected or is incompatible. Please ensure a wallet is installed.");
-        return;
-    }
+    const injectedWallet = window.starknet || (window.starknet_argentX && window.starknet_braavos); 
+
+if (!injectedWallet || !injectedWallet.connect) {
+    // If we can't find a connect function, show the error
+    window.showMessageBox("Wallet Error", "Starknet wallet extension (ArgentX or Braavos) not detected or is incompatible. Please ensure a wallet is installed.");
+    return;
+}
 
     try {
         // Use the connect method from the injected wallet object
