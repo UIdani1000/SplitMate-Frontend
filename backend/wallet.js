@@ -1,13 +1,11 @@
 // --- FILE: wallet.js ---
 // This file contains all the core logic for connecting, disconnecting, and managing
 // wallet state for both EVM (MetaMask) and Starknet (ArgentX/Braavos).
+
 // Global State Variables (accessible by index.html)
 window.userAddress = null;
 window.walletType = null; // 'EVM', 'Starknet', or 'Xverse' (for display)
-// Starknet connection setup (assuming starknet.js is loaded with type="module" in index.html)
-// The 'get-starknet' library is the preferred way to handle ArgentX and Braavos.
-// We need a helper function to import 'get-starknet' dynamically since it's a module
-// and we are working in a single HTML/JS environment.
+
 // --- UTILITY FUNCTIONS ---
 
 /**
@@ -93,18 +91,15 @@ window.connectStarknetWallet = async () => {
     closeConnectModal();
     window.showMessageBox("Connecting...", "Awaiting connection confirmation for Starknet wallet (ArgentX/Braavos).");
 
-    // FIX: Use the standard way to check for the injected wallet extension, 
-    // which should be globally available if the user has a Starknet wallet installed.
-    // The "get-starknet" library we loaded automatically injects the active wallet's object here.
-    const injectedWallet = window.starknet;
+    // FIX: Using a robust check for the injected wallet object. 
+    // This is the correct way to handle wallet detection after loading get-starknet via script tag.
+    const injectedWallet = window.starknet || window.starknet_argentX || window.starknet_braavos; 
 
-    const injectedWallet = window.starknet || (window.starknet_argentX && window.starknet_braavos); 
-
-if (!injectedWallet || !injectedWallet.connect) {
-    // If we can't find a connect function, show the error
-    window.showMessageBox("Wallet Error", "Starknet wallet extension (ArgentX or Braavos) not detected or is incompatible. Please ensure a wallet is installed.");
-    return;
-}
+    if (!injectedWallet || !injectedWallet.connect) {
+        // If we can't find a connect function, show the error
+        window.showMessageBox("Wallet Error", "Starknet wallet extension (ArgentX or Braavos) not detected or is incompatible. Please ensure a wallet is installed and enabled.");
+        return;
+    }
 
     try {
         // Use the connect method from the injected wallet object
@@ -148,7 +143,6 @@ window.connectXverseWallet = () => {
  * Exposed globally for use by the Disconnect button.
  */
 window.disconnectWallet = async () => {
-    // FIX: Change this line to use the global object
     const starknet = window.starknet; 
     
     if (starknet && starknet.isConnected) {
@@ -170,8 +164,7 @@ window.disconnectWallet = async () => {
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Attempt to reconnect previously enabled Starknet wallet on page load
-    // FIX: Check for the injected wallet object
-    const injectedWallet = window.starknet; 
+    const injectedWallet = window.starknet || window.starknet_argentX || window.starknet_braavos;
 
     if (injectedWallet && injectedWallet.isConnected) {
         try {
@@ -188,7 +181,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.loadPageContent(window.userAddress);
 });
 
-// Expose these methods globally in case they need to be called by index.html (though usually only window.loadPageContent is called by external scripts)
+// Expose these methods globally
 window.showMessageBox = window.showMessageBox;
 window.closeMessageBox = window.closeMessageBox;
 window.connectMetamaskWallet = window.connectMetamaskWallet;
