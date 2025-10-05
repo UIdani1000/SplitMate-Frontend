@@ -11,16 +11,6 @@ window.walletType = null; // 'EVM', 'Starknet', or 'Xverse' (for display)
 
 // We need a helper function to import 'get-starknet' dynamically since it's a module
 // and we are working in a single HTML/JS environment.
-async function getStarknetModule() {
-    try {
-        // This dynamic import is necessary when using ES Modules in a standard script context.
-        return await import('https://cdn.jsdelivr.net/npm/get-starknet@3.0.0/+esm');
-    } catch (e) {
-        console.error("Failed to load get-starknet module:", e);
-        return null;
-    }
-}
-
 // --- UTILITY FUNCTIONS ---
 
 /**
@@ -106,17 +96,19 @@ window.connectStarknetWallet = async () => {
     closeConnectModal();
     window.showMessageBox("Connecting...", "Awaiting connection confirmation for Starknet wallet (ArgentX/Braavos).");
 
-    const starknet = await getStarknetModule();
+    // The 'starknet' object should now be available globally after loading the script tag
+    const starknet = window.starknet;
 
     if (!starknet) {
-        window.showMessageBox("Wallet Error", "Failed to load Starknet connection module. Check the console for details.");
+        window.showMessageBox("Wallet Error", "Starknet wallet extension (ArgentX or Braavos) not detected in browser.");
         return;
     }
 
     try {
+        // Use the connect method from the global starknet object
         const connectedWallet = await starknet.connect({
-            modalMode: 'alwaysAsk', // Show the modal with options even if a wallet is installed
-            suggested: ['argentX', 'braavos'] // Suggest preferred wallets
+            modalMode: 'alwaysAsk', 
+            suggested: ['argentX', 'braavos'] 
         });
 
         if (connectedWallet) {
@@ -124,9 +116,8 @@ window.connectStarknetWallet = async () => {
             window.userAddress = connectedWallet.account.address;
             window.walletType = 'Starknet';
             window.loadPageContent(window.userAddress);
-            window.closeMessageBox(); // Close loading message
+            window.closeMessageBox(); 
         } else {
-            // User closed the modal without connecting
             window.showMessageBox("Connection Cancelled", "Starknet wallet connection was cancelled by the user.");
         }
 
@@ -175,10 +166,10 @@ window.disconnectWallet = async () => {
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Attempt to reconnect previously enabled Starknet wallet on page load
-    const starknet = await getStarknetModule();
+    const starknet = window.starknet; // Use the global variable
+
     if (starknet && starknet.isConnected) {
         try {
-            // Re-enable/reconnect the last connected wallet without showing a modal
             await starknet.enable({ showModal: false });
             window.userAddress = starknet.account.address;
             window.walletType = 'Starknet';
@@ -188,7 +179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Call the page content loader (will display connected state or disconnected message)
+    // Call the page content loader
     window.loadPageContent(window.userAddress);
 });
 
