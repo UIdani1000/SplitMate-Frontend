@@ -1,204 +1,202 @@
-// /static/js/wallet.js
+// --- FILE: wallet.js ---
+// This file contains all the core logic for connecting, disconnecting, and managing
+// wallet state for both EVM (MetaMask) and Starknet (ArgentX/Braavos).
 
-// --- Globals & Persistence ---
-let userAddress = sessionStorage.getItem('userAddress'); 
-let walletType = sessionStorage.getItem('walletType'); 
+// Global State Variables (accessible by index.html)
+window.userAddress = null;
+window.walletType = null; // 'EVM', 'Starknet', or 'Xverse' (for display)
 
-// Expose as window properties for the rest of the app to read
-window.userAddress = userAddress;
-window.walletType = walletType;
+// Starknet connection setup (assuming starknet.js is loaded with type="module" in index.html)
+// The 'get-starknet' library is the preferred way to handle ArgentX and Braavos.
 
-// Chain IDs
-const SEPOLIA_CHAIN_ID_HEX = "0x534e5f5345504f4c4941"; // Starknet Sepolia
-const ETH_SEPOLIA_CHAIN_ID_HEX = "0xaa36a7"; // Ethereum Sepolia (11155111)
-
-// --- Utility Functions (Keep) ---
-
-/**
- * Formats a long address to a short version (0x...xxxx).
- */
-function formatAddress(address) {
-    if (!address || address.length < 10) return address;
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-}
-
-/**
- * Updates the header greeting and calls the page-specific content loader.
- * This is the function that calls window.loadPageContent.
- */
-function updateConnectionState(address, type) {
-    if (address) {
-        sessionStorage.setItem('userAddress', address);
-        sessionStorage.setItem('walletType', type);
-        window.userAddress = address;
-        window.walletType = type;
-        
-        // This function must be defined in the calling page (e.g., index.html)
-        if (typeof window.loadPageContent === 'function') {
-            window.loadPageContent(address);
-        }
-    } else {
-        sessionStorage.removeItem('userAddress');
-        sessionStorage.removeItem('walletType');
-        window.userAddress = null;
-        window.walletType = null;
-
-        if (typeof window.loadPageContent === 'function') {
-            window.loadPageContent(null);
-        }
+// We need a helper function to import 'get-starknet' dynamically since it's a module
+// and we are working in a single HTML/JS environment.
+async function getStarknetModule() {
+    try {
+        // This dynamic import is necessary when using ES Modules in a standard script context.
+        return await import('https://cdn.jsdelivr.net/npm/get-starknet@3.0.0/+esm');
+    } catch (e) {
+        console.error("Failed to load get-starknet module:", e);
+        return null;
     }
 }
 
+// --- UTILITY FUNCTIONS ---
+
 /**
- * Universal Message Box Helper
+ * Custom alert/message box to replace the blocked window.alert/confirm.
+ * This function is exposed globally for use in index.html (e.g., in settleBill).
  */
-function showMessageBox(title, content) {
+window.showMessageBox = (title, content) => {
+    const modal = document.getElementById('message-box');
     document.getElementById('message-title').textContent = title;
-    document.getElementById('message-content').textContent = content;
-    document.getElementById('message-box').classList.remove('hidden');
-    document.getElementById('message-box').classList.add('flex');
-}
-window.showMessageBox = showMessageBox; // Expose globally
+    document.getElementById('message-content').innerHTML = content;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.classList.add('open');
+};
 
-function closeMessageBox() {
-    document.getElementById('message-box').classList.add('hidden');
-    document.getElementById('message-box').classList.remove('flex');
-}
-window.closeMessageBox = closeMessageBox; // Expose globally
+window.closeMessageBox = () => {
+    const modal = document.getElementById('message-box');
+    modal.classList.remove('open');
+    setTimeout(() => {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+    }, 300);
+};
 
 /**
- * Centralized Disconnect Logic
+ * Shortens an Ethereum or Starknet address for display.
+ * Exposed globally for use in index.html.
+ * @param {string} address - The full wallet address.
+ * @returns {string} The shortened address string.
  */
-function disconnectWallet() {
-    console.log("Wallet disconnected.");
-    // Clear the session cache and update UI state
-    updateConnectionState(null, null);
-}
-window.disconnectWallet = disconnectWallet; // Expose globally
+window.formatAddress = (address) => {
+    if (!address) return "No Address";
+    if (address.length < 10) return address; // Handles short IDs if necessary
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
 
+// --- CORE WALLET CONNECTION LOGIC ---
 
-// --- WALLET CONNECTION LOGIC (LIVE) ---
-
-async function connectMetamaskWallet() {
-    if (typeof window.closeConnectModal === 'function') {
-        window.closeConnectModal();
-    }
-    
-    if (!window.ethereum) {
-        showMessageBox("Wallet Not Found", "Please install MetaMask or a compatible EVM wallet to connect.");
+/**
+ * 1. EVM Connection (MetaMask)
+ */
+window.connectMetamaskWallet = async () => {
+    closeConnectModal();
+    if (typeof window.ethereum === 'undefined') {
+        window.showMessageBox("Wallet Error", "MetaMask is not installed. Please install it to connect.");
         return;
     }
 
     try {
+        window.showMessageBox("Connecting...", "Awaiting connection confirmation in MetaMask.");
+        // Request account access
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const address = accounts[0];
-        let chainId = await window.ethereum.request({ method: 'eth_chainId' });
 
-        // Check and switch to Sepolia
-        if (chainId !== ETH_SEPOLIA_CHAIN_ID_HEX) { 
-            try {
-                await window.ethereum.request({
-                    method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: ETH_SEPOLIA_CHAIN_ID_HEX }],
-                });
-                chainId = await window.ethereum.request({ method: 'eth_chainId' });
-            } catch (switchError) {
-                // Handle switch rejection
-                if (switchError.code === 4001) {
-                    showMessageBox("Connection Rejected", "You rejected the network switch. Please select Sepolia manually in MetaMask.");
-                } else {
-                    showMessageBox("Network Error", `Failed to switch network: ${switchError.message}`);
-                }
-                return; 
+        if (accounts.length > 0) {
+            window.userAddress = accounts[0];
+            window.walletType = 'EVM';
+            window.loadPageContent(window.userAddress);
+            window.closeMessageBox(); // Close loading message
+        } else {
+            window.showMessageBox("Connection Rejected", "Please approve the connection in MetaMask.");
+        }
+
+        // Add event listener to handle account changes
+        window.ethereum.on('accountsChanged', (newAccounts) => {
+            if (newAccounts.length > 0) {
+                window.userAddress = newAccounts[0];
+            } else {
+                window.userAddress = null; // Disconnected
             }
-        }
-        
-        // Final check and update UI if we are on Sepolia
-        if (chainId === ETH_SEPOLIA_CHAIN_ID_HEX) {
-            updateConnectionState(address, 'MetaMask');
-            showMessageBox("Connected!", `Successfully connected to MetaMask on Sepolia! Address: ${formatAddress(address)}`);
-        } else {
-            showMessageBox("Network Mismatch", "Connection successful, but you are still on the wrong network. Please switch to Sepolia manually.");
-        }
-
-    } catch (error) {
-        if (error.code === 4001) {
-            showMessageBox("Connection Rejected", "You rejected the initial wallet connection request.");
-        } else {
-            console.error("MetaMask connection error:", error);
-            showMessageBox("Error", `An error occurred during connection: ${error.message.substring(0, 100)}...`);
-        }
-    }
-}
-window.connectMetamaskWallet = connectMetamaskWallet;
-
-
-async function connectStarknetWallet() {
-    if (typeof window.closeConnectModal === 'function') {
-        window.closeConnectModal();
-    }
-    
-    if (typeof window.starknet === 'undefined') {
-        showMessageBox("Wallet Not Found", "Please install an extension like ArgentX or Braavos.");
-        return;
-    }
-    
-    try {
-        const starknet = await window.starknet.enable({
-            suggestedChainId: window.starknet.constants.StarknetChainId.SN_SEPOLIA 
+            window.loadPageContent(window.userAddress);
         });
 
-        if (starknet && starknet.selectedAddress) {
-            const address = starknet.selectedAddress;
-            
-            if (starknet.chainId !== SEPOLIA_CHAIN_ID_HEX) {
-                showMessageBox("Wrong Network", "Please ensure your Starknet wallet is on the **Sepolia Testnet**.");
-            }
-            
-            // Set up event listener for Starknet (accounts/network change)
-            starknet.accountsChangedHandler = (newAccounts) => {
-                if (newAccounts.length > 0) {
-                    updateConnectionState(newAccounts[0], 'Starknet');
-                    window.showMessageBox("Account Changed", `Starknet account switched to ${formatAddress(newAccounts[0])}`);
-                } else {
-                    disconnectWallet();
-                }
-            };
-            starknet.on("accountsChanged", starknet.accountsChangedHandler);
-            
-            updateConnectionState(address, 'Starknet');
-            showMessageBox("Success (Sepolia)", `Starknet Wallet Connected! Address: ${formatAddress(address)}. Now running on Sepolia Testnet.`);
+    } catch (error) {
+        console.error("MetaMask connection failed:", error);
+        window.showMessageBox("Connection Failed", `Error connecting to MetaMask: ${error.message || error}`);
+    }
+};
+
+/**
+ * 2. Starknet Connection (ArgentX / Braavos)
+ */
+window.connectStarknetWallet = async () => {
+    closeConnectModal();
+    window.showMessageBox("Connecting...", "Awaiting connection confirmation for Starknet wallet (ArgentX/Braavos).");
+
+    const starknet = await getStarknetModule();
+
+    if (!starknet) {
+        window.showMessageBox("Wallet Error", "Failed to load Starknet connection module. Check the console for details.");
+        return;
+    }
+
+    try {
+        const connectedWallet = await starknet.connect({
+            modalMode: 'alwaysAsk', // Show the modal with options even if a wallet is installed
+            suggested: ['argentX', 'braavos'] // Suggest preferred wallets
+        });
+
+        if (connectedWallet) {
+            await connectedWallet.enable({ showModal: false });
+            window.userAddress = connectedWallet.account.address;
+            window.walletType = 'Starknet';
+            window.loadPageContent(window.userAddress);
+            window.closeMessageBox(); // Close loading message
         } else {
-            showMessageBox("Connection Rejected", "The wallet connection request was rejected.");
+            // User closed the modal without connecting
+            window.showMessageBox("Connection Cancelled", "Starknet wallet connection was cancelled by the user.");
         }
 
     } catch (error) {
-        console.error("Starknet Wallet Connection Error:", error);
-        showMessageBox("Connection Failed", `Error connecting Starknet wallet: ${error.message || 'Check console.'}`);
+        console.error("Starknet connection failed:", error);
+        window.showMessageBox("Connection Failed", `Error connecting to Starknet wallet: ${error.message || error.reason || 'Unknown error'}`);
     }
-}
-window.connectStarknetWallet = connectStarknetWallet;
+};
 
 
-async function connectXverseWallet() {
-    if (typeof window.closeConnectModal === 'function') {
-        window.closeConnectModal();
-    }
-    showMessageBox(
-        "Xverse Connection Pending", 
-        "Integrating a live Xverse connection requires a specific library and API calls (e.g., Stacks Connect). This function is currently a placeholder until the library is added."
+/**
+ * 3. Xverse Connection (Placeholder)
+ * NOTE: Implement Xverse connection logic here when ready.
+ */
+window.connectXverseWallet = () => {
+    closeConnectModal();
+    window.showMessageBox(
+        "Xverse Wallet",
+        "Xverse (Bitcoin) connection logic has not been implemented yet. Please use EVM or Starknet."
     );
-}
-window.connectXverseWallet = connectXverseWallet;
+};
 
 
-// --- Initialization (FIXED: The closure was missing) ---
-// Ensures the page attempts to load content if a wallet address is already in sessionStorage
-document.addEventListener('DOMContentLoaded', () => {
-    if (window.userAddress) {
-        // loadPageContent will be called if it exists on the page
-        if (typeof window.loadPageContent === 'function') {
-            window.loadPageContent(window.userAddress);
+/**
+ * Disconnects the current wallet session.
+ * Exposed globally for use by the Disconnect button.
+ */
+window.disconnectWallet = async () => {
+    const starknet = await getStarknetModule();
+    if (starknet && starknet.isConnected) {
+        try {
+            // Starknet disconnect logic
+            await starknet.disconnect();
+        } catch (e) {
+            console.warn("Starknet disconnect failed, continuing cleanup:", e);
         }
     }
+    // Universal cleanup
+    window.userAddress = null;
+    window.walletType = null;
+    window.loadPageContent(null);
+    window.showMessageBox("Disconnected", "Your wallet has been successfully disconnected.");
+};
+
+// --- INITIALIZATION ---
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // Attempt to reconnect previously enabled Starknet wallet on page load
+    const starknet = await getStarknetModule();
+    if (starknet && starknet.isConnected) {
+        try {
+            // Re-enable/reconnect the last connected wallet without showing a modal
+            await starknet.enable({ showModal: false });
+            window.userAddress = starknet.account.address;
+            window.walletType = 'Starknet';
+        } catch (e) {
+            console.log("Starknet auto-reconnect failed:", e);
+            window.userAddress = null;
+        }
+    }
+
+    // Call the page content loader (will display connected state or disconnected message)
+    window.loadPageContent(window.userAddress);
 });
+
+// Expose these methods globally in case they need to be called by index.html (though usually only window.loadPageContent is called by external scripts)
+window.showMessageBox = window.showMessageBox;
+window.closeMessageBox = window.closeMessageBox;
+window.connectMetamaskWallet = window.connectMetamaskWallet;
+window.connectStarknetWallet = window.connectStarknetWallet;
+window.connectXverseWallet = window.connectXverseWallet;
+window.disconnectWallet = window.disconnectWallet;
+window.formatAddress = window.formatAddress;
