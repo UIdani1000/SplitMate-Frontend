@@ -1,6 +1,6 @@
 // --- FILE: wallet.js ---
 // This file contains all the core logic for connecting, disconnecting, and managing
-// wallet state for both EVM (MetaMask) and Starknet (ArgentX/Braavos).
+// wallet state for both EVM (MetaMask), Starknet, and Xverse.
 
 // Global State Variables (accessible by index.html)
 window.userAddress = null;
@@ -10,7 +10,6 @@ window.walletType = null; // 'EVM', 'Starknet', or 'Xverse' (for display)
 
 /**
  * Custom alert/message box to replace the blocked window.alert/confirm.
- * This function is exposed globally for use in index.html (e.g., in settleBill).
  */
 window.showMessageBox = (title, content) => {
     const modal = document.getElementById('message-box');
@@ -32,13 +31,10 @@ window.closeMessageBox = () => {
 
 /**
  * Shortens an Ethereum or Starknet address for display.
- * Exposed globally for use in index.html.
- * @param {string} address - The full wallet address.
- * @returns {string} The shortened address string.
  */
 window.formatAddress = (address) => {
     if (!address) return "No Address";
-    if (address.length < 10) return address; // Handles short IDs if necessary
+    if (address.length < 10) return address;
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
@@ -56,24 +52,22 @@ window.connectMetamaskWallet = async () => {
 
     try {
         window.showMessageBox("Connecting...", "Awaiting connection confirmation in MetaMask.");
-        // Request account access
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
 
         if (accounts.length > 0) {
             window.userAddress = accounts[0];
             window.walletType = 'EVM';
             window.loadPageContent(window.userAddress);
-            window.closeMessageBox(); // Close loading message
+            window.closeMessageBox();
         } else {
             window.showMessageBox("Connection Rejected", "Please approve the connection in MetaMask.");
         }
 
-        // Add event listener to handle account changes
         window.ethereum.on('accountsChanged', (newAccounts) => {
             if (newAccounts.length > 0) {
                 window.userAddress = newAccounts[0];
             } else {
-                window.userAddress = null; // Disconnected
+                window.userAddress = null;
             }
             window.loadPageContent(window.userAddress);
         });
@@ -91,21 +85,18 @@ window.connectStarknetWallet = async () => {
     closeConnectModal();
     window.showMessageBox("Connecting...", "Awaiting connection confirmation for Starknet wallet (ArgentX/Braavos).");
 
-    // FIX: Using a robust check for the injected wallet object. 
-    // This is the correct way to handle wallet detection after loading get-starknet via script tag.
-    const injectedWallet = window.starknet || window.starknet_argentX || window.starknet_braavos; 
+    // FIX: Robust detection using common global objects
+    const injectedWallet = window.starknet || window.argentX || window.braavos;
 
     if (!injectedWallet || !injectedWallet.connect) {
-        // If we can't find a connect function, show the error
-        window.showMessageBox("Wallet Error", "Starknet wallet extension (ArgentX or Braavos) not detected or is incompatible. Please ensure a wallet is installed and enabled.");
+        window.showMessageBox("Wallet Error", "Starknet wallet extension (ArgentX or Braavos) not detected. Please ensure a wallet is installed, enabled, and allowed for this site.");
         return;
     }
 
     try {
-        // Use the connect method from the injected wallet object
         const connectedWallet = await injectedWallet.connect({
-            modalMode: 'alwaysAsk', 
-            suggested: ['argentX', 'braavos'] 
+            modalMode: 'alwaysAsk',
+            suggested: ['argentX', 'braavos']
         });
 
         if (connectedWallet) {
@@ -113,7 +104,7 @@ window.connectStarknetWallet = async () => {
             window.userAddress = connectedWallet.account.address;
             window.walletType = 'Starknet';
             window.loadPageContent(window.userAddress);
-            window.closeMessageBox(); 
+            window.closeMessageBox();
         } else {
             window.showMessageBox("Connection Cancelled", "Starknet wallet connection was cancelled by the user.");
         }
@@ -126,28 +117,55 @@ window.connectStarknetWallet = async () => {
 
 
 /**
- * 3. Xverse Connection (Placeholder)
- * NOTE: Implement Xverse connection logic here when ready.
+ * 3. Xverse Connection (Bitcoin/Sponsor) - IMPLEMENTED
  */
-window.connectXverseWallet = () => {
+window.connectXverseWallet = async () => {
     closeConnectModal();
-    window.showMessageBox(
-        "Xverse Wallet",
-        "Xverse (Bitcoin) connection logic has not been implemented yet. Please use EVM or Starknet."
-    );
+    const XVERSE_APP_NAME = 'SplitMate DApp';
+    // Xverse uses standard Bitcoin methods
+    const XVERSE_ALLOWED_METHODS = ['getAddresses', 'signMessage'];
+
+    if (typeof window.xverse === 'undefined') {
+        window.showMessageBox("Wallet Error", "Xverse Wallet is not installed. Please install it to connect.");
+        return;
+    }
+
+    try {
+        window.showMessageBox("Connecting...", "Awaiting connection confirmation in Xverse Wallet.");
+        
+        const response = await window.xverse.request({
+            method: 'requestAccounts',
+            params: [{
+                appDetails: { name: XVERSE_APP_NAME },
+                methods: XVERSE_ALLOWED_METHODS,
+            }]
+        });
+
+        const addresses = response.result.addresses;
+        if (addresses && addresses.length > 0) {
+            window.userAddress = addresses[0].address;
+            window.walletType = 'Xverse';
+            window.loadPageContent(window.userAddress);
+            window.closeMessageBox();
+        } else {
+            window.showMessageBox("Connection Rejected", "No address returned from Xverse Wallet.");
+        }
+
+    } catch (error) {
+        console.error("Xverse connection failed:", error);
+        window.showMessageBox("Connection Failed", `Error connecting to Xverse Wallet: ${error.message || error}`);
+    }
 };
 
 
 /**
  * Disconnects the current wallet session.
- * Exposed globally for use by the Disconnect button.
  */
 window.disconnectWallet = async () => {
-    const starknet = window.starknet; 
+    const starknet = window.starknet;
     
     if (starknet && starknet.isConnected) {
         try {
-            // Starknet disconnect logic
             await starknet.disconnect();
         } catch (e) {
             console.warn("Starknet disconnect failed, continuing cleanup:", e);
@@ -163,14 +181,14 @@ window.disconnectWallet = async () => {
 // --- INITIALIZATION ---
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Attempt to reconnect previously enabled Starknet wallet on page load
-    const injectedWallet = window.starknet || window.starknet_argentX || window.starknet_braavos;
+    // Attempt to reconnect previously enabled wallet on page load
+    const injectedWallet = window.starknet || window.argentX || window.braavos;
 
     if (injectedWallet && injectedWallet.isConnected) {
         try {
             await injectedWallet.enable({ showModal: false });
             window.userAddress = injectedWallet.account.address;
-            window.walletType = 'Starknet';
+            window.walletType = 'Starknet'; // Assume Starknet for auto-reconnect
         } catch (e) {
             console.log("Starknet auto-reconnect failed:", e);
             window.userAddress = null;
