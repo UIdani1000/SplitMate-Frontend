@@ -93,17 +93,19 @@ window.connectStarknetWallet = async () => {
     closeConnectModal();
     window.showMessageBox("Connecting...", "Awaiting connection confirmation for Starknet wallet (ArgentX/Braavos).");
 
-    // The 'starknet' object should now be available globally after loading the script tag
-    const starknet = window.starknet;
+    // FIX: Use the standard way to check for the injected wallet extension, 
+    // which should be globally available if the user has a Starknet wallet installed.
+    // The "get-starknet" library we loaded automatically injects the active wallet's object here.
+    const injectedWallet = window.starknet;
 
-    if (!starknet) {
-        window.showMessageBox("Wallet Error", "Starknet wallet extension (ArgentX or Braavos) not detected in browser.");
+    if (!injectedWallet || !injectedWallet.connect) {
+        window.showMessageBox("Wallet Error", "Starknet wallet extension (ArgentX or Braavos) not detected or is incompatible. Please ensure a wallet is installed.");
         return;
     }
 
     try {
-        // Use the connect method from the global starknet object
-        const connectedWallet = await starknet.connect({
+        // Use the connect method from the injected wallet object
+        const connectedWallet = await injectedWallet.connect({
             modalMode: 'alwaysAsk', 
             suggested: ['argentX', 'braavos'] 
         });
@@ -165,12 +167,13 @@ window.disconnectWallet = async () => {
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Attempt to reconnect previously enabled Starknet wallet on page load
-    const starknet = window.starknet; // Use the global variable
+    // FIX: Check for the injected wallet object
+    const injectedWallet = window.starknet; 
 
-    if (starknet && starknet.isConnected) {
+    if (injectedWallet && injectedWallet.isConnected) {
         try {
-            await starknet.enable({ showModal: false });
-            window.userAddress = starknet.account.address;
+            await injectedWallet.enable({ showModal: false });
+            window.userAddress = injectedWallet.account.address;
             window.walletType = 'Starknet';
         } catch (e) {
             console.log("Starknet auto-reconnect failed:", e);
