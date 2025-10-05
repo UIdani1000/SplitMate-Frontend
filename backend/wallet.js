@@ -86,7 +86,7 @@ window.connectStarknetWallet = async () => {
     window.showMessageBox("Connecting...", "Awaiting connection confirmation for Starknet wallet (ArgentX/Braavos).");
 
     // FIX: Robust detection using common global objects
-    const injectedWallet = window.starknet || window.argentX || window.braavos;
+    const injectedWallet = window.starknet;
 
     if (!injectedWallet || !injectedWallet.connect) {
         window.showMessageBox("Wallet Error", "Starknet wallet extension (ArgentX or Braavos) not detected. Please ensure a wallet is installed, enabled, and allowed for this site.");
@@ -182,7 +182,7 @@ window.disconnectWallet = async () => {
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Attempt to reconnect previously enabled wallet on page load
-    const injectedWallet = window.starknet || window.argentX || window.braavos;
+    const injectedWallet = window.starknet;
 
     if (injectedWallet && injectedWallet.isConnected) {
         try {
