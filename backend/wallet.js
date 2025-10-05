@@ -9,7 +9,7 @@ window.walletType = null; // 'EVM', 'Starknet', or 'Xverse' (for display)
 // --- UTILITY FUNCTIONS ---
 
 /**
- * Custom alert/message box to replace the blocked window.alert/confirm.
+ * Custom alert/message box
  */
 window.showMessageBox = (title, content) => {
     const modal = document.getElementById('message-box');
@@ -30,7 +30,7 @@ window.closeMessageBox = () => {
 };
 
 /**
- * Shortens an Ethereum or Starknet address for display.
+ * Shortens an address for display.
  */
 window.formatAddress = (address) => {
     if (!address) return "No Address";
@@ -41,7 +41,7 @@ window.formatAddress = (address) => {
 // --- CORE WALLET CONNECTION LOGIC ---
 
 /**
- * 1. EVM Connection (MetaMask)
+ * 1. EVM Connection (MetaMask) - Working
  */
 window.connectMetamaskWallet = async () => {
     closeConnectModal();
@@ -49,7 +49,7 @@ window.connectMetamaskWallet = async () => {
         window.showMessageBox("Wallet Error", "MetaMask is not installed. Please install it to connect.");
         return;
     }
-
+    // ... (rest of Metamask logic is correct)
     try {
         window.showMessageBox("Connecting...", "Awaiting connection confirmation in MetaMask.");
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -79,30 +79,32 @@ window.connectMetamaskWallet = async () => {
 };
 
 /**
- * 2. Starknet Connection (ArgentX / Braavos)
+ * 2. Starknet Connection (ArgentX / Braavos) - FIX APPLIED
  */
 window.connectStarknetWallet = async () => {
     closeConnectModal();
     window.showMessageBox("Connecting...", "Awaiting connection confirmation for Starknet wallet (ArgentX/Braavos).");
 
-    // FIX: Robust detection using common global objects
+    // FIX: Rely ONLY on the object proven to be injected in the console
     const injectedWallet = window.starknet;
 
     if (!injectedWallet || !injectedWallet.connect) {
-        window.showMessageBox("Wallet Error", "Starknet wallet extension (ArgentX or Braavos) not detected. Please ensure a wallet is installed, enabled, and allowed for this site.");
+        window.showMessageBox("Wallet Error", "Starknet wallet extension not detected or is incompatible. Please ensure a wallet is installed, enabled, and allowed for this site. Check browser console for confirmation (window.starknet).");
         return;
     }
 
     try {
+        // Use the connect method from the injected wallet object
+        // NOTE: The absence of 'suggested' might force the use of the only detected wallet (Ready Wallet)
         const connectedWallet = await injectedWallet.connect({
-            modalMode: 'alwaysAsk',
-            suggested: ['argentX', 'braavos']
+            modalMode: 'alwaysAsk'
         });
 
         if (connectedWallet) {
+            // Using enable is necessary to initialize the full wallet API context
             await connectedWallet.enable({ showModal: false });
             window.userAddress = connectedWallet.account.address;
-            window.walletType = 'Starknet';
+            window.walletType = connectedWallet.id; // Use the wallet ID (e.g., 'argentX')
             window.loadPageContent(window.userAddress);
             window.closeMessageBox();
         } else {
@@ -111,24 +113,26 @@ window.connectStarknetWallet = async () => {
 
     } catch (error) {
         console.error("Starknet connection failed:", error);
-        window.showMessageBox("Connection Failed", `Error connecting to Starknet wallet: ${error.message || error.reason || 'Unknown error'}`);
+        window.showMessageBox("Connection Failed", `Error connecting to Starknet wallet: ${error.message || error.reason || 'Unknown error'}. Did you approve the request?`);
     }
 };
 
 
 /**
- * 3. Xverse Connection (Bitcoin/Sponsor) - IMPLEMENTED
+ * 3. Xverse Connection (Bitcoin/Sponsor) - CONFIRMED PERMISSIONS ISSUE
  */
 window.connectXverseWallet = async () => {
     closeConnectModal();
-    const XVERSE_APP_NAME = 'SplitMate DApp';
-    // Xverse uses standard Bitcoin methods
-    const XVERSE_ALLOWED_METHODS = ['getAddresses', 'signMessage'];
-
+    
     if (typeof window.xverse === 'undefined') {
-        window.showMessageBox("Wallet Error", "Xverse Wallet is not installed. Please install it to connect.");
+        window.showMessageBox("Wallet Error", 
+            "Xverse Wallet is not detected. This is likely a **browser extension permission issue**. Please check your Xverse extension settings and ensure it is allowed to run on this specific Vercel URL."
+        );
         return;
     }
+
+    const XVERSE_APP_NAME = 'SplitMate DApp';
+    const XVERSE_ALLOWED_METHODS = ['getAddresses', 'signMessage']; 
 
     try {
         window.showMessageBox("Connecting...", "Awaiting connection confirmation in Xverse Wallet.");
@@ -164,6 +168,7 @@ window.connectXverseWallet = async () => {
 window.disconnectWallet = async () => {
     const starknet = window.starknet;
     
+    // Attempt to disconnect Starknet gracefully
     if (starknet && starknet.isConnected) {
         try {
             await starknet.disconnect();
@@ -181,14 +186,14 @@ window.disconnectWallet = async () => {
 // --- INITIALIZATION ---
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Attempt to reconnect previously enabled wallet on page load
-    const injectedWallet = window.starknet;
+    // Attempt to reconnect previously enabled Starknet wallet on page load
+    const injectedWallet = window.starknet; // Use simple detection
 
     if (injectedWallet && injectedWallet.isConnected) {
         try {
             await injectedWallet.enable({ showModal: false });
             window.userAddress = injectedWallet.account.address;
-            window.walletType = 'Starknet'; // Assume Starknet for auto-reconnect
+            window.walletType = injectedWallet.id; // Get the specific wallet ID
         } catch (e) {
             console.log("Starknet auto-reconnect failed:", e);
             window.userAddress = null;
