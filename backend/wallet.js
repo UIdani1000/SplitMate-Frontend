@@ -231,3 +231,24 @@ window.connectStarknetWallet = window.connectStarknetWallet;
 window.connectXverseWallet = window.connectXverseWallet;
 window.disconnectWallet = window.disconnectWallet;
 window.formatAddress = window.formatAddress;
+
+// --- LISTEN FOR STORAGE CHANGES ACROSS TABS ---
+window.addEventListener('storage', (event) => {
+    // We only care about changes to our specific keys
+    if (event.key === 'splitmate_address' || event.key === 'splitmate_walletType') {
+        
+        const newAddress = localStorage.getItem('splitmate_address');
+        
+        // If the address changed (e.g., connected or disconnected in another tab)
+        if (window.userAddress !== newAddress) {
+            window.userAddress = newAddress;
+            window.walletType = localStorage.getItem('splitmate_walletType');
+            
+            // Force the page content to reload with the new state
+            // loadPageContent() will handle the connected/disconnected state update
+            window.loadPageContent(window.userAddress);
+            
+            console.log(`Wallet state synced from another tab. New address: ${window.formatAddress(newAddress)}`);
+        }
+    }
+});
