@@ -6,6 +6,8 @@
     <title>SplitMate - Decentralized Bill Splitting</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="wallet.js"></script> 
+    
     <style>
         /* Apply Inter font family */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
@@ -20,11 +22,11 @@
             background: #10002b;
         }
         ::-webkit-scrollbar-thumb {
-            background: #7400b8; /* Deep Purple */
+            background: #7400b8; 
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #c77dff; /* Bright Electric Purple */
+            background: #c77dff; 
         }
     </style>
     
@@ -38,7 +40,7 @@
                 card: { DEFAULT: "rgba(255, 255, 255, 0.05)", foreground: "hsl(210 40% 98%)" },
                 primary: {
                   DEFAULT: "#c77dff", // Bright Electric Purple
-                  active: "#7400b8", // Deep Purple for Button Fill
+                  active: "#7400b8", 
                   foreground: "hsl(210 40% 98%)",
                 },
                 secondary: {
@@ -63,7 +65,7 @@
         }
 
         // ====================================================================
-        // --- GLOBAL UI & MESSAGE BOX ---
+        // --- GLOBAL UI & MESSAGE BOX (Standard) ---
         // ====================================================================
 
         window.showMessageBox = function(title, content, onOk = null) {
@@ -88,36 +90,42 @@
             document.getElementById('message-box').classList.remove('flex');
         }
 
+
         // ====================================================================
-        // --- WALLET CONNECTIVITY (Mock/Placeholder) ---
-        // Prevents the "connectWallet is not defined" error.
+        // --- WALLET UI UPDATE (Requires External Logic) ---
+        // window.currentAddress and window.contract must be defined in wallet.js
         // ====================================================================
 
-        window.currentAddress = null; // Stores the mock connected address
-
-        window.connectWallet = function() {
+        /**
+         * Updates the Connect Wallet button based on the global state.
+         * Assumes window.currentAddress is managed by wallet.js.
+         */
+        window.updateWalletUI = function() {
             const btn = document.getElementById('connect-wallet-btn');
+            const mobileBtn = document.getElementById('mobile-connect-btn');
             
-            if (window.currentAddress) {
-                // Disconnect logic
-                window.currentAddress = null;
-                btn.textContent = "Connect Wallet";
-                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'text-white', 'font-mono');
-                btn.classList.add('bg-primary', 'hover:bg-primary/90');
-                showMessageBox("Disconnected", "Wallet successfully disconnected.");
-            } else {
-                // Mock connection
-                window.currentAddress = "0xAbCdEf1234567890fEED";
+            if (window.currentAddress && typeof window.currentAddress === 'string') {
                 const shortAddress = window.currentAddress.substring(0, 6) + '...' + window.currentAddress.slice(-4);
                 
                 btn.textContent = shortAddress;
                 btn.classList.remove('bg-primary', 'hover:bg-primary/90');
-                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'text-white', 'font-mono'); // Green for connected state
-                showMessageBox("Success", `Wallet connected! Address: ${shortAddress}`);
+                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'text-white', 'font-mono'); 
                 
-                // Re-load dashboard content to reflect the new user address
-                loadDashboardContent(); 
+                mobileBtn.textContent = shortAddress;
+                mobileBtn.classList.remove('text-primary');
+                mobileBtn.classList.add('bg-green-600/20', 'text-green-400');
+            } else {
+                btn.textContent = "Connect Wallet";
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'text-white', 'font-mono');
+                btn.classList.add('bg-primary', 'hover:bg-primary/90');
+
+                mobileBtn.textContent = "Connect Wallet";
+                mobileBtn.classList.remove('bg-green-600/20', 'text-green-400');
+                mobileBtn.classList.add('text-primary');
             }
+            // Reload content to update bill lists based on connection status
+            loadDashboardContent();
+            loadLeaderboard(); 
         }
 
         // ====================================================================
@@ -127,55 +135,28 @@
         const VIEWS = ['dashboard', 'create', 'leaderboard'];
         
         window.navigateTo = function(viewId) {
-            if (!VIEWS.includes(viewId)) {
-                console.error("Invalid view:", viewId);
-                return;
-            }
+            if (!VIEWS.includes(viewId)) return;
 
-            // Hide all views
-            VIEWS.forEach(id => {
-                const el = document.getElementById(id + '-view');
-                if (el) el.classList.add('hidden');
-            });
-            
-            // Show the target view
-            const targetEl = document.getElementById(viewId + '-view');
-            if (targetEl) targetEl.classList.remove('hidden');
+            // Hide all views and show target view
+            VIEWS.forEach(id => { document.getElementById(id + '-view')?.classList.add('hidden'); });
+            document.getElementById(viewId + '-view')?.classList.remove('hidden');
 
-            // Update header title
-            const titleMap = {
-                'dashboard': 'Dashboard',
-                'create': 'Create Bill',
-                'leaderboard': 'Reputation Leaderboard'
-            };
+            const titleMap = { 'dashboard': 'Dashboard', 'create': 'Create Bill', 'leaderboard': 'Reputation Leaderboard' };
             document.getElementById('main-header-title').textContent = titleMap[viewId] || 'SplitMate';
 
-            // Load view-specific content
-            if (viewId === 'dashboard') {
-                loadDashboardContent();
-            } else if (viewId === 'leaderboard') {
-                loadLeaderboard();
-            }
-            // Hide mobile menu after navigation
+            if (viewId === 'dashboard') loadDashboardContent(); 
+            else if (viewId === 'leaderboard') loadLeaderboard();
+
             document.getElementById('mobile-menu').classList.add('hidden');
         }
 
         // ====================================================================
-        // --- DASHBOARD LOGIC ---
+        // --- DASHBOARD LOGIC (Live Contract Integration) ---
         // ====================================================================
 
-        function mockFetchBills() {
-            // Use the currentAddress or fallback
-            const userAddress = window.currentAddress || "0xUnconnectedUser";
-            // Mock data structure: Bills where the user is Payer (Owed To You) or Participant (You Owe)
-            return [
-                { id: 1, name: "Dinner at Sushi", amount: 150.75, payer: userAddress, status: "Open", participants: 3, yourShare: 50.25 },
-                { id: 2, name: "Netflix Subscription", amount: 19.99, payer: "0xBeef...5678", status: "Open", participants: 4, yourShare: 4.99 },
-                { id: 3, name: "Road Trip Gas", amount: 85.00, payer: userAddress, status: "Settled", participants: 2, yourShare: 42.50 },
-                { id: 4, name: "Concert Tickets", amount: 300.00, payer: "0xFeed...AbCd", status: "Open", participants: 2, yourShare: 150.00 },
-            ];
-        }
-
+        /**
+         * Renders a bill card. (UI only)
+         */
         function renderBillCard(bill) {
             const userAddress = window.currentAddress || "0xUnconnectedUser";
             const isPayer = bill.payer === userAddress;
@@ -208,65 +189,67 @@
             `;
         }
 
-        window.loadDashboardContent = function() {
+        /**
+         * Loads bills from the smart contract and updates the UI.
+         */
+        window.loadDashboardContent = async function() {
             const listContainer = document.getElementById('bill-list');
-            if (!listContainer) return;
-
-            const bills = mockFetchBills(); 
+            const userAddress = window.currentAddress;
             
-            let totalOwed = 0;
-            let totalDue = 0;
-            const userAddress = window.currentAddress || "0xUnconnectedUser";
-
-            listContainer.innerHTML = '';
-
-            if (userAddress === "0xUnconnectedUser") {
+            if (!userAddress || !window.contract) {
                 listContainer.innerHTML = '<p class="text-center text-secondary p-8 font-semibold">Please connect your wallet to view your bills.</p>';
-                document.getElementById('total-owed').textContent = `$0.00`;
-                document.getElementById('total-due').textContent = `$0.00`;
-                document.getElementById('net-balance').textContent = `$0.00`;
                 return;
             }
 
-            if (bills.length === 0) {
-                listContainer.innerHTML = '<p class="text-center text-muted p-8">No bills found. Start a new split!</p>';
-            } else {
-                bills.forEach(bill => {
-                    listContainer.insertAdjacentHTML('beforeend', renderBillCard(bill));
-                    
-                    if (bill.status === 'Open') {
-                        // If Payer, calculate amount owed to you (Total - Your Share)
-                        if (bill.payer === userAddress) {
-                            // This is simplified: in a real dApp, you'd track who has paid you back.
-                            totalOwed += (bill.amount - bill.yourShare); 
-                        } 
-                        // If not Payer, you owe your share
-                        else {
-                            totalDue += bill.yourShare; 
-                        }
-                    }
-                });
-            }
+            listContainer.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Fetching live bills from the contract...</div>';
 
-            // Update balance displays
-            document.getElementById('total-owed').textContent = `$${totalOwed.toFixed(2)}`;
-            document.getElementById('total-due').textContent = `$${totalDue.toFixed(2)}`;
-            
-            const netBalance = totalOwed - totalDue;
-            document.getElementById('net-balance').textContent = `$${netBalance.toFixed(2)}`;
-            
-            // Set net balance color
-            document.getElementById('net-balance').classList.remove('text-green-400', 'text-red-400', 'text-foreground');
-            document.getElementById('net-balance').classList.add(
-                netBalance > 0 ? 'text-green-400' : netBalance < 0 ? 'text-red-400' : 'text-foreground'
-            );
+            try {
+                // 🛑 LIVE CALL: Assumes contract.getBillsForUser exists in wallet.js
+                const bills = await window.contract.getBillsForUser(userAddress); 
+                
+                let totalOwed = 0;
+                let totalDue = 0;
+
+                listContainer.innerHTML = '';
+
+                if (bills.length === 0) {
+                    listContainer.innerHTML = '<p class="text-center text-muted p-8">No bills found. Start a new split!</p>';
+                } else {
+                    bills.forEach(bill => {
+                        listContainer.insertAdjacentHTML('beforeend', renderBillCard(bill));
+                        
+                        if (bill.status === 'Open') {
+                            if (bill.payer === userAddress) {
+                                totalOwed += (bill.amount - bill.yourShare); 
+                            } else {
+                                totalDue += bill.yourShare; 
+                            }
+                        }
+                    });
+                }
+
+                document.getElementById('total-owed').textContent = `$${totalOwed.toFixed(2)}`;
+                document.getElementById('total-due').textContent = `$${totalDue.toFixed(2)}`;
+                
+                const netBalance = totalOwed - totalDue;
+                document.getElementById('net-balance').textContent = `$${netBalance.toFixed(2)}`;
+                
+                document.getElementById('net-balance').classList.remove('text-green-400', 'text-red-400', 'text-foreground');
+                document.getElementById('net-balance').classList.add(
+                    netBalance > 0 ? 'text-green-400' : netBalance < 0 ? 'text-red-400' : 'text-foreground'
+                );
+            } catch (error) {
+                console.error("Failed to load dashboard data:", error);
+                listContainer.innerHTML = `<div class="text-center p-8 text-red-400">Error loading data. Is the contract connected?</div>`;
+            }
         }
 
         // ====================================================================
-        // --- CREATE BILL LOGIC ---
+        // --- CREATE BILL LOGIC (Live Contract Integration) ---
         // ====================================================================
 
         function toggleSplit(type) {
+            // ... (Split Type Logic - UI only)
             const manualContainer = document.getElementById('manual-split-container');
             
             document.getElementById('split-type-even').classList.remove('bg-primary/50', 'bg-primary/20');
@@ -279,19 +262,18 @@
                 document.getElementById('split-type-manual').classList.add('bg-primary/50');
                 manualContainer.classList.remove('hidden');
             }
-            // Update hidden input to store selected type
             document.getElementById('split-type-input').value = type;
         }
 
         function updateParticipants(count) {
-            const participantCount = Math.max(1, count); // Ensure minimum count of 1
+            // ... (Participant UI Logic - UI only)
+            const participantCount = Math.max(1, count); 
             document.getElementById('participant-count').value = participantCount;
             document.getElementById('participant-count-display').textContent = participantCount;
 
             const participantsContainer = document.getElementById('participants-list');
             participantsContainer.innerHTML = '';
 
-            // Generate inputs for manual split
             for (let i = 0; i < participantCount; i++) {
                 const index = i + 1;
                 const participantInput = `
@@ -319,32 +301,24 @@
                 showMessageBox("Connection Required", "Please connect your wallet before creating a bill.");
                 return false;
             }
-            
-            if (!formData.name || !formData.amount) {
-                showMessageBox("Validation Error", "Please fill in Bill Name and Total Amount.");
+            if (!window.contract) {
+                showMessageBox("Contract Not Ready", "The smart contract connection failed. Cannot broadcast bill.");
                 return false;
             }
-            
-            // Check that the payer address field is filled and is *not* the default placeholder
-            if (!formData.payer || formData.payer === "0x...") {
-                 showMessageBox("Validation Error", "Please provide the Payer Address.");
+            if (!formData.name || !formData.amount || !formData.payer || formData.payer === "0x...") {
+                showMessageBox("Validation Error", "Please fill in all required fields (Name, Amount, Payer Address).");
                 return false;
             }
-
+            // Add address format validation (optional but recommended)
+            
             if (formData.splitType === 'manual') {
-                let totalShare = 0;
-                for (const p of formData.participants) {
-                    totalShare += parseFloat(p.share);
-                }
-
+                let totalShare = formData.participants.reduce((sum, p) => sum + parseFloat(p.share || 0), 0);
                 const billAmount = parseFloat(formData.amount);
-                // Check if total shares match bill amount (with small tolerance for floating point)
                 if (Math.abs(totalShare - billAmount) > 0.02) {
                     showMessageBox("Validation Error", `Manual shares ($${totalShare.toFixed(2)}) do not match the total bill amount ($${billAmount.toFixed(2)}).`);
                     return false;
                 }
             }
-
             return true;
         }
 
@@ -364,7 +338,6 @@
             };
 
             for (let i = 1; i <= participantCount; i++) {
-                // Ensure participant share is calculated if split is 'even'
                 const defaultShare = (formData.amount / participantCount).toFixed(2);
                 formData.participants.push({
                     address: form.elements[`participant-${i}-address`].value,
@@ -373,44 +346,54 @@
             }
 
             // 2. Validate Data
-            if (!validateForm(formData)) {
-                return;
-            }
-
-            // 3. Contract/Storage Interaction (Mocking)
-            console.log("Submitting Bill Data:", formData);
+            if (!validateForm(formData)) return;
             
-            // 4. Success Message and Redirection
-            showMessageBox("Bill Broadcasted!", 
-                           `Your bill "${formData.name}" has been successfully broadcasted. Redirecting to Dashboard...`,
-                           () => {
-                               // Clear form and navigate
-                               form.reset();
-                               updateParticipants(1); // Reset participant count
-                               toggleSplit('even'); // Reset split type
-                               navigateTo('dashboard');
-                           });
+            try {
+                // 🛑 LIVE CALL: Assumes contract.broadcastBill exists in wallet.js and handles the transaction
+                showMessageBox("Broadcasting Bill...", "Sending transaction to the smart contract. Please confirm in your wallet.", null);
+
+                const tx = await window.contract.broadcastBill(formData);
+                console.log("Transaction sent:", tx);
+
+                // 4. Success Message and Redirection
+                showMessageBox("Bill Broadcasted!", 
+                            `Your bill "${formData.name}" has been successfully broadcasted. Transaction Hash: ${tx.hash.substring(0, 10)}... Redirecting to Dashboard...`,
+                            () => {
+                                form.reset();
+                                updateParticipants(1);
+                                toggleSplit('even');
+                                navigateTo('dashboard');
+                            });
+
+            } catch (error) {
+                 console.error("Bill Submission Failed:", error);
+                 showMessageBox("Transaction Failed", "Could not broadcast the bill to the contract. Check console for error details.", null);
+            }
         }
 
         // ====================================================================
-        // --- LEADERBOARD LOGIC ---
+        // --- LEADERBOARD LOGIC (Live Contract Integration) ---
         // ====================================================================
+        
+        window.loadLeaderboard = async function() {
+            const container = document.getElementById('leaderboard-list');
+            if (!container || !window.contract) return;
 
-        function fetchLeaderboardData() {
-            // Mock fetching data from a hypothetical reputation contract
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    resolve([
-                        { rank: 1, address: "0xBeef...5678", score: 98.5, totalBills: 45, settledRate: 1.0 },
-                        { rank: 2, address: window.currentAddress || "0xAbCd...1234", score: 92.1, totalBills: 20, settledRate: 0.95 },
-                        { rank: 3, address: "0xFeed...AbCd", score: 88.9, totalBills: 60, settledRate: 0.88 },
-                        { rank: 4, address: "0x1234...5678", score: 75.3, totalBills: 12, settledRate: 1.0 },
-                    ]);
-                }, 1000);
-            });
+            container.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Fetching live reputation scores...</div>';
+
+            try {
+                // 🛑 LIVE CALL: Assumes contract.getLeaderboard exists in wallet.js
+                const leaderboardData = await window.contract.getLeaderboard(); 
+                renderLeaderboardList(leaderboardData);
+
+            } catch (error) {
+                console.error("Failed to load leaderboard:", error);
+                container.innerHTML = `<div class="text-center p-8 text-red-400">Error loading data. Is the contract connected?</div>`;
+            }
         }
 
         function renderLeaderboardList(data) {
+            // ... (Leaderboard UI Logic - UI only)
             const container = document.getElementById('leaderboard-list');
             let listHtml = '';
             const userAddress = window.currentAddress || "0xUnconnectedUser";
@@ -439,21 +422,6 @@
             
             container.innerHTML = listHtml;
         }
-        
-        window.loadLeaderboard = async function() {
-            const container = document.getElementById('leaderboard-list');
-            if (!container) return;
-
-            container.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Loading reputation scores...</div>';
-
-            try {
-                const leaderboardData = await fetchLeaderboardData(); 
-                renderLeaderboardList(leaderboardData);
-
-            } catch (error) {
-                container.innerHTML = `<div class="text-center p-8 text-red-400">Error loading data. Check console for details.</div>`;
-            }
-        }
 
 
         // ====================================================================
@@ -461,9 +429,8 @@
         // ====================================================================
 
         function setupInitialUI() {
-            // Set the default split type to 'even' on the create form
+            // Set up form and navigation state
             toggleSplit('even'); 
-            // Ensure initial participant count is 1
             updateParticipants(1); 
             
             // Event listeners
@@ -476,10 +443,15 @@
                 document.getElementById('mobile-menu').classList.toggle('hidden');
             });
             
-            // Set initial state of connect button
-            if (!window.currentAddress) {
-                document.getElementById('connect-wallet-btn').textContent = "Connect Wallet";
+            // Check for window.connectWallet defined in wallet.js
+            if (typeof window.connectWallet !== 'function') {
+                console.error("Wallet connection function (connectWallet) not found. Check wallet.js.");
+                // Provide a placeholder to prevent click error (temporary)
+                window.connectWallet = () => showMessageBox("Error", "Wallet connection logic not implemented in wallet.js.");
             }
+
+            // Initial UI state update
+            updateWalletUI();
 
             // Start the application on the Dashboard page
             navigateTo('dashboard');
@@ -536,7 +508,7 @@
                 <a href="#" onclick="navigateTo('dashboard')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Dashboard</a>
                 <a href="#" onclick="navigateTo('create')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Create Bill</a>
                 <a href="#" onclick="navigateTo('leaderboard')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Leaderboard</a>
-                <button onclick="window.connectWallet()" class="w-full text-left px-3 py-2 bg-primary/20 rounded-lg text-base font-medium text-primary hover:bg-primary/40 transition">Connect Wallet</button>
+                <button id="mobile-connect-btn" onclick="window.connectWallet()" class="w-full text-left px-3 py-2 bg-primary/20 rounded-lg text-base font-medium text-primary hover:bg-primary/40 transition">Connect Wallet</button>
             </div>
         </div>
     </nav>
@@ -567,7 +539,7 @@
             <div>
                 <h2 class="text-2xl font-bold text-primary mb-4">Your Recent Bills</h2>
                 <div id="bill-list" class="space-y-4">
-                    <div class="text-center p-8 text-muted">Loading bills...</div>
+                    <div class="text-center p-8 text-muted">Please connect your wallet...</div>
                 </div>
             </div>
 
