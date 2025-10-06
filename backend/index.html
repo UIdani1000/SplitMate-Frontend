@@ -6,9 +6,6 @@
     <title>SplitMate - Decentralized Bill Splitting</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Assuming wallet.js handles connection, global user/wallet state, and showMessageBox -->
-    <script src="wallet.js"></script> 
-    
     <style>
         /* Apply Inter font family */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
@@ -69,10 +66,6 @@
         // --- GLOBAL UI & MESSAGE BOX ---
         // ====================================================================
 
-        /**
-         * Placeholder for global message box function assumed to be in wallet.js
-         * If wallet.js is not present, this implementation ensures the UI works.
-         */
         window.showMessageBox = function(title, content, onOk = null) {
             document.getElementById('message-title').textContent = title;
             document.getElementById('message-content').textContent = content;
@@ -93,6 +86,38 @@
         window.closeMessageBox = function() {
             document.getElementById('message-box').classList.add('hidden');
             document.getElementById('message-box').classList.remove('flex');
+        }
+
+        // ====================================================================
+        // --- WALLET CONNECTIVITY (Mock/Placeholder) ---
+        // Prevents the "connectWallet is not defined" error.
+        // ====================================================================
+
+        window.currentAddress = null; // Stores the mock connected address
+
+        window.connectWallet = function() {
+            const btn = document.getElementById('connect-wallet-btn');
+            
+            if (window.currentAddress) {
+                // Disconnect logic
+                window.currentAddress = null;
+                btn.textContent = "Connect Wallet";
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'text-white', 'font-mono');
+                btn.classList.add('bg-primary', 'hover:bg-primary/90');
+                showMessageBox("Disconnected", "Wallet successfully disconnected.");
+            } else {
+                // Mock connection
+                window.currentAddress = "0xAbCdEf1234567890fEED";
+                const shortAddress = window.currentAddress.substring(0, 6) + '...' + window.currentAddress.slice(-4);
+                
+                btn.textContent = shortAddress;
+                btn.classList.remove('bg-primary', 'hover:bg-primary/90');
+                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'text-white', 'font-mono'); // Green for connected state
+                showMessageBox("Success", `Wallet connected! Address: ${shortAddress}`);
+                
+                // Re-load dashboard content to reflect the new user address
+                loadDashboardContent(); 
+            }
         }
 
         // ====================================================================
@@ -140,37 +165,42 @@
         // ====================================================================
 
         function mockFetchBills() {
-            // Mock data structure
-            const userAddress = window.currentAddress || "0xAbCd...1234";
+            // Use the currentAddress or fallback
+            const userAddress = window.currentAddress || "0xUnconnectedUser";
+            // Mock data structure: Bills where the user is Payer (Owed To You) or Participant (You Owe)
             return [
                 { id: 1, name: "Dinner at Sushi", amount: 150.75, payer: userAddress, status: "Open", participants: 3, yourShare: 50.25 },
                 { id: 2, name: "Netflix Subscription", amount: 19.99, payer: "0xBeef...5678", status: "Open", participants: 4, yourShare: 4.99 },
                 { id: 3, name: "Road Trip Gas", amount: 85.00, payer: userAddress, status: "Settled", participants: 2, yourShare: 42.50 },
+                { id: 4, name: "Concert Tickets", amount: 300.00, payer: "0xFeed...AbCd", status: "Open", participants: 2, yourShare: 150.00 },
             ];
         }
 
         function renderBillCard(bill) {
-            const isPayer = bill.payer === (window.currentAddress || "0xAbCd...1234");
+            const userAddress = window.currentAddress || "0xUnconnectedUser";
+            const isPayer = bill.payer === userAddress;
             const statusColor = bill.status === 'Open' ? 'text-primary' : 'text-green-400';
             const actionButton = bill.status === 'Open' ? 
                 `<button class="bg-secondary text-white px-3 py-1 rounded-full text-sm font-semibold hover:bg-opacity-80 transition">
                     ${isPayer ? 'Manage' : 'Pay Now'}
                 </button>` :
                 `<span class="text-green-400 text-sm font-semibold">Settled</span>`;
+            
+            const shareDisplay = isPayer ? bill.amount : bill.yourShare;
 
             return `
                 <div class="p-4 bg-card rounded-xl border border-border shadow-lg transition duration-300 hover:border-primary/50 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
                     <div class="flex flex-col">
                         <h3 class="text-xl font-bold text-foreground">${bill.name}</h3>
                         <p class="text-sm text-muted">
-                            ${isPayer ? 'You paid' : 'Owed to'} <span class="font-mono text-xs text-primary/80">${bill.payer.substring(0, 6)}...${bill.payer.slice(-4)}</span>
+                            ${isPayer ? 'You Paid' : 'Owed to'} <span class="font-mono text-xs text-primary/80">${bill.payer.substring(0, 6)}...${bill.payer.slice(-4)}</span>
                         </p>
                     </div>
                     
                     <div class="flex items-center space-x-6">
                         <div class="flex flex-col text-right">
-                            <span class="text-2xl font-extrabold ${statusColor}">$${bill.yourShare.toFixed(2)}</span>
-                            <span class="text-xs text-muted">Your Share</span>
+                            <span class="text-2xl font-extrabold ${statusColor}">$${shareDisplay.toFixed(2)}</span>
+                            <span class="text-xs text-muted">${isPayer ? 'Total Bill' : 'Your Share'}</span>
                         </div>
                         ${actionButton}
                     </div>
@@ -182,26 +212,37 @@
             const listContainer = document.getElementById('bill-list');
             if (!listContainer) return;
 
-            // In a real dApp, this would fetch from the contract
             const bills = mockFetchBills(); 
             
             let totalOwed = 0;
             let totalDue = 0;
+            const userAddress = window.currentAddress || "0xUnconnectedUser";
 
             listContainer.innerHTML = '';
+
+            if (userAddress === "0xUnconnectedUser") {
+                listContainer.innerHTML = '<p class="text-center text-secondary p-8 font-semibold">Please connect your wallet to view your bills.</p>';
+                document.getElementById('total-owed').textContent = `$0.00`;
+                document.getElementById('total-due').textContent = `$0.00`;
+                document.getElementById('net-balance').textContent = `$0.00`;
+                return;
+            }
 
             if (bills.length === 0) {
                 listContainer.innerHTML = '<p class="text-center text-muted p-8">No bills found. Start a new split!</p>';
             } else {
                 bills.forEach(bill => {
                     listContainer.insertAdjacentHTML('beforeend', renderBillCard(bill));
-                    // Simple balance calculation (mock)
+                    
                     if (bill.status === 'Open') {
-                        const userAddress = window.currentAddress || "0xAbCd...1234";
+                        // If Payer, calculate amount owed to you (Total - Your Share)
                         if (bill.payer === userAddress) {
-                            totalOwed += (bill.amount - bill.yourShare); // Amount others owe you
-                        } else {
-                            totalDue += bill.yourShare; // Amount you owe others
+                            // This is simplified: in a real dApp, you'd track who has paid you back.
+                            totalOwed += (bill.amount - bill.yourShare); 
+                        } 
+                        // If not Payer, you owe your share
+                        else {
+                            totalDue += bill.yourShare; 
                         }
                     }
                 });
@@ -210,15 +251,19 @@
             // Update balance displays
             document.getElementById('total-owed').textContent = `$${totalOwed.toFixed(2)}`;
             document.getElementById('total-due').textContent = `$${totalDue.toFixed(2)}`;
-            document.getElementById('net-balance').textContent = `$${(totalOwed - totalDue).toFixed(2)}`;
-            document.getElementById('net-balance').classList.remove('text-green-400', 'text-red-400');
+            
+            const netBalance = totalOwed - totalDue;
+            document.getElementById('net-balance').textContent = `$${netBalance.toFixed(2)}`;
+            
+            // Set net balance color
+            document.getElementById('net-balance').classList.remove('text-green-400', 'text-red-400', 'text-foreground');
             document.getElementById('net-balance').classList.add(
-                (totalOwed - totalDue) >= 0 ? 'text-green-400' : 'text-red-400'
+                netBalance > 0 ? 'text-green-400' : netBalance < 0 ? 'text-red-400' : 'text-foreground'
             );
         }
 
         // ====================================================================
-        // --- CREATE BILL LOGIC (from create.html) ---
+        // --- CREATE BILL LOGIC ---
         // ====================================================================
 
         function toggleSplit(type) {
@@ -239,7 +284,7 @@
         }
 
         function updateParticipants(count) {
-            const participantCount = Math.max(0, count);
+            const participantCount = Math.max(1, count); // Ensure minimum count of 1
             document.getElementById('participant-count').value = participantCount;
             document.getElementById('participant-count-display').textContent = participantCount;
 
@@ -264,33 +309,37 @@
         }
 
         function changeParticipantCount(delta) {
-            let currentCount = parseInt(document.getElementById('participant-count').value) || 0;
+            let currentCount = parseInt(document.getElementById('participant-count').value) || 1;
             currentCount += delta;
             updateParticipants(currentCount);
         }
 
         function validateForm(formData) {
-            // Simple validation: check required fields
-            if (!formData.name || !formData.amount || !formData.payer) {
-                showMessageBox("Validation Error", "Please fill in all required fields (Name, Amount, Payer).");
+            if (!window.currentAddress) {
+                showMessageBox("Connection Required", "Please connect your wallet before creating a bill.");
+                return false;
+            }
+            
+            if (!formData.name || !formData.amount) {
+                showMessageBox("Validation Error", "Please fill in Bill Name and Total Amount.");
+                return false;
+            }
+            
+            // Check that the payer address field is filled and is *not* the default placeholder
+            if (!formData.payer || formData.payer === "0x...") {
+                 showMessageBox("Validation Error", "Please provide the Payer Address.");
                 return false;
             }
 
             if (formData.splitType === 'manual') {
-                // Manual split requires participants
-                if (formData.participants.length === 0) {
-                    showMessageBox("Validation Error", "Please add at least one participant for a manual split.");
-                    return false;
-                }
-                
                 let totalShare = 0;
                 for (const p of formData.participants) {
                     totalShare += parseFloat(p.share);
                 }
 
                 const billAmount = parseFloat(formData.amount);
-                // Check if total shares match bill amount
-                if (Math.abs(totalShare - billAmount) > 0.01) {
+                // Check if total shares match bill amount (with small tolerance for floating point)
+                if (Math.abs(totalShare - billAmount) > 0.02) {
                     showMessageBox("Validation Error", `Manual shares ($${totalShare.toFixed(2)}) do not match the total bill amount ($${billAmount.toFixed(2)}).`);
                     return false;
                 }
@@ -315,9 +364,11 @@
             };
 
             for (let i = 1; i <= participantCount; i++) {
+                // Ensure participant share is calculated if split is 'even'
+                const defaultShare = (formData.amount / participantCount).toFixed(2);
                 formData.participants.push({
                     address: form.elements[`participant-${i}-address`].value,
-                    share: parseFloat(form.elements[`participant-${i}-share`]?.value || (formData.amount / participantCount).toFixed(2))
+                    share: splitType === 'even' ? parseFloat(defaultShare) : parseFloat(form.elements[`participant-${i}-share`]?.value || 0)
                 });
             }
 
@@ -328,18 +379,15 @@
 
             // 3. Contract/Storage Interaction (Mocking)
             console.log("Submitting Bill Data:", formData);
-            // In a real dApp, you would call a contract function here:
-            // await window.contract.broadcastBill(formData);
-
-            // Mock storage update (for demonstration)
-            let bills = JSON.parse(localStorage.getItem('bills') || '[]');
-            bills.push({...formData, id: Date.now(), status: "Open"});
-            localStorage.setItem('bills', JSON.stringify(bills));
             
             // 4. Success Message and Redirection
             showMessageBox("Bill Broadcasted!", 
                            `Your bill "${formData.name}" has been successfully broadcasted. Redirecting to Dashboard...`,
                            () => {
+                               // Clear form and navigate
+                               form.reset();
+                               updateParticipants(1); // Reset participant count
+                               toggleSplit('even'); // Reset split type
                                navigateTo('dashboard');
                            });
         }
@@ -354,7 +402,7 @@
                 setTimeout(() => {
                     resolve([
                         { rank: 1, address: "0xBeef...5678", score: 98.5, totalBills: 45, settledRate: 1.0 },
-                        { rank: 2, address: "0xAbCd...1234", score: 92.1, totalBills: 20, settledRate: 0.95 },
+                        { rank: 2, address: window.currentAddress || "0xAbCd...1234", score: 92.1, totalBills: 20, settledRate: 0.95 },
                         { rank: 3, address: "0xFeed...AbCd", score: 88.9, totalBills: 60, settledRate: 0.88 },
                         { rank: 4, address: "0x1234...5678", score: 75.3, totalBills: 12, settledRate: 1.0 },
                     ]);
@@ -365,16 +413,18 @@
         function renderLeaderboardList(data) {
             const container = document.getElementById('leaderboard-list');
             let listHtml = '';
+            const userAddress = window.currentAddress || "0xUnconnectedUser";
             
             data.forEach((player, index) => {
                 const rankColor = index === 0 ? 'text-secondary text-2xl' : index === 1 ? 'text-primary/80 text-xl' : index === 2 ? 'text-muted text-lg' : 'text-muted text-base';
+                const displayName = player.address === userAddress ? 'You' : player.address.substring(0, 8) + '...';
 
                 const playerRow = `
                     <div class="flex items-center justify-between p-4 bg-card rounded-lg border border-border mb-3 transition hover:border-primary/50">
                         <div class="flex items-center space-x-4 w-1/2">
                             <span class="font-extrabold ${rankColor}">${index + 1}</span>
                             <div class="flex flex-col">
-                                <span class="text-foreground font-semibold">${(window.currentAddress || "0xAbCd...1234") === player.address ? 'You' : player.address.substring(0, 8) + '...'}</span>
+                                <span class="text-foreground font-semibold">${displayName}</span>
                                 <span class="text-xs text-muted">Bills: ${player.totalBills}</span>
                             </div>
                         </div>
@@ -413,8 +463,8 @@
         function setupInitialUI() {
             // Set the default split type to 'even' on the create form
             toggleSplit('even'); 
-            // Ensure initial participant count is 0 and buttons are set
-            updateParticipants(1); // Start with 1 participant field for the payer address
+            // Ensure initial participant count is 1
+            updateParticipants(1); 
             
             // Event listeners
             document.getElementById('bill-form').addEventListener('submit', function(e) { 
@@ -425,6 +475,11 @@
             document.getElementById('menu-toggle').addEventListener('click', function() {
                 document.getElementById('mobile-menu').classList.toggle('hidden');
             });
+            
+            // Set initial state of connect button
+            if (!window.currentAddress) {
+                document.getElementById('connect-wallet-btn').textContent = "Connect Wallet";
+            }
 
             // Start the application on the Dashboard page
             navigateTo('dashboard');
@@ -435,7 +490,6 @@
 </head>
 <body class="bg-background min-h-screen text-foreground antialiased overflow-x-hidden">
 
-    <!-- Global Message Box (Modal) -->
     <div id="message-box" class="hidden fixed inset-0 z-50 bg-background/80 backdrop-blur-sm items-center justify-center p-4">
         <div class="bg-[#1a0035] border border-primary/50 rounded-xl p-6 w-full max-w-sm shadow-2xl">
             <h3 id="message-title" class="text-xl font-bold mb-2 text-primary">Notification</h3>
@@ -448,30 +502,25 @@
         </div>
     </div>
     
-    <!-- Navigation Bar -->
     <nav class="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
-                <!-- Logo/Brand -->
                 <div class="flex-shrink-0">
                     <span class="text-3xl font-extrabold text-primary tracking-wider">Split<span class="text-secondary">Mate</span></span>
                 </div>
                 
-                <!-- Desktop Menu -->
                 <div class="hidden sm:ml-6 sm:flex sm:space-x-4">
                     <a href="#" onclick="navigateTo('dashboard')" class="text-muted hover:text-primary px-3 py-2 rounded-lg text-sm font-medium transition duration-200">Dashboard</a>
                     <a href="#" onclick="navigateTo('create')" class="text-muted hover:text-primary px-3 py-2 rounded-lg text-sm font-medium transition duration-200">Create Bill</a>
                     <a href="#" onclick="navigateTo('leaderboard')" class="text-muted hover:text-primary px-3 py-2 rounded-lg text-sm font-medium transition duration-200">Leaderboard</a>
                 </div>
                 
-                <!-- Wallet/Action Button -->
                 <div class="hidden sm:block">
                     <button id="connect-wallet-btn" onclick="window.connectWallet()" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded-xl transition duration-300 shadow-md shadow-primary/30">
                         Connect Wallet
                     </button>
                 </div>
 
-                <!-- Mobile Menu Button -->
                 <div class="sm:hidden flex items-center">
                     <button id="menu-toggle" type="button" class="inline-flex items-center justify-center p-2 rounded-lg text-primary hover:text-white hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary/50" aria-controls="mobile-menu" aria-expanded="false">
                         <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -482,7 +531,6 @@
             </div>
         </div>
 
-        <!-- Mobile Menu (Hidden by default) -->
         <div class="sm:hidden hidden" id="mobile-menu">
             <div class="px-2 pt-2 pb-3 space-y-1">
                 <a href="#" onclick="navigateTo('dashboard')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Dashboard</a>
@@ -493,16 +541,11 @@
         </div>
     </nav>
 
-    <!-- Main Content Area -->
     <main class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <h1 id="main-header-title" class="text-3xl sm:text-4xl font-extrabold text-foreground mb-8 border-b-2 border-primary/20 pb-2">Dashboard</h1>
 
-        <!-- ====================================================================
-             DASHBOARD VIEW
-             ==================================================================== -->
         <section id="dashboard-view" class="space-y-8">
             
-            <!-- Balance Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
                 <div class="bg-card rounded-xl p-6 border border-border shadow-2xl">
@@ -521,11 +564,9 @@
                 </div>
             </div>
 
-            <!-- Recent Bills/Actions -->
             <div>
                 <h2 class="text-2xl font-bold text-primary mb-4">Your Recent Bills</h2>
                 <div id="bill-list" class="space-y-4">
-                    <!-- Bill cards will be injected here by loadDashboardContent() -->
                     <div class="text-center p-8 text-muted">Loading bills...</div>
                 </div>
             </div>
@@ -538,14 +579,10 @@
 
         </section>
 
-        <!-- ====================================================================
-             CREATE BILL VIEW
-             ==================================================================== -->
         <section id="create-view" class="hidden">
             <div class="max-w-2xl mx-auto bg-card p-6 sm:p-8 rounded-xl border border-border shadow-2xl">
                 <form id="bill-form" class="space-y-6">
 
-                    <!-- Bill Name and Amount -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label for="bill-name" class="block text-sm font-medium text-muted mb-2">Bill Name (e.g., Dinner, Rent)</label>
@@ -561,7 +598,6 @@
                         </div>
                     </div>
 
-                    <!-- Payer Address -->
                     <div>
                         <label for="bill-payer" class="block text-sm font-medium text-muted mb-2">Payer Address (Who paid the full amount)</label>
                         <input type="text" id="bill-payer" name="bill-payer" required placeholder="0x..."
@@ -569,7 +605,6 @@
                         >
                     </div>
 
-                    <!-- Split Type Toggle -->
                     <div>
                         <label class="block text-sm font-medium text-muted mb-3">Split Type</label>
                         <input type="hidden" id="split-type-input" value="even">
@@ -585,7 +620,6 @@
                         </div>
                     </div>
                     
-                    <!-- Participants and Manual Split Container -->
                     <div>
                         <label class="block text-sm font-medium text-muted mb-3">Number of Participants (excluding Payer, if Payer is already listed above)</label>
                         
@@ -606,12 +640,10 @@
                     <div id="manual-split-container" class="space-y-4 hidden pt-4 border-t border-border mt-6">
                         <h3 class="text-xl font-bold text-primary">Participant Details</h3>
                         <div id="participants-list">
-                            <!-- Participant address and share inputs are generated here by updateParticipants() -->
-                        </div>
+                            </div>
                         <p class="text-xs text-muted">For Manual Split, ensure the sum of all 'Share' fields equals the 'Total Amount'.</p>
                     </div>
                     
-                    <!-- Submit Button -->
                     <button type="submit" 
                             class="w-full bg-secondary hover:bg-secondary/90 text-white font-bold py-3 rounded-xl transition duration-300 text-lg shadow-lg shadow-secondary/30">
                         Broadcast Bill to SplitMate
@@ -620,9 +652,6 @@
             </div>
         </section>
 
-        <!-- ====================================================================
-             LEADERBOARD VIEW
-             ==================================================================== -->
         <section id="leaderboard-view" class="hidden">
             <div class="max-w-3xl mx-auto">
                 <div class="bg-card p-6 rounded-xl border border-border shadow-2xl mb-6">
@@ -637,7 +666,6 @@
                 </div>
 
                 <div id="leaderboard-list" class="space-y-3">
-                    <!-- Leaderboard rows will be injected here by loadLeaderboard() -->
                     <div class="text-center p-8 text-muted">Loading leaderboard...</div>
                 </div>
             </div>
