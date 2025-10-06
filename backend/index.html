@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SplitMate - Dashboard</title>
+    <title>SplitMate - Decentralized Bill Splitting</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
-
+    <script src="/static/js/wallet.js"></script> 
     <script>
         // --- Tailwind Configuration (UI Theme) ---
         tailwind.config = {
@@ -14,14 +14,14 @@
             extend: {
               colors: {
                 background: "#10002b",
-                card: { DEFAULT: "#1a0035", foreground: "hsl(210 40% 98%)" },
+                card: { DEFAULT: "transparent", foreground: "hsl(210 40% 98%)" },
                 primary: {
-                  DEFAULT: "#c77dff", // Bright Electric Purple
-                  active: "#7400b8", // Deep Purple for Button Fill
+                  DEFAULT: "#c77dff", 
+                  active: "#7400b8", 
                   foreground: "hsl(210 40% 98%)",
                 },
                 secondary: {
-                  DEFAULT: "#ff9e00", // Vibrant Orange
+                  DEFAULT: "#ff9e00", 
                   foreground: "hsl(210 40% 98%)",
                 },
                 border: "hsl(260 20% 25%)", 
@@ -32,19 +32,16 @@
                   DEFAULT: "hsl(215 27.9% 16.3%)",
                   foreground: "hsl(215 14% 65%)",
                 },
-                success: {
-                    DEFAULT: "#34d399", // Green
-                },
-                pending: {
-                    DEFAULT: "#ff9e00", // Orange
-                },
+                rankGold: "#FFD700",
+                rankSilver: "#C0C0C0",
+                rankBronze: "#CD7F32",
               },
             },
           },
         };
     </script>
     <style>
-        /* Global Fade-In Animation */
+        /* Global Styles */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -53,49 +50,43 @@
             animation: fadeIn 0.5s ease-out forwards;
         }
 
-        /* Modal specific styles for a smooth fade-in/out */
-        .modal {
-            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        /* --- CREATE.HTML STYLES --- */
+        .form-input {
+            width: 100%; padding: 0.75rem; background-color: #10002b; border: 1px solid hsl(260 20% 25%); 
+            border-radius: 0.5rem; color: hsl(210 40% 98%); transition: all 150ms ease-in-out; 
         }
-        .modal-content {
-            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
-        }
-        .modal:not(.open) {
-            opacity: 0;
-            visibility: hidden;
-        }
-        .modal:not(.open) .modal-content {
-            transform: translateY(-20px);
-            opacity: 0;
-        }
-        .modal.open {
-            opacity: 1;
-            visibility: visible;
-        }
-        .modal.open .modal-content {
-            transform: translateY(0);
-            opacity: 1;
-        }
-
-        /* Responsive Utility for Grid Cards */
-        .grid-card {
-            @apply p-6 bg-card border border-border rounded-xl shadow-lg transition-all duration-300 hover:border-primary/50;
-        }
+        .form-input:focus { border-color: #c77dff; box-shadow: 0 0 0 1px #c77dff; outline: none; }
+        .counter-btn { @apply h-10 w-10 flex items-center justify-center bg-background border border-border rounded-full text-2xl text-primary hover:bg-background/50 transition-colors; }
+        .split-btn { @apply px-6 py-3 font-semibold rounded-xl transition-colors text-base border-2; }
+        .split-btn.active { background-color: #7400b8 !important; color: white !important; border-color: #c77dff !important; @apply shadow-lg shadow-primary/40; }
+        .split-btn.inactive { background-color: #10002b !important; color: hsl(215 14% 65%) !important; border-color: hsl(260 20% 25%) !important; }
+        .manual-share-input-container { width: 100%; display: flex; align-items: center; background-color: #10002b; border: 1px solid hsl(260 20% 25%); border-radius: 0.5rem; transition: all 150ms ease-in-out; box-shadow: 0 0 0 0 transparent; }
+        .manual-share-input-container:focus-within { border-color: #c77dff; box-shadow: 0 0 0 1px #c77dff; }
+        .manual-share-input { flex: 1 1 0%; padding: 0.75rem; background-color: transparent; font-size: 1.125rem; font-weight: 600; outline: none; border: none; color: hsl(210 40% 98%); }
+        .manual-currency-text { @apply p-3 text-muted-foreground font-medium flex-shrink-0; }
+        
+        /* --- LEADERBOARD.HTML STYLES --- */
+         .progress-bar-bg { background-color: hsl(260 20% 25%); height: 8px; border-radius: 4px; width: 100%; overflow: hidden; }
+        .progress-bar-fill { background-color: #c77dff; height: 100%; transition: width 0.5s ease-out; }
     </style>
 </head>
 <body class="min-h-screen bg-background text-foreground">
 
     <div class="p-4 border-b border-border/50 flex items-center justify-between">
-        <a href="dashboard.html" class="text-2xl font-bold text-primary hover:text-secondary transition-colors">SplitMate</a>
+        <a href="#" onclick="navigateTo('dashboard')" class="text-2xl font-bold text-primary hover:text-secondary transition-colors">SplitMate</a>
         
         <nav class="hidden md:flex items-center gap-4 text-sm font-medium">
-            <a href="dashboard.html" class="text-primary transition-colors">Dashboard</a>
-            <a href="create.html" class="text-muted-foreground hover:text-primary transition-colors">Create Bill</a>
-            <a href="leaderboard.html" class="text-muted-foreground hover:text-primary transition-colors">Leaderboard</a>
+            <a href="#" id="nav-dashboard" onclick="navigateTo('dashboard')" class="text-muted-foreground hover:text-primary transition-colors">Dashboard</a>
+            <a href="#" id="nav-create" onclick="navigateTo('create')" class="text-muted-foreground hover:text-primary transition-colors">Create Bill</a> 
+            <a href="#" id="nav-leaderboard" onclick="navigateTo('leaderboard')" class="text-muted-foreground hover:text-primary transition-colors">Leaderboard</a>
         </nav>
         
         <div class="flex items-center gap-4">
-            <button id="wallet-button" class="text-primary-foreground font-semibold py-2 px-4 rounded-full transition-all hover:scale-[1.05]" style="background-color: #7400b8;">
+            <button 
+                id="wallet-button" 
+                onclick="window.userAddress ? window.disconnectWallet() : openConnectModal()" 
+                class="text-primary-foreground font-semibold py-2 px-4 rounded-full transition-all hover:scale-[1.05]" 
+                style="background-color: #7400b8;">
                 Connect Wallet
             </button>
             <button id="menu-toggle" class="md:hidden text-foreground">
@@ -105,378 +96,800 @@
     </div>
     
     <nav id="mobile-menu" class="hidden md:hidden flex flex-col p-4 bg-background border-b border-border">
-        <a href="dashboard.html" class="py-2 text-primary border-b border-border">Dashboard</a>
-        <a href="create.html" class="py-2 text-muted-foreground hover:text-primary border-b border-border">Create Bill</a>
-        <a href="leaderboard.html" class="py-2 text-muted-foreground hover:text-primary">Leaderboard</a>
+        <a href="#" onclick="navigateTo('dashboard')" class="py-2 text-muted-foreground hover:text-primary border-b border-border">Dashboard</a>
+        <a href="#" onclick="navigateTo('create')" class="py-2 text-muted-foreground hover:text-primary border-b border-border">Create Bill</a>
+        <a href="#" onclick="navigateTo('leaderboard')" class="py-2 text-muted-foreground hover:text-primary">Leaderboard</a>
+        <button 
+            id="mobile-wallet-button" 
+            onclick="window.userAddress ? window.disconnectWallet() : openConnectModal()" 
+            class="mt-2 w-full text-left py-2 px-4 rounded-lg bg-primary text-background text-sm font-semibold hover:bg-primary-active transition duration-200">
+            Connect Wallet
+        </button>
     </nav>
-    
 
-    <div class="container px-4 py-8 max-w-6xl mx-auto fade-in">
-        <h1 class="text-3xl font-bold mb-1" id="greeting">Good morning, User!</h1>
-        <p class="text-sm text-muted-foreground mb-8" id="wallet-display">Please connect your wallet to view your splitting overview.</p>
+    <div id="content-container" class="py-8">
         
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="grid-card col-span-1">
-                <div class="flex items-center justify-between">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14"></path><path d="M7 9h10"></path></svg>
-                    <span class="text-muted-foreground text-xs font-semibold flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 17 12 12 17 17"></polyline><polyline points="7 7 12 12 17 7"></polyline></svg>
-                        ETH
-                    </span>
-                </div>
-                <div class="mt-4">
-                    <p class="text-2xl font-bold" id="total-balance">---</p>
-                    <p class="text-sm text-muted-foreground">Total Balance</p>
-                </div>
-            </div>
-            <div class="grid-card col-span-1">
-                <div class="flex items-center justify-between">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-secondary"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
-                </div>
-                <div class="mt-4">
-                    <p class="text-2xl font-bold" id="active-bills-count">---</p>
-                    <p class="text-sm text-muted-foreground">Active Bills</p>
-                    <p class="text-xs text-muted-foreground" id="pending-bills-count">--- pending</p> 
-                </div>
-            </div>
-            <div class="grid-card col-span-1">
-                <div class="flex items-center justify-between">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-foreground"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                </div>
-                <div class="mt-4">
-                    <p class="text-2xl font-bold" id="friends-split-count">---</p>
-                    <p class="text-sm text-muted-foreground">Bills Created</p>
-                </div>
-            </div>
-             <div class="grid-card col-span-1 flex flex-col justify-between" style="background-color: hsl(150 60% 15%); border-color: hsl(150 60% 35%);">
-                <div class="flex items-center justify-between">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-success"><path d="M20 7.5l-8 5-8-5"></path><path d="M12 19.5v-7"></path></svg>
-                </div>
-                <div>
-                    <p class="text-2xl font-bold text-success" id="reputation-score">---</p>
-                    <p class="text-sm text-foreground/80">Reputation Score</p>
-                    <p class="text-xs text-success/70 mt-1">Reputation data will load from the chain.</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="md:col-span-2">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xl font-semibold">Active Bills</h2>
-                    <a href="create.html" class="text-sm font-medium text-primary hover:text-secondary transition-colors">Create Bill</a>
-                </div>
-                <p class="text-sm text-muted-foreground mb-4">Track your ongoing splits</p>
-                <div id="bills-container" class="space-y-4">
-                    </div>
-                <div id="no-bills-message" class="text-muted-foreground text-center p-8 bg-card rounded-xl">
-                    No active bills loaded. Connect wallet and implement data fetching.
-                </div>
-            </div>
-            <div class="md:col-span-1">
-                <h2 class="text-xl font-semibold mb-4">Recent Activity</h2>
-                <div id="activity-container" class="space-y-3 p-4 bg-card rounded-xl border border-border">
-                    <div class="text-muted-foreground text-center p-4">Real data fetching logic needs to be implemented here.</div>
-                    </div>
-            </div>
-        </div>
-    </div>
+        <section id="dashboard" class="page-content container px-4 max-w-5xl mx-auto fade-in">
+            <h1 class="text-3xl font-bold mb-1">Your Dashboard</h1>
+            <p class="text-sm text-muted-foreground mb-6">View your active and settled bills.</p>
 
-    <div id="connect-modal" class="modal hidden fixed inset-0 z-50 bg-black/80 items-center justify-center p-4" aria-modal="true" role="dialog">
-        <div class="modal-content w-full max-w-sm bg-card rounded-xl border border-border p-6 shadow-2xl flex flex-col space-y-4">
+            <div id="dashboard-status-card" class="p-4 mb-8 rounded-xl border border-border bg-card/50">
+                <p id="dashboard-address-display" class="font-semibold text-primary break-all">Wallet Status: Not Connected</p>
+                <p id="dashboard-connect-message" class="text-sm text-muted-foreground mt-1">Connect your wallet to view bills and your unique ID.</p>
+            </div>
             
-            <div class="flex justify-between items-center pb-2 border-b border-border/50">
-                <h3 class="text-xl font-bold text-primary">Connect Wallet</h3>
-                <button onclick="closeConnectModal()" class="text-foreground/70 hover:text-foreground transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">Bills Requiring Your Payment</h2>
+                <button onclick="navigateTo('create')" class="py-2 px-4 text-sm font-semibold rounded-lg bg-secondary text-background hover:bg-secondary/90 transition-colors">
+                    + Create New Bill
                 </button>
             </div>
 
-            <p class="text-sm text-muted-foreground">SplitMate supports Starknet, EVM, and Bitcoin wallets.</p>
+            <div id="active-bills-list" class="space-y-4">
+                <div class="text-center p-8 text-muted-foreground">
+                    Connect your wallet to load active bill requests.
+                </div>
+            </div>
 
-            <div class="space-y-3">
-                <button onclick="connectMetamaskWallet()" class="flex items-center justify-between w-full p-3 bg-background/50 rounded-lg border border-transparent hover:border-primary transition-colors">
-                    <span class="font-semibold text-foreground">MetaMask (EVM)</span>
-                    <span class="text-xs text-muted-foreground bg-primary/20 text-primary py-0.5 px-2 rounded-full">EVM</span>
-                </button>
+            <h2 class="text-xl font-semibold mt-10 mb-4">Settled & Created Bills</h2>
 
-                <button onclick="connectStarknetWallet()" class="flex items-center justify-between w-full p-3 bg-background/50 rounded-lg border border-transparent hover:border-primary transition-colors">
-                    <span class="font-semibold text-foreground">ArgentX / Braavos</span>
-                    <span class="text-xs text-muted-foreground bg-secondary/20 text-secondary py-0.5 px-2 rounded-full">Starknet</span>
-                </button>
+            <div id="settled-bills-list" class="space-y-4">
+                 <div class="text-center p-8 text-muted-foreground">
+                    Connect your wallet to load settled bills.
+                </div>
+            </div>
+        </section>
+
+        <section id="create" class="page-content hidden container px-4 max-w-2xl mx-auto fade-in">
+            <h1 class="text-3xl font-bold mb-1">Create New Bill</h1>
+            <p class="text-sm text-muted-foreground mb-6">Enter the details to split the expense on-chain.</p>
+
+            <form id="bill-form" class="space-y-6">
+
+                <div class="p-6 bg-background border border-primary/50 rounded-2xl shadow-lg space-y-4">
+                    <h2 class="text-xl font-semibold text-foreground">Bill & Merchant Details</h2>
+                    
+                    <p id="creator-address-display" class="text-sm font-medium text-secondary break-all">
+                        Please connect your wallet to set the bill creator address.
+                    </p>
+                    <p id="connect-status-message" class="text-sm text-red-500 font-medium"></p>
+                    <label class="block space-y-1">
+                        <span class="text-sm font-medium text-muted-foreground">Bill Name / Description</span>
+                        <input type="text" id="bill-name" placeholder="e.g., Dinner at Olive Garden" required class="form-input" oninput="updateCalculations()">
+                    </label>
+
+                    <div class="grid grid-cols-3 gap-4">
+                        <label class="block space-y-1 col-span-2">
+                            <span class="text-sm font-medium text-muted-foreground">Total Bill Amount</span>
+                            <input type="number" step="0.01" min="0.01" id="total-amount" placeholder="0.00" oninput="updateCalculations()" required class="form-input text-lg font-bold">
+                        </label>
+                        <label class="block space-y-1 col-span-1">
+                            <span class="text-sm font-medium text-muted-foreground">Token</span>
+                            <select id="bill-token" required class="form-input font-medium text-primary bg-background appearance-none pr-8" onchange="updateCalculations()">
+                                <option value="ETH" class="bg-background">ETH</option>
+                                <option value="USDC" class="bg-background">USDC</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <label class="block space-y-1">
+                        <span class="text-sm font-medium text-muted-foreground">Merchant/Recipient Wallet Address (Starknet L2)</span>
+                        <input type="text" id="merchant-address" placeholder="0x... (e.g., Restaurant or Creator's wallet)" required class="form-input text-sm" oninput="updateCalculations()">
+                    </label>
+                </div>
                 
-                <button onclick="connectXverseWallet()" class="flex items-center justify-between w-full p-3 bg-background/50 rounded-lg border border-transparent hover:border-primary transition-colors">
-                    <span class="font-semibold text-foreground">Xverse Wallet</span>
-                    <span class="text-xs text-muted-foreground bg-success/20 text-success py-0.5 px-2 rounded-full">Bitcoin / Sponsor</span>
+                <div class="p-6 bg-background border border-primary/50 rounded-2xl shadow-lg space-y-4">
+                    <h2 class="text-xl font-semibold text-foreground">Participants</h2>
+                    
+                    <div class="flex items-center justify-between">
+                        <span class="text-base text-muted-foreground">Number of Participants (excluding Creator)</span>
+                        <div class="flex items-center space-x-2">
+                            <button type="button" class="counter-btn" onclick="updateParticipants(-1)" id="minus-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </button>
+                            <span id="participant-count" class="text-2xl font-bold w-10 text-center text-primary">0</span>
+                            <button type="button" class="counter-btn" onclick="updateParticipants(1)" id="plus-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="participant-addresses" class="space-y-3 pt-3 border-t border-border/50">
+                        </div>
+                </div>
+
+                <div class="p-6 bg-background border border-primary/50 rounded-2xl shadow-lg space-y-4">
+                    <h2 class="text-xl font-semibold text-foreground">Split Method</h2>
+                    
+                    <div class="flex p-1 bg-background border border-border rounded-xl">
+                        <button type="button" id="btn-even" class="split-btn flex-1 inactive" onclick="toggleSplit('even')">Split Evenly</button>
+                        <button type="button" id="btn-manual" class="split-btn flex-1 inactive" onclick="toggleSplit('manual')">Manual Split</button>
+                    </div>
+                    
+                    <div id="split-even-content" class="pt-2 space-y-3">
+                        <p class="text-sm text-muted-foreground">Total amount is divided equally among the <span id="even-participants" class="font-semibold text-primary">1</span> participants.</p>
+                        <div class="p-4 bg-background border border-border rounded-xl text-center">
+                            <p class="text-sm text-muted-foreground mb-2">Each person pays</p>
+                            <p class="text-3xl font-bold text-primary" id="split-result">0.00 ETH</p>
+                        </div>
+                    </div>
+                    
+                    <div id="split-manual-content" class="pt-2 space-y-3 hidden">
+                        <p class="text-sm text-muted-foreground mb-3">Assign the exact amount each participant must pay.</p>
+                        
+                        <div id="manual-participants-list" class="space-y-3">
+                            </div>
+
+                        <div id="manual-validation-box" class="p-4 bg-background border rounded-xl text-center">
+                            <p class="text-sm text-muted-foreground mb-2">Total Remaining to Assign</p>
+                            <p class="text-3xl font-bold text-secondary" id="manual-remaining">0.00 ETH</p>
+                            <p id="validation-message" class="text-xs mt-1 text-red-500 hidden font-medium">Warning: Total assigned must match the bill amount.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 bg-background border border-primary/50 rounded-2xl shadow-lg space-y-4">
+                    <h2 class="text-xl font-semibold text-foreground">Optional Note</h2>
+                    <textarea id="bill-note" placeholder="Add any additional details..." rows="3" class="form-input"></textarea>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" id="submit-button" class="w-full text-primary-foreground font-bold py-4 rounded-xl text-lg transition-all hover:scale-[1.01] shadow-primary/30 shadow-lg" style="background-color: #7400b8;" disabled>
+                        Create and Broadcast Bill
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section id="leaderboard" class="page-content hidden container px-4 max-w-5xl mx-auto fade-in">
+            <h1 class="text-3xl font-bold mb-1">Reputation Leaderboard</h1>
+            <p class="text-sm text-muted-foreground mb-8">Top payers who settle bills the fastest and most reliably.</p>
+
+            <div class="bg-background border border-primary/50 rounded-2xl shadow-lg overflow-hidden">
+                
+                <div class="grid grid-cols-12 gap-4 p-4 text-sm font-semibold text-muted-foreground border-b border-border">
+                    <div class="col-span-1 text-center">RANK</div>
+                    <div class="col-span-4">PAYER / WALLET</div>
+                    <div class="col-span-3 text-right">SETTLED BILLS</div>
+                    <div class="col-span-4 text-right">REPUTATION SCORE</div>
+                </div>
+
+                <div id="leaderboard-list" class="flex items-center justify-center p-8 text-muted-foreground">
+                    Loading leaderboard data...
+                </div>
+                
+            </div>
+        </section>
+
+    </div>
+    
+    <div id="connect-wallet-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 hidden items-center justify-center transition-opacity duration-300">
+        <div class="bg-card/90 border border-primary p-6 rounded-xl shadow-2xl w-full max-w-sm relative">
+            <button onclick="closeConnectModal()" class="absolute top-4 right-4 text-foreground hover:text-primary transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            
+            <h3 class="text-2xl font-bold text-primary mb-4">Connect Wallet</h3>
+            <p class="text-sm text-muted-foreground mb-6">Choose your preferred network and wallet.</p>
+
+            <div class="space-y-4">
+                <button onclick="window.connectMetamaskWallet()" class="w-full flex items-center justify-center p-3 border border-border rounded-lg hover:bg-primary/10 transition duration-200">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" class="w-6 h-6 mr-3">
+                    MetaMask (EVM)
+                </button>
+                <button onclick="window.connectStarknetWallet()" class="w-full flex items-center justify-center p-3 border border-border rounded-lg hover:bg-primary/10 transition duration-200">
+                    <img src="https://starkware.co/wp-content/uploads/2021/07/starknet-logo.svg" alt="Starknet" class="w-6 h-6 mr-3">
+                    Starknet (ArgentX/Braavos)
+                </button>
+                <button onclick="window.connectXverseWallet()" class="w-full flex items-center justify-center p-3 border border-border rounded-lg hover:bg-primary/10 transition duration-200">
+                    <img src="https://www.xverse.app/img/logo.svg" alt="Xverse" alt="Xverse" class="w-6 h-6 mr-3">
+                    Bitcoin / Sponsor
                 </button>
             </div>
         </div>
     </div>
-    
-    <div id="message-box" class="hidden fixed inset-0 z-[60] bg-black/70 items-center justify-center p-4" aria-modal="true" role="alertdialog">
-        <div class="modal-content w-full max-w-md bg-background rounded-xl border border-border p-6 shadow-2xl transform scale-100 transition-transform duration-300">
-            <h3 id="message-title" class="text-xl font-bold text-primary mb-3">Message Title</h3>
-            <p id="message-content" class="text-sm text-foreground mb-6">Message Content</p>
-            <button onclick="closeMessageBox()" class="w-full py-2 bg-primary text-background font-semibold rounded-lg hover:bg-primary/80 transition duration-200">
-                Close
+
+    <div id="message-box" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[60] hidden items-center justify-center p-4 transition-opacity duration-300" onclick="if (event.target.id === 'message-box') closeMessageBox()">
+        <div class="bg-card/90 border border-primary p-6 rounded-xl shadow-2xl max-w-sm w-full text-center space-y-4">
+            <h3 id="message-title" class="text-xl font-bold text-primary"></h3>
+            <p id="message-content" class="text-muted-foreground"></p>
+            <button onclick="closeMessageBox()" class="w-full text-primary-foreground font-semibold py-2 rounded-lg transition-all" style="background-color: #7400b8;">
+                OK
             </button>
         </div>
     </div>
-    
-    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/get-starknet@3.0.0/dist/index.js"></script>
-    <script src="wallet.js"></script> 
+
 
     <script>
-        // --- UTILITIES ---
-        window.closeConnectModal = closeConnectModal; // Expose globally for use in HTML buttons
-        window.openConnectModal = openConnectModal; // Expose globally for use in JS
+        // ====================================================================
+        // --- GLOBAL & SPA CORE ---
+        // ====================================================================
+        let participantCount = 0; 
+        let splitType = 'even'; 
+        let leaderboardData = [];
+        let currentPage = 'dashboard';
 
+        function formatAddress(address, chars = 6) {
+            if (!address || address.length < chars * 2 + 3) return address;
+            return `${address.substring(0, chars)}...${address.substring(address.length - chars)}`;
+        }
+        
+        // --- Modal Control ---
         function openConnectModal() {
-            const modal = document.getElementById('connect-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            modal.classList.add('open');
+            document.getElementById('connect-wallet-modal').classList.remove('hidden');
+            document.getElementById('connect-wallet-modal').classList.add('flex');
+            document.getElementById('mobile-menu').classList.add('hidden');
         }
 
         function closeConnectModal() {
-            const modal = document.getElementById('connect-modal');
-            modal.classList.remove('open');
-            // Hide it fully after the transition duration (300ms defined in CSS)
-            setTimeout(() => {
-                modal.classList.remove('flex');
-                modal.classList.add('hidden');
-            }, 300);
+            document.getElementById('connect-wallet-modal').classList.add('hidden');
+            document.getElementById('connect-wallet-modal').classList.remove('flex');
+        }
+
+        function showMessageBox(title, content, onOk = null) {
+            document.getElementById('message-title').textContent = title;
+            document.getElementById('message-content').textContent = content;
+            const okButton = document.querySelector('#message-box button');
+            
+            okButton.onclick = () => {
+                closeMessageBox();
+                if (typeof onOk === 'function') { onOk(); }
+            };
+            document.getElementById('message-box').classList.remove('hidden');
+            document.getElementById('message-box').classList.add('flex');
+        }
+
+        function closeMessageBox() {
+            document.getElementById('message-box').classList.add('hidden');
+            document.getElementById('message-box').classList.remove('flex');
         }
         
-        // --- BILL ACTION FUNCTIONS (Splitter Actions) ---
-        
-        async function settleBill(billId) {
-            const userAddress = window.userAddress; 
-            
-            const confirmed = confirm(`Are you sure you want to Settle Bill ${billId}? This action requires an on-chain transaction.`);
-            if (!confirmed) return;
-            
-            // NOTE: REPLACE MOCK CALL - Implement real smart contract call to settle the bill here.
-            window.showMessageBox("Action Pending", `Implement the **Smart Contract Call** to settle Bill **${billId}** using address **${window.formatAddress(userAddress)}** here. Then reload the dashboard.`);
-            
-            // if (success) { loadPageContent(userAddress); } 
+        // --- Navigation ---
+        function updateNavStyles(activeId) {
+            ['nav-dashboard', 'nav-create', 'nav-leaderboard'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    const isCurrent = id.includes(activeId);
+                    element.classList.toggle('text-primary', isCurrent);
+                    element.classList.toggle('text-muted-foreground', !isCurrent);
+                }
+            });
         }
 
-        async function rejectBill(billId) {
-            const userAddress = window.userAddress; 
-            
-            const confirmed = confirm(`Are you sure you want to Reject Bill ${billId}? This action notifies the payer.`);
-            if (!confirmed) return;
-            
-            // NOTE: REPLACE MOCK CALL - Implement real smart contract/API call to reject the bill here.
-            window.showMessageBox("Action Pending", `Implement the **Smart Contract Call** to reject Bill **${billId}** using address **${window.formatAddress(userAddress)}** here. Then reload the dashboard.`);
-            
-            // if (success) { loadPageContent(userAddress); } 
-        }
-
-        // --- BILL ACTION FUNCTIONS (Payer Actions) ---
-        
-        function editBillAction(billId) {
-            // NOTE: This functionality is kept as it only relies on the browser.
-            window.location.href = `create.html?billId=${billId}`;
-        }
-
-        async function deleteBillAction(billId) {
-            const userAddress = window.userAddress; 
-            
-            const confirmed = confirm(`WARNING: Are you sure you want to DELETE Bill ${billId}? This action cannot be undone.`);
-            if (!confirmed) return;
-            
-            // NOTE: REPLACE MOCK CALL - Implement real smart contract call to delete the bill here.
-            window.showMessageBox("Action Pending", `Implement the **Smart Contract Call** to delete Bill **${billId}** using address **${window.formatAddress(userAddress)}** here. Then reload the dashboard.`);
-            
-            // if (success) { loadPageContent(userAddress); } 
-        }
-
-        // --- MAIN DISPLAY LOGIC (Called by wallet.js) ---
-
-        /**
-         * Renders dashboard content (stats, bills, activity) based on the connected user.
-         * This function is registered as a window property for wallet.js to call.
-         * @param {string | null} address The connected wallet address.
-         */
-        window.loadPageContent = async function(address) {
-            const balanceElement = document.getElementById('total-balance'); 
-            const billsContainer = document.getElementById('bills-container'); 
-            const noBillsMessage = document.getElementById('no-bills-message');
-            const activeBillsCountElement = document.getElementById('active-bills-count');
-            const pendingBillsCountElement = document.getElementById('pending-bills-count'); 
-            const friendsSplitCountElement = document.getElementById('friends-split-count'); 
-            const reputationScoreElement = document.getElementById('reputation-score'); 
-            const activityContainer = document.getElementById('activity-container'); 
-            
-            // 1. Disconnected State
-            if (!address) {
-                document.getElementById('wallet-display').textContent = 'Please connect your wallet to view your splitting overview.';
-                document.getElementById('wallet-button').textContent = 'Connect Wallet';
-                document.getElementById('wallet-button').onclick = openConnectModal; // Re-assign initial action
-                document.getElementById('greeting').textContent = 'Good morning, User!';
-                
-                // Clear all stats
-                balanceElement.textContent = '---';
-                activeBillsCountElement.textContent = '---';
-                pendingBillsCountElement.textContent = '--- pending';
-                friendsSplitCountElement.textContent = '---';
-                reputationScoreElement.textContent = '---';
-                billsContainer.innerHTML = '';
-                activityContainer.innerHTML = `<div class="text-muted-foreground text-center p-4">Please connect your wallet to view activity.</div>`;
-                noBillsMessage.textContent = 'No active bills. Time to split an expense!';
-                noBillsMessage.classList.remove('hidden');
-                return;
+        function navigateTo(pageId) {
+            currentPage = pageId;
+            document.querySelectorAll('.page-content').forEach(section => {
+                section.classList.add('hidden');
+                section.classList.remove('fade-in');
+            });
+            const targetSection = document.getElementById(pageId);
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+                targetSection.classList.add('fade-in');
             }
-
-            // 2. Connected State - Update Header UI
-            document.getElementById('wallet-display').textContent = `Wallet: ${window.formatAddress(address)} (${window.walletType})`;
-            document.getElementById('wallet-button').textContent = `Disconnect (${window.formatAddress(address)})`;
-            document.getElementById('wallet-button').onclick = disconnectWallet; // Change button action
-            document.getElementById('greeting').textContent = 'Welcome back, Splitter!'; // Dynamic Greeting
-
-            // 3. Fetch Data & Update Stats - MOCK DATA REMOVED
+            updateNavStyles(pageId);
             
-            // Replace mock data fetch with placeholders
-            balanceElement.textContent = `N/A`;
-            reputationScoreElement.textContent = 'N/A';
-            
-            // Placeholder array until real fetching is implemented
-            const liveBills = []; // << MOCK DATA REMOVED. Fetch real bills here.
-            
-            billsContainer.innerHTML = '';
-            
-            // 4. RENDER LIVE BILLS (Logic is preserved but runs on empty array)
-            
-            let pendingSplitterActions = 0;
-            let billsCreatedCount = 0;
+            if (pageId === 'dashboard') {
+                renderDashboard();
+            } else if (pageId === 'leaderboard') {
+                loadLeaderboard();
+            } else if (pageId === 'create') {
+                // Ensure form state is correct on navigation
+                window.loadPageContent(window.userAddress);
+                updateCalculations();
+            }
+        }
+        
+        // --- Wallet Integration (Called by wallet.js) ---
+        window.loadPageContent = function(address) {
+            const isConnected = !!window.userAddress; 
+            const formattedAddress = isConnected ? formatAddress(window.userAddress, 4) : 'Connect Wallet';
+            const buttonText = isConnected ? `Disconnect (${formattedAddress})` : 'Connect Wallet';
 
-            if (liveBills.length > 0) {
-                // If data was fetched, this logic would render it.
-                // It is preserved for when you integrate your smart contract call.
-                noBillsMessage.classList.add('hidden');
-                
-                liveBills.forEach(bill => {
-                    // This logic remains intact, assuming the 'bill' object structure is the same as the smart contract data model
-                    const isPayer = bill.payer.toLowerCase() === address.toLowerCase();
-                    const splitterEntry = bill.splitters.find(s => s.address.toLowerCase() === address.toLowerCase());
-                    
-                    let billStatus = '';
-                    let billAmount = 0.00;
-                    let amountColor = 'text-foreground';
-                    let actionButtonsHTML = '';
-                    
-                    if (isPayer) {
-                        billsCreatedCount++;
-                        // Payer Logic 
-                        const pendingCount = bill.splitters.filter(s => s.status === 'pending').length;
-                        const fullySettled = bill.splitters.every(s => s.status === 'settled' || s.status === 'rejected'); // A rejected bill is also considered final
-                        
-                        if (fullySettled) {
-                            billStatus = `Fully Settled.`;
-                            billAmount = bill.amount;
-                            amountColor = 'text-success';
-                        } else {
-                            billStatus = `Paid by You. Waiting on ${pendingCount} friend(s).`;
-                            billAmount = bill.amount; // Total bill amount for payer
-                            amountColor = 'text-primary'; 
-                        }
+            // 1. HEADER BUTTONS
+            const walletButton = document.getElementById('wallet-button'); 
+            const mobileWalletButton = document.getElementById('mobile-wallet-button'); 
+            walletButton.textContent = buttonText;
+            mobileWalletButton.textContent = buttonText;
+            walletButton.onclick = isConnected ? window.disconnectWallet : openConnectModal;
+            mobileWalletButton.onclick = isConnected ? window.disconnectWallet : openConnectModal;
 
-                        const deleteBtn = fullySettled ? '' : `<button onclick="deleteBillAction('${bill.id}')" class="text-xs text-red-400 ml-3 hover:text-red-500 transition duration-150">Delete</button>`;
-                        
-                        actionButtonsHTML = fullySettled ? 'Settled' : `
-                            <button onclick="editBillAction('${bill.id}')" class="text-xs text-primary hover:text-primary-active transition duration-150">Edit</button>
-                            ${deleteBtn}
-                        `;
+            // 2. PAGE-SPECIFIC UPDATES
+            if (currentPage === 'dashboard') {
+                renderDashboard(); 
+            } else if (currentPage === 'create') {
+                const creatorDisplay = document.getElementById('creator-address-display');
+                const statusMessage = document.getElementById('connect-status-message');
+                creatorDisplay.textContent = isConnected 
+                    ? 'Bill Creator: ' + formatAddress(window.userAddress)
+                    : 'Please connect your wallet to set the bill creator address.';
+                statusMessage.textContent = isConnected ? '' : 'Connect your wallet to enable bill creation.';
+                statusMessage.classList.toggle('hidden', isConnected);
+                updateCalculations(); 
+            } else if (currentPage === 'leaderboard' && isConnected) {
+                 renderLeaderboardList(leaderboardData);
+            }
+        }
 
-                    } else if (splitterEntry && splitterEntry.status === 'pending') {
-                        // Splitter Logic
-                        pendingSplitterActions++;
-                        billStatus = `You Owe ${window.formatAddress(bill.payer)}`;
-                        billAmount = splitterEntry.share;
-                        amountColor = 'text-secondary'; 
-                        
-                        actionButtonsHTML = `
-                            <button onclick="settleBill('${bill.id}')" class="bg-secondary text-background px-3 py-1 rounded-full text-xs font-bold transition duration-150 hover:bg-opacity-80">
-                                Settle ${billAmount.toFixed(2)} ${bill.token}
-                            </button>
-                            <button onclick="rejectBill('${bill.id}')" class="text-xs text-red-400 ml-2 hover:text-red-500 transition duration-150">Reject</button>
-                        `;
-                    } else if (splitterEntry && splitterEntry.status === 'settled') {
-                           billStatus = `Settled with ${window.formatAddress(bill.payer)}`;
-                           billAmount = splitterEntry.share;
-                           amountColor = 'text-success';
-                           actionButtonsHTML = `Paid`;
-                    } else if (splitterEntry && splitterEntry.status === 'rejected') {
-                           billStatus = `Rejected by You.`;
-                           billAmount = splitterEntry.share;
-                           amountColor = 'text-red-400';
-                           actionButtonsHTML = `Rejected`;
-                    } else {
-                        return; 
-                    }
-                    
-                    const billCard = `
-                        <div class="bg-card p-4 rounded-xl shadow-lg border border-border flex items-center justify-between mb-3">
-                            <div>
-                                <p class="text-lg font-semibold text-foreground">${bill.name}</p>
-                                <p class="text-sm text-muted-foreground">${billStatus}</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-xl font-bold ${amountColor}">${billAmount.toFixed(2)} ${bill.token}</p>
-                                <div class="mt-1">
-                                    ${actionButtonsHTML}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    billsContainer.innerHTML += billCard;
-                });
+        // ====================================================================
+        // --- DASHBOARD LOGIC (from index.html) ---
+        // ====================================================================
+        
+        function getBillsFromStorage() {
+            try { return JSON.parse(localStorage.getItem('bills') || '[]'); } 
+            catch (e) { console.error("Error parsing bills from localStorage:", e); return []; }
+        }
 
+        function getShareForUser(bill) {
+            const user = window.userAddress;
+            const userIndex = bill.participants.findIndex(p => p && user && p.toLowerCase() === user.toLowerCase());
+            return userIndex !== -1 ? (bill.shares[userIndex] || 0) : 0;
+        }
+
+        function renderBillCard(bill, isSettled) {
+            const user = window.userAddress;
+            const isCreator = bill.creator && user && bill.creator.toLowerCase() === user.toLowerCase();
+            const isPayer = !isCreator && bill.participants.some(p => p && user && p.toLowerCase() === user.toLowerCase());
+            
+            let statusText = '';
+            let actionButton = '';
+
+            if (bill.isSettled) {
+                statusText = `<span class="text-green-400 font-semibold">SETTLED</span>`;
+            } else if (isPayer) {
+                const share = getShareForUser(bill);
+                statusText = `<span class="text-secondary font-semibold">PAY ${share.toFixed(2)} ${bill.token}</span>`;
+                actionButton = `<button onclick="settleBill('${bill.id}')" class="py-2 px-4 text-sm font-semibold rounded-lg bg-primary text-background hover:bg-primary/90 transition-colors">Pay Now</button>`;
+            } else if (isCreator && !bill.isSettled) {
+                statusText = `<span class="text-red-400 font-semibold">AWAITING PAYMENT</span>`;
             } else {
-                noBillsMessage.textContent = 'No bills to display. Integrate your contract API to load data.';
-                noBillsMessage.classList.remove('hidden');
+                 statusText = `<span class="text-muted-foreground">VIEW DETAILS</span>`;
             }
-            
-            // 5. Final Stats Update
-            // Stats are now placeholders until data is integrated
-            activeBillsCountElement.textContent = '0';
-            pendingBillsCountElement.textContent = `0 pending`;
-            friendsSplitCountElement.textContent = billsCreatedCount;
 
-            // 6. Render Activity
-            activityContainer.innerHTML = `
-                <div class="text-sm text-muted-foreground space-y-2">
-                    <p class="border-b border-border/50 pb-2">Data not loaded. See instructions below.</p>
-                    <p>• **Next Step**: Implement a function to fetch user's active bills from the smart contract.</p>
-                    <p>• Replace the placeholder array \`const liveBills = [];\` with the contract call.</p>
+            const headerBg = bill.isSettled ? 'border-green-500/50' : (isPayer ? 'border-secondary/50' : 'border-primary/50');
+            
+            return `
+                <div class="p-4 rounded-xl border ${headerBg} bg-card/50 flex justify-between items-center transition-shadow duration-300 hover:shadow-lg hover:shadow-primary/10">
+                    <div class="flex flex-col">
+                        <span class="text-lg font-bold text-foreground">${bill.billName}</span>
+                        <span class="text-sm text-muted-foreground">Total: ${bill.totalAmount.toFixed(2)} ${bill.token} | Created by ${formatAddress(bill.creator, 4)}</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm">${statusText}</span>
+                        ${actionButton}
+                    </div>
                 </div>
             `;
         }
-        
-        // --- INITIALIZATION LISTENERS ---
-        document.addEventListener('DOMContentLoaded', () => {
-            // 1. Initial button setup
-            // This is the clean way to assign the initial click action
-            document.getElementById('wallet-button').addEventListener('click', openConnectModal);
 
-            // 2. Mobile Menu Toggle Script
-            document.getElementById('menu-toggle').addEventListener('click', function() {
-                const menu = document.getElementById('mobile-menu');
-                menu.classList.toggle('hidden');
-            });
-            
-            // Initial load is now handled by the DOMContentLoaded listener in wallet.js, 
-            // which calls loadPageContent if an address is found.
-            // If wallet.js didn't find an address, we call it manually for the disconnected state.
-            if (!window.userAddress) {
-                window.loadPageContent(null);
+        function renderDashboard() {
+            const user = window.userAddress;
+            const isConnected = !!user;
+
+            const dashDisplay = document.getElementById('dashboard-address-display');
+            const dashMessage = document.getElementById('dashboard-connect-message');
+
+            if (!isConnected) {
+                dashDisplay.textContent = 'Wallet Status: Not Connected';
+                dashMessage.textContent = 'Connect your wallet to view bills and your unique ID.';
+                document.getElementById('active-bills-list').innerHTML = `<div class="text-center p-8 text-muted-foreground">Connect your wallet to load active bill requests.</div>`;
+                document.getElementById('settled-bills-list').innerHTML = `<div class="text-center p-8 text-muted-foreground">Connect your wallet to load settled bills.</div>`;
+                return;
             }
+
+            dashDisplay.textContent = 'Wallet Connected: ' + formatAddress(user);
+            dashMessage.textContent = 'Your unique bill ID is derived from your wallet address.';
+
+            const bills = getBillsFromStorage();
+            const activeList = document.getElementById('active-bills-list');
+            const settledList = document.getElementById('settled-bills-list');
+            
+            activeList.innerHTML = '';
+            settledList.innerHTML = '';
+
+            let hasActive = false;
+            let hasSettled = false;
+
+            bills.forEach(bill => {
+                const isPayer = bill.participants.some(p => p && user && p.toLowerCase() === user.toLowerCase());
+                const isCreator = bill.creator && user && bill.creator.toLowerCase() === user.toLowerCase();
+
+                if (!bill.isSettled && isPayer) {
+                    activeList.insertAdjacentHTML('beforeend', renderBillCard(bill, false));
+                    hasActive = true;
+                }
+                
+                if (bill.isSettled || isCreator) {
+                     settledList.insertAdjacentHTML('beforeend', renderBillCard(bill, bill.isSettled));
+                     hasSettled = true;
+                }
+            });
+
+            if (!hasActive) {
+                activeList.innerHTML = `<div class="text-center p-8 text-muted-foreground">No bills require your payment. You're all settled up! 🎉</div>`;
+            }
+            if (!hasSettled) {
+                settledList.innerHTML = `<div class="text-center p-8 text-muted-foreground">No settled or created bills found.</div>`;
+            }
+        }
+
+        function settleBill(billId) {
+            if (!window.userAddress) {
+                showMessageBox("Wallet Required", "Please connect your wallet to settle a bill.");
+                return;
+            }
+
+            let bills = getBillsFromStorage();
+            const billIndex = bills.findIndex(b => b.id === billId);
+            
+            if (billIndex === -1) {
+                showMessageBox("Error", "Bill not found.");
+                return;
+            }
+
+            const bill = bills[billIndex];
+            const share = getShareForUser(bill);
+
+            if (share === 0 || bill.isSettled) {
+                 showMessageBox("Error", "This bill is already settled or you are not a payer.");
+                 return;
+            }
+
+            // MOCK THE SETTLEMENT
+            bills[billIndex].isSettled = true; 
+            localStorage.setItem('bills', JSON.stringify(bills));
+            
+            showMessageBox("Payment Complete!", `Successfully paid your share of ${share.toFixed(2)} ${bill.token} for "${bill.billName}". The transaction is confirmed on-chain!`, renderDashboard);
+        }
+
+        // ====================================================================
+        // --- CREATE BILL LOGIC (from create.html) ---
+        // ====================================================================
+        
+        function getFormData() {
+            const totalAmountStr = document.getElementById('total-amount').value;
+            const totalAmount = parseFloat(totalAmountStr);
+            const token = document.getElementById('bill-token').value;
+            
+            const participantAddressInputs = document.querySelectorAll('.participant-address-input');
+            const nonCreatorParticipants = Array.from(participantAddressInputs).map(input => input.value.trim());
+
+            return {
+                name: document.getElementById('bill-name').value.trim(),
+                amount: isNaN(totalAmount) ? 0 : totalAmount,
+                token: token,
+                merchantAddress: document.getElementById('merchant-address').value.trim(),
+                creatorAddress: window.userAddress || "0x(Not Connected)", 
+                note: document.getElementById('bill-note').value.trim(),
+                splitType: splitType,
+                participants: nonCreatorParticipants,
+                totalCount: nonCreatorParticipants.length + 1,
+            };
+        }
+        
+        function generateAddressInputs() {
+            const container = document.getElementById('participant-addresses');
+            const existingInputs = document.querySelectorAll('.participant-address-input');
+            const existingValues = Array.from(existingInputs).map(input => input.value);
+
+            container.innerHTML = ''; 
+
+            for (let i = 0; i < participantCount; i++) {
+                const value = existingValues[i] || '';
+                const inputHtml = `
+                    <label class="block space-y-1 fade-in" style="animation-delay: ${i * 0.05}s;">
+                        <span class="text-sm font-medium text-muted-foreground">Participant ${i + 1} Wallet Address</span>
+                        <input type="text" value="${value}" placeholder="0x..." required
+                                class="participant-address-input form-input text-sm w-full"
+                                oninput="updateCalculations()"> 
+                    </label>
+                `;
+                container.insertAdjacentHTML('beforeend', inputHtml);
+            }
+        }
+
+        function updateParticipants(change) {
+            const minusBtn = document.getElementById('minus-btn');
+            const plusBtn = document.getElementById('plus-btn');
+
+            let newCount = participantCount + change; 
+            
+            if (newCount > 10) { showMessageBox("Limit Reached", "Max participants is 10."); newCount = 10; }
+            
+            participantCount = Math.max(0, newCount); 
+            
+            if (minusBtn) minusBtn.disabled = participantCount === 0;
+            if (plusBtn) plusBtn.disabled = participantCount === 10;
+            
+
+            document.getElementById('participant-count').textContent = participantCount;
+            document.getElementById('even-participants').textContent = participantCount + 1; 
+            
+            generateAddressInputs();
+            updateCalculations();
+        }
+
+        function isManualSplitValid() {
+            const formData = getFormData();
+            const inputs = document.querySelectorAll('.manual-share-input'); 
+            let totalAssigned = 0;
+            inputs.forEach(input => {
+                totalAssigned += parseFloat(input.value) || 0;
+            });
+            // Robust float comparison
+            return Math.abs(formData.amount - totalAssigned) < 0.01;
+        }
+
+        function calculateEvenSplit() {
+            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+            const token = document.getElementById('bill-token').value;
+            const totalPeople = participantCount + 1; 
+            
+            let displayAmount = 0.00;
+            if (totalAmount > 0 && totalPeople > 0) {
+                displayAmount = totalAmount / totalPeople;
+            }
+            
+            document.getElementById('split-result').textContent = `${displayAmount.toFixed(2)} ${token}`;
+        }
+        
+        function generateManualInputs() {
+            const list = document.getElementById('manual-participants-list');
+            const existingManualInputs = document.querySelectorAll('.manual-share-input');
+            const existingValuesMap = {};
+            existingManualInputs.forEach(input => { existingValuesMap[input.id] = input.value; });
+            
+            list.innerHTML = '';
+            const formData = getFormData();
+            const participantAddressInputs = document.querySelectorAll('.participant-address-input');
+            const creatorDisplayAddress = window.userAddress ? formatAddress(window.userAddress, 6) : "0x(Connect Wallet)";
+
+            const allSplitters = [
+                { address: formData.creatorAddress, label: `Creator's Share (${creatorDisplayAddress})`, inputId: 'creator-manual-share' }
+            ].concat(
+                Array.from(participantAddressInputs).map((input, i) => ({ 
+                    address: input.value.trim(), 
+                    label: `Participant ${i + 1} Share (${formatAddress(input.value.trim(), 6)})`,
+                    inputId: `participant-${i + 1}-manual-share`
+                }))
+            );
+
+            allSplitters.forEach((splitter, i) => {
+                const baseValue = existingValuesMap[splitter.inputId] || '0.00';
+                const inputHtml = `
+                    <label class="block space-y-1 fade-in" style="animation-delay: ${i * 0.05}s;">
+                        <span class="text-sm font-medium text-muted-foreground">${splitter.label}</span>
+                        <div class="manual-share-input-container">
+                            <input type="number" step="0.01" id="${splitter.inputId}" value="${baseValue}" 
+                                    oninput="updateCalculations()" required
+                                    class="manual-share-input" min="0">
+                            <span class="manual-currency-text">${formData.token}</span>
+                        </div>
+                    </label>
+                `;
+                list.insertAdjacentHTML('beforeend', inputHtml);
+            });
+        }
+
+        function calculateManualRemaining() {
+            const formData = getFormData();
+            const inputs = document.querySelectorAll('.manual-share-input'); 
+            let totalAssigned = 0;
+            inputs.forEach(input => { totalAssigned += parseFloat(input.value) || 0; });
+
+            const remaining = (formData.amount - totalAssigned);
+            const remainingText = document.getElementById('manual-remaining');
+            remainingText.textContent = `${Math.abs(remaining).toFixed(2)} ${formData.token}`;
+            
+            const validationBox = document.getElementById('manual-validation-box');
+            const validationMsg = document.getElementById('validation-message');
+            const fullyAssigned = Math.abs(remaining) < 0.01 && formData.amount > 0; 
+
+            remainingText.classList.remove('text-red-500', 'text-green-500', 'text-secondary');
+            validationBox.classList.remove('border-red-500', 'border-green-500');
+            validationMsg.classList.add('hidden');
+            
+            if (fullyAssigned) {
+                remainingText.classList.add('text-green-500');
+                validationBox.classList.add('border-green-500');
+                remainingText.previousElementSibling.textContent = 'Perfectly Assigned';
+            } else {
+                remainingText.classList.add('text-red-500');
+                validationBox.classList.add('border-red-500');
+                remainingText.previousElementSibling.textContent = remaining > 0 ? 'Total Remaining to Assign' : 'Total Over-Assigned';
+                validationMsg.classList.remove('hidden');
+            }
+        }
+
+        function toggleSplit(type) {
+            splitType = type;
+            document.getElementById('btn-even').classList.toggle('active', type === 'even');
+            document.getElementById('btn-even').classList.toggle('inactive', type !== 'even');
+            document.getElementById('btn-manual').classList.toggle('active', type === 'manual');
+            document.getElementById('btn-manual').classList.toggle('inactive', type !== 'manual');
+            
+            document.getElementById('split-even-content').classList.toggle('hidden', type === 'manual');
+            document.getElementById('split-manual-content').classList.toggle('hidden', type === 'even');
+            
+            updateCalculations(); 
+        }
+
+        function updateCalculations() {
+            const submitBtn = document.getElementById('submit-button');
+            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+            let isValid = false;
+            
+            if (splitType === 'manual') {
+                generateManualInputs(); 
+                calculateManualRemaining(); 
+                isValid = isManualSplitValid();
+            } else {
+                calculateEvenSplit();
+                isValid = totalAmount > 0 && (participantCount + 1) > 1; // Must have at least one participant
+            }
+            
+            const requiredFields = ['bill-name', 'total-amount', 'merchant-address'];
+            const allFieldsFilled = requiredFields.every(id => document.getElementById(id).value.trim() !== '');
+            const participantInputs = document.querySelectorAll('.participant-address-input');
+            const allParticipantsFilled = Array.from(participantInputs).every(input => input.value.trim() !== '');
+            const hasParticipants = participantCount > 0;
+
+            if (window.userAddress && isValid && allFieldsFilled && allParticipantsFilled && hasParticipants) {
+                submitBtn.disabled = false;
+            } else {
+                submitBtn.disabled = true;
+            }
+        }
+        
+        function submitBill() {
+            if (!document.getElementById('bill-form').checkValidity()) {
+                showMessageBox("Input Error", "Please fill out all required fields.");
+                return;
+            }
+            if (!window.userAddress) {
+                showMessageBox("Wallet Required", "You must connect your wallet to submit a bill.");
+                return;
+            }
+            
+            const formData = getFormData();
+            let shares = [];
+            const allSplitters = [window.userAddress].concat(formData.participants); 
+
+            if (formData.splitType === 'even') {
+                const totalCents = Math.round(formData.amount * 100); 
+                const totalSplitters = allSplitters.length;
+                if (totalSplitters === 0 || totalCents === 0) { return; }
+                
+                const baseShareCents = Math.floor(totalCents / totalSplitters);
+                let remainderCents = totalCents % totalSplitters; 
+                
+                for (let i = 0; i < totalSplitters; i++) {
+                    let share = baseShareCents;
+                    if (remainderCents > 0) { share += 1; remainderCents--; }
+                    shares.push(parseFloat((share / 100).toFixed(2))); 
+                }
+            } else { 
+                if (!isManualSplitValid()) {
+                     showMessageBox("Validation Error", "Manual shares must exactly match the Total Bill Amount (within 1 cent tolerance).");
+                     return;
+                }
+                const creatorShare = parseFloat(document.getElementById('creator-manual-share').value) || 0;
+                shares.push(creatorShare);
+                for (let i = 1; i <= formData.participants.length; i++) {
+                    shares.push(parseFloat(document.getElementById(`participant-${i}-manual-share`).value) || 0);
+                }
+            }
+            
+            const uniqueId = `bill_${Date.now()}`; 
+            const transactionPayload = {
+                id: uniqueId, creator: window.userAddress, merchant: formData.merchantAddress,
+                billName: formData.name, token: formData.token, totalAmount: formData.amount,
+                participants: allSplitters, shares: shares, note: formData.note, isSettled: false,
+            };
+            
+            let bills = getBillsFromStorage();
+            bills.push(transactionPayload);
+            localStorage.setItem('bills', JSON.stringify(bills));
+            
+            showMessageBox("Bill Broadcasted!", 
+                           `Your bill "${formData.name}" has been broadcasted. Redirecting to Dashboard...`,
+                           () => { navigateTo('dashboard'); });
+        }
+        
+        // ====================================================================
+        // --- LEADERBOARD LOGIC (from leaderboard.html) ---
+        // ====================================================================
+        
+        function getRankColor(rank) {
+            if (rank === 1) return 'bg-rankGold/30 text-rankGold border-rankGold/50';
+            if (rank === 2) return 'bg-rankSilver/30 text-rankSilver border-rankSilver/50';
+            if (rank === 3) return 'bg-rankBronze/30 text-rankBronze border-rankBronze/50';
+            return 'bg-muted/50 text-muted-foreground border-border/50';
+        }
+        
+        function renderLeaderboardList(players) {
+            const container = document.getElementById('leaderboard-list');
+            container.innerHTML = ''; 
+
+            if (players.length === 0) {
+                container.innerHTML = `<div class="text-center p-8 text-muted-foreground">No reputation data available.</div>`;
+                return;
+            }
+            
+            const currentUserAddress = window.userAddress ? window.userAddress.toLowerCase() : null;
+
+            players.forEach(player => {
+                const rankColor = getRankColor(player.rank);
+                const isCurrentUser = currentUserAddress && player.address.toLowerCase().includes(currentUserAddress.slice(2, 6).toLowerCase());
+                
+                const rowClasses = isCurrentUser 
+                    ? 'bg-primary/20 border-primary/50' 
+                    : 'bg-background border-border/50 hover:bg-background/50';
+                
+                const scoreText = player.score.toFixed(2) + '%';
+                const progressBarWidth = player.score; 
+
+                const playerRow = `
+                    <div class="grid grid-cols-12 gap-4 p-4 text-sm border-b transition-colors duration-300 ${rowClasses}">
+                        <div class="col-span-1 flex items-center justify-center">
+                            <span class="font-bold w-6 h-6 flex items-center justify-center rounded-full text-xs border ${rankColor}">#${player.rank}</span>
+                        </div>
+                        <div class="col-span-4 flex flex-col justify-center">
+                            <div class="font-semibold text-base ${isCurrentUser ? 'text-primary' : 'text-foreground'}">${player.name || 'Unknown Payer'}</div>
+                            <div class="text-xs text-muted-foreground truncate">${formatAddress(player.address, 4)}</div>
+                        </div>
+                        <div class="col-span-3 flex items-center justify-end text-base font-semibold">${player.settledBills}</div>
+                        <div class="col-span-4 flex flex-col justify-center items-end space-y-1">
+                            <div class="text-base font-bold ${isCurrentUser ? 'text-primary' : 'text-foreground'}">${scoreText}</div>
+                            <div class="progress-bar-bg w-full max-w-32">
+                                <div class="progress-bar-fill" style="width: ${progressBarWidth}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', playerRow);
+            });
+        }
+
+        async function fetchLeaderboardData() {
+            // MOCK DATA
+            await new Promise(resolve => setTimeout(resolve, 500)); 
+            return [
+                { rank: 1, name: "Crypto King", address: "0x1A4B7A00B8C7D8", settledBills: 55, score: 98.50 },
+                { rank: 2, name: "Wallet Warrior", address: "0x2D5E8C90F9A01B2C", settledBills: 48, score: 95.25 },
+                { rank: 3, name: "Split God", address: "0x3C6F7E5D12G1B2F3", settledBills: 41, score: 92.11 },
+                { rank: 4, name: "Anon Payer", address: "0x4G7H9I3J0K4H3C4G", settledBills: 33, score: 88.90 },
+                { rank: 5, name: "FastSettler", address: "0x5H8I2J1K0L9I5D6H", settledBills: 29, score: 85.70 },
+            ];
+        }
+        
+        async function loadLeaderboard() {
+            const container = document.getElementById('leaderboard-list');
+            container.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Loading reputation scores...</div>';
+
+            try {
+                if (leaderboardData.length === 0) {
+                    leaderboardData = await fetchLeaderboardData();
+                }
+                renderLeaderboardList(leaderboardData);
+            } catch (error) {
+                container.innerHTML = `<div class="text-center p-8 text-red-400">Error loading data.</div>`;
+            }
+        }
+        
+        // ====================================================================
+        // --- INITIALIZATION ---
+        // ====================================================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('bill-form').addEventListener('submit', function(e) { e.preventDefault(); submitBill(); });
+            document.getElementById('menu-toggle').addEventListener('click', function() {
+                document.getElementById('mobile-menu').classList.toggle('hidden');
+            });
+            toggleSplit('even'); // Initialize form to 'even' split
+            updateParticipants(0); // Initialize form to 0 participants
+            navigateTo('dashboard');
         });
-
-
     </script>
 </body>
 </html>
