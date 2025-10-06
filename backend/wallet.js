@@ -9,27 +9,6 @@ window.walletType = null; // 'EVM', 'Starknet', or 'Xverse' (for display)
 // --- UTILITY FUNCTIONS ---
 
 /**
- * Custom alert/message box
- */
-window.showMessageBox = (title, content) => {
-    const modal = document.getElementById('message-box');
-    document.getElementById('message-title').textContent = title;
-    document.getElementById('message-content').innerHTML = content;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    modal.classList.add('open');
-};
-
-window.closeMessageBox = () => {
-    const modal = document.getElementById('message-box');
-    modal.classList.remove('open');
-    setTimeout(() => {
-        modal.classList.remove('flex');
-        modal.classList.add('hidden');
-    }, 300);
-};
-
-/**
  * Shortens an address for display.
  */
 window.formatAddress = (address) => {
@@ -38,21 +17,32 @@ window.formatAddress = (address) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
+// NOTE: showMessageBox and closeMessageBox are now *only* defined in index.html.
+// We remove the definitions here to ensure the full, functional modal logic from 
+// index.html (which includes the onOk callback and CSS cleanup) is used.
+
 // --- CORE WALLET CONNECTION LOGIC ---
 
 /**
  * 1. EVM Connection (MetaMask) - WITH PERSISTENCE
  */
 window.connectMetamaskWallet = async () => {
-    closeConnectModal();
-    if (typeof window.ethereum === 'undefined') {
+    // Functions like closeConnectModal() are called here, relying on index.html
+    window.closeConnectModal(); 
+    
+    // Assign to a local variable for consistent use
+    const ethereum = window.ethereum;
+
+    if (typeof ethereum === 'undefined') {
         window.showMessageBox("Wallet Error", "MetaMask is not installed. Please install it to connect.");
         return;
     }
 
     try {
         window.showMessageBox("Connecting...", "Awaiting connection confirmation in MetaMask.");
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        
+        // This is the critical command to trigger the MetaMask popup
+        const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
 
         if (accounts.length > 0) {
             window.userAddress = accounts[0];
@@ -62,6 +52,7 @@ window.connectMetamaskWallet = async () => {
             localStorage.setItem('splitmate_address', window.userAddress);
             localStorage.setItem('splitmate_walletType', window.walletType);
 
+            // loadPageContent is defined in index.html
             window.loadPageContent(window.userAddress);
             window.closeMessageBox();
         } else {
@@ -69,7 +60,7 @@ window.connectMetamaskWallet = async () => {
         }
 
         // Add event listener to handle account changes
-        window.ethereum.on('accountsChanged', (newAccounts) => {
+        ethereum.on('accountsChanged', (newAccounts) => {
             if (newAccounts.length > 0) {
                 window.userAddress = newAccounts[0];
                 localStorage.setItem('splitmate_address', window.userAddress); // Update persistence
@@ -81,7 +72,8 @@ window.connectMetamaskWallet = async () => {
 
     } catch (error) {
         console.error("MetaMask connection failed:", error);
-        window.showMessageBox("Connection Failed", `Error connecting to MetaMask: ${error.message || error}`);
+        // Improved error message for better user guidance
+        window.showMessageBox("Connection Failed", `Error connecting to MetaMask: ${error.message || error.code || 'Unknown error'}. Check your browser console for details.`);
     }
 };
 
@@ -89,10 +81,9 @@ window.connectMetamaskWallet = async () => {
  * 2. Starknet Connection (ArgentX / Braavos) - SIMPLIFIED DETECTION
  */
 window.connectStarknetWallet = async () => {
-    closeConnectModal();
+    window.closeConnectModal();
     window.showMessageBox("Connecting...", "Awaiting connection confirmation for Starknet wallet (ArgentX/Braavos).");
 
-    // FIX: Rely ONLY on the object proven to be injected in the console
     const injectedWallet = window.starknet;
 
     if (!injectedWallet || !injectedWallet.connect) {
@@ -108,7 +99,7 @@ window.connectStarknetWallet = async () => {
         if (connectedWallet) {
             await connectedWallet.enable({ showModal: false });
             window.userAddress = connectedWallet.account.address;
-            window.walletType = connectedWallet.id; 
+            window.walletType = connectedWallet.id;
             
             // **PERSISTENCE: Save state to localStorage**
             localStorage.setItem('splitmate_address', window.userAddress);
@@ -131,7 +122,7 @@ window.connectStarknetWallet = async () => {
  * 3. Xverse Connection (Temporarily Disabled/Redirected to Utility)
  */
 window.connectXverseWallet = () => {
-    closeConnectModal();
+    window.closeConnectModal();
     window.showMessageBox(
         "Bitcoin Utility Available",
         "Wallet connection is temporarily disabled due to browser extension compatibility issues on this domain. " + 
@@ -196,7 +187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
         }
-    } 
+    }
     
     // 2. If no persistent connection found, attempt Starknet auto-reconnect
     if (!window.userAddress) {
@@ -222,15 +213,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Call the page content loader with the final determined address
     window.loadPageContent(window.userAddress);
 });
-
-// Expose these methods globally
-window.showMessageBox = window.showMessageBox;
-window.closeMessageBox = window.closeMessageBox;
-window.connectMetamaskWallet = window.connectMetamaskWallet;
-window.connectStarknetWallet = window.connectStarknetWallet;
-window.connectXverseWallet = window.connectXverseWallet;
-window.disconnectWallet = window.disconnectWallet;
-window.formatAddress = window.formatAddress;
 
 // --- LISTEN FOR STORAGE CHANGES ACROSS TABS (Cross-Tab Sync Fix) ---
 window.addEventListener('storage', (event) => {
