@@ -1,6 +1,6 @@
 // --- FILE: wallet.js ---
 // This file contains all the core logic for connecting, disconnecting, and managing
-// wallet state with added persistence via localStorage.
+// wallet state with added persistence via localStorage and cross-tab sync.
 
 // Global State Variables (accessible by index.html)
 window.userAddress = null;
@@ -128,7 +128,7 @@ window.connectStarknetWallet = async () => {
 
 
 /**
- * 3. Xverse Connection (Temporarily Disabled)
+ * 3. Xverse Connection (Temporarily Disabled/Redirected to Utility)
  */
 window.connectXverseWallet = () => {
     closeConnectModal();
@@ -232,7 +232,7 @@ window.connectXverseWallet = window.connectXverseWallet;
 window.disconnectWallet = window.disconnectWallet;
 window.formatAddress = window.formatAddress;
 
-// --- LISTEN FOR STORAGE CHANGES ACROSS TABS ---
+// --- LISTEN FOR STORAGE CHANGES ACROSS TABS (Cross-Tab Sync Fix) ---
 window.addEventListener('storage', (event) => {
     // We only care about changes to our specific keys
     if (event.key === 'splitmate_address' || event.key === 'splitmate_walletType') {
@@ -245,7 +245,6 @@ window.addEventListener('storage', (event) => {
             window.walletType = localStorage.getItem('splitmate_walletType');
             
             // Force the page content to reload with the new state
-            // loadPageContent() will handle the connected/disconnected state update
             window.loadPageContent(window.userAddress);
             
             console.log(`Wallet state synced from another tab. New address: ${window.formatAddress(newAddress)}`);
