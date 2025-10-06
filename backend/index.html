@@ -6,7 +6,7 @@
     <title>SplitMate - Decentralized Bill Splitting</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/static/js/wallet.js"></script> 
+    <script src="wallet.js"></script> 
     <script>
         // --- Tailwind Configuration (UI Theme) ---
         tailwind.config = {
@@ -208,7 +208,26 @@
             document.getElementById('message-box').classList.add('hidden');
             document.getElementById('message-box').classList.remove('flex');
         }
+	// ... inside the main <script> block in index.html ...
 
+        // ====================================================================
+        // --- GLOBAL & SPA CORE ---
+        // ====================================================================
+        let currentPage = 'dashboard';
+        let participantCount = 0; 
+        let splitType = 'even';
+
+        // --- Utility Placeholder: Ensures formatAddress exists before wallet.js loads ---
+        // This stops the UI from crashing if wallet.js loads slower or fails.
+        window.formatAddress = function(address, chars = 6) {
+            if (!address || typeof address !== 'string' || address.length < chars * 2 + 3) return address;
+            return `${address.substring(0, chars)}...${address.substring(address.length - chars)}`;
+        }
+        // -----------------------------------------------------------------------------
+
+        // --- Wallet Modal Control Functions (NEEDED FOR WALLET.JS) ---
+        function openConnectModal() {
+	}
         // --- Navigation ---
         function navigateTo(page) {
             currentPage = page;
