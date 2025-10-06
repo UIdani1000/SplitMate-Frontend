@@ -6,6 +6,8 @@
     <title>SplitMate - Leaderboard</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/static/js/wallet.js"></script> 
+    
     <script>
         // --- Tailwind Configuration (UI Theme) ---
         tailwind.config = {
@@ -67,28 +69,38 @@
 <body class="min-h-screen bg-background text-foreground">
 
     <div class="p-4 border-b border-border/50 flex items-center justify-between">
-        <a href="/index" class="text-2xl font-bold text-primary hover:text-secondary transition-colors">SplitMate</a>
+        <a href="index.html" class="text-2xl font-bold text-primary hover:text-secondary transition-colors">SplitMate</a>
         
         <nav class="hidden md:flex items-center gap-4 text-sm font-medium">
-            <a href="/index.html" class="text-muted-foreground hover:text-primary transition-colors">Dashboard</a> 
-            <a href="/create.html" class="text-muted-foreground hover:text-primary transition-colors">Create Bill</a>
-            <a href="/leaderboard.html" class="text-primary transition-colors">Leaderboard</a>
+            <a href="index.html" class="text-muted-foreground hover:text-primary transition-colors">Dashboard</a> 
+            <a href="create.html" class="text-muted-foreground hover:text-primary transition-colors">Create Bill</a>
+            <a href="leaderboard.html" class="text-primary transition-colors">Leaderboard</a>
         </nav>
         
         <div class="flex items-center gap-4">
-            <button class="text-primary-foreground font-semibold py-2 px-4 rounded-full transition-all hover:scale-[1.05]" style="background-color: #7400b8;" id="wallet-button">
+            <button 
+                id="wallet-button" 
+                onclick="window.userAddress ? window.disconnectWallet() : openConnectModal()" 
+                class="text-primary-foreground font-semibold py-2 px-4 rounded-full transition-all hover:scale-[1.05]" 
+                style="background-color: #7400b8;">
                 Connect Wallet
             </button>
             <button id="menu-toggle" class="md:hidden text-foreground">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" x2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
         </div>
     </div>
     
     <nav id="mobile-menu" class="hidden md:hidden flex flex-col p-4 bg-background border-b border-border">
-        <a href="/index" class="py-2 text-muted-foreground hover:text-primary border-b border-border">Dashboard</a>
-        <a href="/create" class="py-2 text-muted-foreground hover:text-primary border-b border-border">Create Bill</a>
-        <a href="/leaderboard" class="py-2 text-primary">Leaderboard</a>
+        <a href="index.html" class="py-2 text-muted-foreground hover:text-primary border-b border-border">Dashboard</a>
+        <a href="create.html" class="py-2 text-muted-foreground hover:text-primary border-b border-border">Create Bill</a>
+        <a href="leaderboard.html" class="py-2 text-primary">Leaderboard</a>
+        <button 
+            id="mobile-wallet-button" 
+            onclick="window.userAddress ? window.disconnectWallet() : openConnectModal()" 
+            class="mt-2 w-full text-left py-2 px-4 rounded-lg bg-primary text-background text-sm font-semibold hover:bg-primary-active transition duration-200">
+            Connect Wallet
+        </button>
     </nav>
     
 
@@ -112,34 +124,138 @@
         </div>
     </div>
     
-    <script>
-        // --- Data Fetching Placeholder ---
+    <div id="connect-wallet-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-50 hidden items-center justify-center transition-opacity duration-300">
+        <div class="bg-card/90 border border-primary p-6 rounded-xl shadow-2xl w-full max-w-sm relative">
+            <button onclick="closeConnectModal()" class="absolute top-4 right-4 text-foreground hover:text-primary transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            
+            <h3 class="text-2xl font-bold text-primary mb-4">Connect Wallet</h3>
+            <p class="text-sm text-muted-foreground mb-6">Choose your preferred network and wallet.</p>
 
-        /**
-         * Placeholder function to fetch real leaderboard data from a smart contract.
-         * Replace this with your actual contract call.
-         * @returns {Promise<Array<Object>>} List of players with reputation data.
-         */
+            <div class="space-y-4">
+                <button onclick="window.connectMetamaskWallet()" class="w-full flex items-center justify-center p-3 border border-border rounded-lg hover:bg-primary/10 transition duration-200">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" class="w-6 h-6 mr-3">
+                    MetaMask (EVM)
+                </button>
+                <button onclick="window.connectStarknetWallet()" class="w-full flex items-center justify-center p-3 border border-border rounded-lg hover:bg-primary/10 transition duration-200">
+                    <img src="https://starkware.co/wp-content/uploads/2021/07/starknet-logo.svg" alt="Starknet" class="w-6 h-6 mr-3">
+                    Starknet (ArgentX/Braavos)
+                </button>
+                <button onclick="window.connectXverseWallet()" class="w-full flex items-center justify-center p-3 border border-border rounded-lg hover:bg-primary/10 transition duration-200">
+                    <img src="https://www.xverse.app/img/logo.svg" alt="Xverse" class="w-6 h-6 mr-3">
+                    Bitcoin / Sponsor
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="message-box" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[60] hidden items-center justify-center transition-opacity duration-300">
+        <div class="bg-card/90 border border-primary p-6 rounded-xl shadow-2xl w-full max-w-sm relative text-center">
+            <h3 id="message-title" class="text-xl font-bold text-primary mb-3"></h3>
+            <p id="message-content" class="text-sm text-muted-foreground mb-6"></p>
+            <button onclick="closeMessageBox()" class="w-full py-2 bg-primary text-background font-semibold rounded-lg hover:bg-primary-active transition duration-200">
+                OK
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- Wallet Connection Utilities (CRITICAL FIX) ---
+        
+        function formatAddress(address, chars = 6) {
+            if (!address || address.length < chars * 2 + 3) return address;
+            return `${address.substring(0, chars)}...${address.substring(address.length - chars)}`;
+        }
+
+        // Must be defined locally to control the modal HTML
+        function openConnectModal() {
+            const modal = document.getElementById('connect-wallet-modal'); 
+            if (modal) {
+                 modal.classList.remove('hidden');
+                 modal.classList.add('flex');
+            }
+        }
+
+        function closeConnectModal() {
+            const modal = document.getElementById('connect-wallet-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+        
+        // This function is called by wallet.js whenever the connection state changes
+        window.loadPageContent = async function(address) { 
+            const walletButton = document.getElementById('wallet-button'); 
+            const mobileWalletButton = document.getElementById('mobile-wallet-button'); 
+            const isConnected = !!window.userAddress; 
+
+            if (isConnected) {
+                const buttonText = `Disconnect (${formatAddress(window.userAddress, 4)})`;
+                walletButton.textContent = buttonText;
+                mobileWalletButton.textContent = buttonText;
+                
+                // Re-bind click to disconnect
+                walletButton.onclick = window.disconnectWallet; 
+                mobileWalletButton.onclick = window.disconnectWallet; 
+
+                // Optionally, highlight the current user on the leaderboard
+                // Rerender the list to ensure highlighting is applied
+                if (window.leaderboardData && window.leaderboardData.length > 0) {
+                    renderLeaderboardList(window.leaderboardData);
+                }
+
+            } else {
+                // Not connected
+                walletButton.textContent = 'Connect Wallet';
+                mobileWalletButton.textContent = 'Connect Wallet';
+                
+                // Re-bind click to open modal
+                walletButton.onclick = openConnectModal;
+                mobileWalletButton.onclick = openConnectModal;
+                
+                 // Rerender to remove user highlight if disconnected
+                 if (window.leaderboardData && window.leaderboardData.length > 0) {
+                    renderLeaderboardList(window.leaderboardData);
+                }
+            }
+        }
+
+        // --- Message Box Utilities ---
+        function showMessageBox(title, content) {
+            document.getElementById('message-title').textContent = title;
+            document.getElementById('message-content').textContent = content;
+            document.getElementById('message-box').classList.remove('hidden');
+            document.getElementById('message-box').classList.add('flex');
+        }
+
+        function closeMessageBox() {
+            document.getElementById('message-box').classList.add('hidden');
+            document.getElementById('message-box').classList.remove('flex');
+        }
+
+
+        // --- Data Fetching Placeholder ---
+        window.leaderboardData = []; // Global to store data for loadPageContent to use
+
         async function fetchLeaderboardData() {
             console.log("Fetching leaderboard data from contract...");
             
-            // NOTE: IMPLEMENTATION REQUIRED:
-            // 1. Initialize your contract instance (Reputation/Splitter contract).
-            // 2. Call the contract function (e.g., `getTopUsersReputation()`).
-            // 3. Return the array of structured data.
-            
-            // For now, return an empty array to simulate a successful but empty fetch.
-            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-            return [];
+            // --- MOCK DATA --- 
+            await new Promise(resolve => setTimeout(resolve, 1500)); 
+            return [
+                { rank: 1, name: "Crypto King", address: "0x1A4B...C7D8", settledBills: 55, score: 98.50 },
+                { rank: 2, name: "Wallet Warrior", address: "0x2D5E...F9A0", settledBills: 48, score: 95.25 },
+                { rank: 3, name: "Split God", address: "0x3C6F...G1B2", settledBills: 41, score: 92.11 },
+                { rank: 4, name: "Anon Payer", address: "0x4G7H...H3C4", settledBills: 33, score: 88.90 },
+                { rank: 5, name: "FastSettler", address: "0x5H8I...I5D6", settledBills: 29, score: 85.70 },
+            ];
+            // --- END MOCK DATA ---
         }
 
         // --- Core Functions ---
 
-        /**
-         * Determines the color for the rank badge based on position.
-         * @param {number} rank - The rank number.
-         * @returns {string} Tailwind CSS class for background color.
-         */
         function getRankColor(rank) {
             switch (rank) {
                 case 1:
@@ -153,13 +269,9 @@
             }
         }
         
-        /**
-         * Renders the leaderboard list based on the provided data.
-         * @param {Array<Object>} players - The list of player objects.
-         */
         function renderLeaderboardList(players) {
             const container = document.getElementById('leaderboard-list');
-            container.innerHTML = ''; // Clear existing list
+            container.innerHTML = ''; 
 
             if (players.length === 0) {
                 container.innerHTML = `
@@ -170,19 +282,19 @@
                 return;
             }
             
+            const currentUserAddress = window.userAddress ? window.userAddress.toLowerCase() : null;
+
             players.forEach(player => {
                 const rankColor = getRankColor(player.rank);
                 
-                // You would dynamically check the connected user's address here
-                const isCurrentUser = false; 
+                // Check for highlighting based on the connected wallet
+                const isCurrentUser = currentUserAddress && player.address.toLowerCase() === currentUserAddress; 
 
                 const rowClasses = isCurrentUser 
-                    ? 'bg-primary/20 border-primary/50' // Highlight for the connected user
+                    ? 'bg-primary/20 border-primary/50' 
                     : 'bg-background border-border/50 hover:bg-background/50';
                 
-                // Format the score for display
                 const scoreText = player.score.toFixed(2) + '%';
-                // Use the score as a percentage for the progress bar width
                 const progressBarWidth = player.score; 
 
                 const playerRow = `
@@ -196,7 +308,7 @@
 
                         <div class="col-span-4 flex flex-col justify-center">
                             <div class="font-semibold text-base ${isCurrentUser ? 'text-primary' : 'text-foreground'}">${player.name || 'Unknown Payer'}</div>
-                            <div class="text-xs text-muted-foreground truncate">${player.address}</div>
+                            <div class="text-xs text-muted-foreground truncate">${formatAddress(player.address, 4)}</div>
                         </div>
 
                         <div class="col-span-3 flex items-center justify-end text-base font-semibold">${player.settledBills}</div>
@@ -213,27 +325,28 @@
             });
         }
         
-        /**
-         * Main load function to fetch and display the leaderboard.
-         */
-        async function loadLeaderboard() {
+        function loadLeaderboard() {
             const container = document.getElementById('leaderboard-list');
             container.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Loading reputation scores...</div>';
 
             try {
-                // Call the placeholder/real function
-                const leaderboardData = await fetchLeaderboardData(); 
-                
-                // Process and render the data
-                renderLeaderboardList(leaderboardData);
+                fetchLeaderboardData().then(data => {
+                    window.leaderboardData = data; // Store globally
+                    renderLeaderboardList(window.leaderboardData);
+                    // Force a UI update after data is loaded
+                    window.loadPageContent(window.userAddress); 
+                }).catch(error => {
+                    console.error("Failed to load leaderboard:", error);
+                    container.innerHTML = `
+                        <div class="text-center p-8 text-red-400">
+                            Error loading data. Check console for details.
+                        </div>
+                    `;
+                });
 
             } catch (error) {
-                console.error("Failed to load leaderboard:", error);
-                container.innerHTML = `
-                    <div class="text-center p-8 text-red-400">
-                        Error loading data. Check console for details.
-                    </div>
-                `;
+                // Catches immediate sync errors
+                console.error("Failed to initiate leaderboard load:", error);
             }
         }
 
