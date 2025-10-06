@@ -6,6 +6,10 @@
     <title>SplitMate - Decentralized Bill Splitting</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@starknet-io/get-starknet@latest/dist/index.js"></script>
+    
     <script src="wallet.js"></script> 
     
     <style>
@@ -65,7 +69,7 @@
         }
 
         // ====================================================================
-        // --- GLOBAL UI & MESSAGE BOX (Standard) ---
+        // --- GLOBAL UI & MESSAGE BOX ---
         // ====================================================================
 
         window.showMessageBox = function(title, content, onOk = null) {
@@ -92,8 +96,7 @@
 
 
         // ====================================================================
-        // --- WALLET UI UPDATE (Requires External Logic) ---
-        // window.currentAddress and window.contract must be defined in wallet.js
+        // --- WALLET UI UPDATE (Called by wallet.js) ---
         // ====================================================================
 
         /**
@@ -112,7 +115,7 @@
                 btn.classList.add('bg-green-600', 'hover:bg-green-500', 'text-white', 'font-mono'); 
                 
                 mobileBtn.textContent = shortAddress;
-                mobileBtn.classList.remove('text-primary');
+                mobileBtn.classList.remove('text-primary', 'bg-primary/20');
                 mobileBtn.classList.add('bg-green-600/20', 'text-green-400');
             } else {
                 btn.textContent = "Connect Wallet";
@@ -121,7 +124,7 @@
 
                 mobileBtn.textContent = "Connect Wallet";
                 mobileBtn.classList.remove('bg-green-600/20', 'text-green-400');
-                mobileBtn.classList.add('text-primary');
+                mobileBtn.classList.add('text-primary', 'bg-primary/20');
             }
             // Reload content to update bill lists based on connection status
             loadDashboardContent();
@@ -151,7 +154,7 @@
         }
 
         // ====================================================================
-        // --- DASHBOARD LOGIC (Live Contract Integration) ---
+        // --- DASHBOARD LOGIC (Calls wallet.js/contract) ---
         // ====================================================================
 
         /**
@@ -167,6 +170,7 @@
                 </button>` :
                 `<span class="text-green-400 text-sm font-semibold">Settled</span>`;
             
+            // Assume your live contract data provides amount and yourShare as numbers/strings
             const shareDisplay = isPayer ? bill.amount : bill.yourShare;
 
             return `
@@ -180,7 +184,7 @@
                     
                     <div class="flex items-center space-x-6">
                         <div class="flex flex-col text-right">
-                            <span class="text-2xl font-extrabold ${statusColor}">$${shareDisplay.toFixed(2)}</span>
+                            <span class="text-2xl font-extrabold ${statusColor}">$${parseFloat(shareDisplay).toFixed(2)}</span>
                             <span class="text-xs text-muted">${isPayer ? 'Total Bill' : 'Your Share'}</span>
                         </div>
                         ${actionButton}
@@ -204,7 +208,7 @@
             listContainer.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Fetching live bills from the contract...</div>';
 
             try {
-                // 🛑 LIVE CALL: Assumes contract.getBillsForUser exists in wallet.js
+                // LIVE CALL: Assumes contract.getBillsForUser exists in wallet.js
                 const bills = await window.contract.getBillsForUser(userAddress); 
                 
                 let totalOwed = 0;
@@ -219,10 +223,11 @@
                         listContainer.insertAdjacentHTML('beforeend', renderBillCard(bill));
                         
                         if (bill.status === 'Open') {
+                            // Logic depends on your contract data structure for bill.yourShare
                             if (bill.payer === userAddress) {
-                                totalOwed += (bill.amount - bill.yourShare); 
+                                totalOwed += (parseFloat(bill.amount) - parseFloat(bill.yourShare)); 
                             } else {
-                                totalDue += bill.yourShare; 
+                                totalDue += parseFloat(bill.yourShare); 
                             }
                         }
                     });
@@ -245,11 +250,10 @@
         }
 
         // ====================================================================
-        // --- CREATE BILL LOGIC (Live Contract Integration) ---
+        // --- CREATE BILL LOGIC ---
         // ====================================================================
 
         function toggleSplit(type) {
-            // ... (Split Type Logic - UI only)
             const manualContainer = document.getElementById('manual-split-container');
             
             document.getElementById('split-type-even').classList.remove('bg-primary/50', 'bg-primary/20');
@@ -266,8 +270,7 @@
         }
 
         function updateParticipants(count) {
-            // ... (Participant UI Logic - UI only)
-            const participantCount = Math.max(1, count); 
+            const participantCount = Math.max(0, count); // Allow 0 participants
             document.getElementById('participant-count').value = participantCount;
             document.getElementById('participant-count-display').textContent = participantCount;
 
@@ -291,7 +294,7 @@
         }
 
         function changeParticipantCount(delta) {
-            let currentCount = parseInt(document.getElementById('participant-count').value) || 1;
+            let currentCount = parseInt(document.getElementById('participant-count').value) || 0;
             currentCount += delta;
             updateParticipants(currentCount);
         }
@@ -301,7 +304,7 @@
                 showMessageBox("Connection Required", "Please connect your wallet before creating a bill.");
                 return false;
             }
-            if (!window.contract) {
+            if (!window.contract || !window.contract.broadcastBill) {
                 showMessageBox("Contract Not Ready", "The smart contract connection failed. Cannot broadcast bill.");
                 return false;
             }
@@ -309,7 +312,6 @@
                 showMessageBox("Validation Error", "Please fill in all required fields (Name, Amount, Payer Address).");
                 return false;
             }
-            // Add address format validation (optional but recommended)
             
             if (formData.splitType === 'manual') {
                 let totalShare = formData.participants.reduce((sum, p) => sum + parseFloat(p.share || 0), 0);
@@ -338,10 +340,15 @@
             };
 
             for (let i = 1; i <= participantCount; i++) {
-                const defaultShare = (formData.amount / participantCount).toFixed(2);
+                const amount = formData.amount;
+                const defaultShare = (amount / (participantCount + 1)).toFixed(2); // +1 if payer is NOT a participant, but form suggests only participants
+                
+                // Simplified split logic: Payer is not counted in participantCount for calculation
+                const shareValue = splitType === 'even' ? parseFloat((amount / (participantCount || 1)).toFixed(2)) : parseFloat(form.elements[`participant-${i}-share`]?.value || 0);
+                
                 formData.participants.push({
                     address: form.elements[`participant-${i}-address`].value,
-                    share: splitType === 'even' ? parseFloat(defaultShare) : parseFloat(form.elements[`participant-${i}-share`]?.value || 0)
+                    share: shareValue
                 });
             }
 
@@ -349,7 +356,7 @@
             if (!validateForm(formData)) return;
             
             try {
-                // 🛑 LIVE CALL: Assumes contract.broadcastBill exists in wallet.js and handles the transaction
+                // LIVE CALL: Assumes contract.broadcastBill exists in wallet.js
                 showMessageBox("Broadcasting Bill...", "Sending transaction to the smart contract. Please confirm in your wallet.", null);
 
                 const tx = await window.contract.broadcastBill(formData);
@@ -360,29 +367,29 @@
                             `Your bill "${formData.name}" has been successfully broadcasted. Transaction Hash: ${tx.hash.substring(0, 10)}... Redirecting to Dashboard...`,
                             () => {
                                 form.reset();
-                                updateParticipants(1);
+                                updateParticipants(0);
                                 toggleSplit('even');
                                 navigateTo('dashboard');
                             });
 
             } catch (error) {
                  console.error("Bill Submission Failed:", error);
-                 showMessageBox("Transaction Failed", "Could not broadcast the bill to the contract. Check console for error details.", null);
+                 showMessageBox("Transaction Failed", `Could not broadcast the bill. Error: ${error.message || "Unknown error"}`, null);
             }
         }
 
         // ====================================================================
-        // --- LEADERBOARD LOGIC (Live Contract Integration) ---
+        // --- LEADERBOARD LOGIC (Calls wallet.js/contract) ---
         // ====================================================================
         
         window.loadLeaderboard = async function() {
             const container = document.getElementById('leaderboard-list');
-            if (!container || !window.contract) return;
+            if (!container || !window.contract || !window.contract.getLeaderboard) return;
 
             container.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Fetching live reputation scores...</div>';
 
             try {
-                // 🛑 LIVE CALL: Assumes contract.getLeaderboard exists in wallet.js
+                // LIVE CALL: Assumes contract.getLeaderboard exists in wallet.js
                 const leaderboardData = await window.contract.getLeaderboard(); 
                 renderLeaderboardList(leaderboardData);
 
@@ -393,7 +400,6 @@
         }
 
         function renderLeaderboardList(data) {
-            // ... (Leaderboard UI Logic - UI only)
             const container = document.getElementById('leaderboard-list');
             let listHtml = '';
             const userAddress = window.currentAddress || "0xUnconnectedUser";
@@ -408,12 +414,12 @@
                             <span class="font-extrabold ${rankColor}">${index + 1}</span>
                             <div class="flex flex-col">
                                 <span class="text-foreground font-semibold">${displayName}</span>
-                                <span class="text-xs text-muted">Bills: ${player.totalBills}</span>
+                                <span class="text-xs text-muted">Bills: ${player.totalBills || 0}</span>
                             </div>
                         </div>
                         <div class="text-right">
-                            <span class="text-xl font-bold text-primary">${player.score.toFixed(1)}</span>
-                            <div class="text-xs text-muted">Settled Rate: ${(player.settledRate * 100).toFixed(1)}%</div>
+                            <span class="text-xl font-bold text-primary">${(player.score || 0).toFixed(1)}</span>
+                            <div class="text-xs text-muted">Settled Rate: ${((player.settledRate || 0) * 100).toFixed(1)}%</div>
                         </div>
                     </div>
                 `;
@@ -431,7 +437,7 @@
         function setupInitialUI() {
             // Set up form and navigation state
             toggleSplit('even'); 
-            updateParticipants(1); 
+            updateParticipants(0); // Start with 0 participants
             
             // Event listeners
             document.getElementById('bill-form').addEventListener('submit', function(e) { 
@@ -443,18 +449,15 @@
                 document.getElementById('mobile-menu').classList.toggle('hidden');
             });
             
-            // Check for window.connectWallet defined in wallet.js
+            // The wallet functions are defined in wallet.js, but we ensure the UI reacts
             if (typeof window.connectWallet !== 'function') {
-                console.error("Wallet connection function (connectWallet) not found. Check wallet.js.");
-                // Provide a placeholder to prevent click error (temporary)
                 window.connectWallet = () => showMessageBox("Error", "Wallet connection logic not implemented in wallet.js.");
             }
 
-            // Initial UI state update
-            updateWalletUI();
-
             // Start the application on the Dashboard page
             navigateTo('dashboard');
+            
+            // Initial UI state update is now handled by the wallet.js DOMContentLoaded listener
         }
 
         document.addEventListener('DOMContentLoaded', setupInitialUI);
@@ -600,7 +603,7 @@
                                     class="w-10 h-10 bg-primary/20 text-primary rounded-lg text-2xl font-bold hover:bg-primary/40 transition duration-200">
                                 &minus;
                             </button>
-                            <input type="number" id="participant-count" name="participant-count" value="1" min="1" readonly
+                            <input type="number" id="participant-count" name="participant-count" value="0" min="0" readonly
                                    class="w-16 text-center text-foreground bg-transparent text-xl font-bold border-none focus:outline-none">
                             <button type="button" onclick="changeParticipantCount(1)" 
                                     class="w-10 h-10 bg-primary/20 text-primary rounded-lg text-2xl font-bold hover:bg-primary/40 transition duration-200">

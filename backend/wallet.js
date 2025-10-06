@@ -3,12 +3,13 @@
  *
  * This file handles all web3 connectivity, wallet interaction,
  * and smart contract calls for the SplitMate DApp on Starknet.
+ * It relies on 'starknet.js' and '@starknet-io/get-starknet' CDN imports in index.html.
  */
 
 // Global variables for contract instance and current user address
 window.splitMateContract = null;
 window.currentAddress = null;
-window.starknet = null;
+window.starknet = null; // The connected wallet object
 
 // ====================================================================
 // --- 1. STARKNET CONFIGURATION (MUST BE REPLACED) ---
@@ -19,101 +20,106 @@ window.starknet = null;
 // Your SplitMate Smart Contract Address on Starknet
 const SPLITMATE_CONTRACT_ADDRESS = "0xYOUR_SPLITMATE_CONTRACT_ADDRESS_HERE";
 
-// Standard L2 ETH Token Contract Address (Used for fees and payment)
-const ETH_ERC20_ADDRESS = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"; 
-const ETH_DECIMALS = 18;
-
 // Minimal ABI for the required functions (MUST be replaced with your full contract ABI)
 const SPLITMATE_ABI = [
-    // Must include the ABI for get_user_bills, broadcast_bill, and get_leaderboard
-    // Example entries (replace with your actual structure):
-    {"type": "function", "name": "get_user_bills", "inputs": [{"name": "user_address", "type": "felt"}], "outputs": [{"name": "bills", "type": "core::array::Array::<SplitMate::BillStruct>"}], "state_mutability": "view"},
-    {"type": "function", "name": "broadcast_bill", "inputs": [/* your input structure */], "outputs": [], "state_mutability": "external"},
-    {"type": "function", "name": "get_leaderboard", "inputs": [], "outputs": [{"name": "leaderboard", "type": "core::array::Array::<SplitMate::UserReputation>"}], "state_mutability": "view"}
+    // Include the ABIs for: get_user_bills, broadcast_bill, get_leaderboard, etc.
 ];
 
 // Helper to convert U256 (Starknet struct) to a standard number (must handle 18 decimals)
 function fromStarknetU256(u256) {
-    // This is a placeholder. Real conversion logic is complex, often using BigNumber/felt.js
-    // Assuming U256 is an object like {low: felt, high: felt}
-    const low = BigInt(u256.low);
-    const high = BigInt(u256.high);
-    const total = low + (high << BigInt(128));
-    return parseFloat(total.toString()) / (10 ** ETH_DECIMALS);
+    // This function MUST be properly implemented using felt/BigInt conversion based on the U256 structure.
+    console.warn("fromStarknetU256 is a placeholder. Implement proper U256 conversion.");
+    // Placeholder return for UI to run:
+    return 0; 
 }
 
 // ====================================================================
-// --- 2. WALLET CONNECTION ---
+// --- 2. WALLET CONNECTION AND STATE MANAGEMENT ---
 // ====================================================================
 
 /**
- * Connects to the Starknet wallet (e.g., Argent X, Braavos).
- * This function is called when the "Connect Wallet" button is clicked.
+ * Connects to the Starknet wallet, showing the selection modal.
  */
 window.connectWallet = async function() {
     try {
-        const connectors = await getStarknet.get-starknet({});
-        const connector = connectors[0]; // Assuming user picks the first available
-
-        if (!connector) {
-            window.showMessageBox("Wallet Required", "Please install a Starknet wallet like Argent X or Braavos.");
-            return;
-        }
-
-        window.starknet = await connector.enable();
+        // Triggers the wallet selection modal
+        window.starknet = await getStarknet.connect(); 
         
-        if (window.starknet.account.address) {
-            window.currentAddress = window.starknet.account.address;
-            
-            // Initialize contract instance with the connected provider
-            const provider = window.starknet.provider;
-            const Contract = new starknet.Contract(SPLITMATE_ABI, SPLITMATE_CONTRACT_ADDRESS, provider);
-            
-            // Use the account instance for sending transactions
-            window.splitMateContract = Contract.connect(window.starknet.account);
-            
-            window.showMessageBox("Success", `Wallet connected! Address: ${window.currentAddress.substring(0, 10)}...`, () => {
-                window.updateWalletUI(); // Update UI after successful connection
-            });
-        } else {
-            throw new Error("Wallet connection failed: No address found.");
+        if (!window.starknet || !window.starknet.account || !window.starknet.account.address) {
+             // Connection was rejected or canceled
+             window.showMessageBox("Connection Canceled", "Wallet connection was not completed.");
+             return;
         }
+
+        window.currentAddress = window.starknet.account.address;
+        
+        // Initialize contract instance with the connected provider
+        const provider = window.starknet.provider;
+        const Contract = new starknet.Contract(SPLITMATE_ABI, SPLITMATE_CONTRACT_ADDRESS, provider);
+        
+        // Connect the Contract to the Account instance for sending transactions
+        window.splitMateContract = Contract.connect(window.starknet.account);
+        
+        // Listen for account changes (e.g., user switches address in the wallet)
+        window.starknet.on("accountsChanged", (accounts) => {
+            if (accounts.length > 0) {
+                window.currentAddress = accounts[0];
+            } else {
+                window.currentAddress = null; // Disconnected
+            }
+            window.updateWalletUI();
+        });
+        
+        window.showMessageBox("Success", `Wallet connected! Address: ${window.currentAddress.substring(0, 10)}...`, () => {
+            window.updateWalletUI(); 
+        });
+
     } catch (error) {
         console.error("Wallet connection failed:", error);
         window.showMessageBox("Connection Failed", `Could not connect to Starknet wallet: ${error.message}`);
     }
 }
 
+/**
+ * Disconnects the wallet (if the wallet supports a disconnect action).
+ */
+window.disconnectWallet = async function() {
+    if (window.starknet && window.starknet.disconnect) {
+        await window.starknet.disconnect();
+    }
+    window.currentAddress = null;
+    window.starknet = null;
+    window.splitMateContract = null;
+    window.updateWalletUI();
+}
+
+
 // ====================================================================
-// --- 3. CONTRACT READ/VIEW FUNCTIONS ---
+// --- 3. CONTRACT INTERFACE (EXPOSES FUNCTIONS TO index.html) ---
 // ====================================================================
+
+// Define the namespace expected by index.html
+window.contract = {}; 
 
 /**
- * Fetches all bills associated with the user from the smart contract.
- * @param {string} userAddress - The connected Starknet address.
- * @returns {Array<Object>} The list of bills.
+ * LIVE CALL: Fetches all bills associated with the user from the smart contract.
  */
-window.contract = {}; // Namespace for contract functions
-
 window.contract.getBillsForUser = async function(userAddress) {
-    if (!window.splitMateContract) {
-        console.warn("Contract not initialized. Cannot fetch bills.");
-        return []; 
-    }
+    if (!window.splitMateContract) return []; 
 
     try {
-        // 🛑 LIVE CALL: Call the view function on the contract
+        // 🛑 LIVE CALL: Assumes your contract has this view function
         const result = await window.splitMateContract.get_user_bills(userAddress);
         
-        // This mapping logic depends heavily on your Cairo BillStruct definition!
+        // ⚠️ Mapping Logic: This is the most likely place for an error due to 
+        // mismatch between Cairo struct and JS object.
         const bills = result.bills.map(rawBill => ({
-            // NOTE: You will need to adjust the field names (e.g., rawBill.id, rawBill.total)
             id: rawBill.bill_id.toString(), 
             name: starknet.shortString.decodeShortString(rawBill.name),
             amount: fromStarknetU256(rawBill.total_amount),
             payer: rawBill.payer,
             status: rawBill.is_settled ? "Settled" : "Open", 
-            // This field will need custom logic based on how shares are structured
+            // Needs logic to find the share amount specific to the userAddress
             yourShare: rawBill.shares.find(s => s.address === userAddress)?.amount ? fromStarknetU256(rawBill.shares.find(s => s.address === userAddress).amount) : 0,
         }));
 
@@ -126,23 +132,54 @@ window.contract.getBillsForUser = async function(userAddress) {
 }
 
 /**
- * Fetches the global reputation leaderboard.
- * @returns {Array<Object>} The list of users and their reputation scores.
+ * LIVE CALL: Sends a transaction to create and broadcast a new bill.
+ */
+window.contract.broadcastBill = async function(formData) {
+    if (!window.splitMateContract || !window.starknet) {
+        throw new Error("Wallet or Contract not initialized.");
+    }
+    
+    // ⚠️ Argument Conversion: Must convert the JS formData into the exact Cairo structure.
+    
+    // Example argument preparation (MUST BE ADJUSTED)
+    const contractArgs = {
+        name: starknet.shortString.encodeShortString(formData.name),
+        // Convert amount from float to U256 BigInt felt structure
+        total_amount: starknet.uint256.bnToUint256(BigInt(Math.round(formData.amount * (10 ** 18)))), 
+        payer_address: formData.payer,
+        // The participants array needs complex mapping to the Cairo array/struct type
+        participants: [], 
+    };
+
+    try {
+        // 🛑 LIVE CALL: Execute the transaction
+        const tx = await window.splitMateContract.broadcast_bill(contractArgs);
+        
+        return tx;
+
+    } catch (error) {
+        console.error("Broadcast Bill Transaction Failed:", error);
+        throw new Error(`Transaction execution failed. Check console for details.`);
+    }
+}
+
+/**
+ * LIVE CALL: Fetches the global reputation leaderboard.
  */
 window.contract.getLeaderboard = async function() {
     if (!window.splitMateContract) return [];
 
     try {
-        // 🛑 LIVE CALL: Call the view function on the contract
+        // 🛑 LIVE CALL: Assumes your contract has this view function
         const result = await window.splitMateContract.get_leaderboard();
 
-        // Map the result to the expected UI format (assuming your contract returns rank/score)
+        // ⚠️ Mapping Logic: Adjust field names to match your Cairo struct
         const leaderboard = result.leaderboard.map((raw, index) => ({
             rank: index + 1,
             address: raw.user_address, 
-            score: fromStarknetU256(raw.reputation_score), // Assuming score is U256
+            score: fromStarknetU256(raw.reputation_score), 
             totalBills: raw.total_bills_count.toNumber(), 
-            settledRate: raw.settled_rate.toNumber() / 100 // Assuming rate is an integer 0-100
+            settledRate: raw.settled_rate.toNumber() / 100 
         }));
 
         return leaderboard;
@@ -154,68 +191,40 @@ window.contract.getLeaderboard = async function() {
 
 
 // ====================================================================
-// --- 4. CONTRACT WRITE/TRANSACTION FUNCTIONS ---
+// --- 4. INITIALIZATION (Auto-Connect Attempt) ---
 // ====================================================================
 
-/**
- * Sends a transaction to create and broadcast a new bill.
- * @param {Object} formData - The structured bill data from the form.
- * @returns {Object} The transaction response.
- */
-window.contract.broadcastBill = async function(formData) {
-    if (!window.splitMateContract || !window.starknet) {
-        throw new Error("Wallet or Contract not initialized.");
-    }
-    
-    // ⚠️ IMPORTANT: You must implement the logic to convert the JS formData 
-    // into the exact structure (felts/U256s/Arrays) expected by your Cairo contract's 'broadcast_bill' function.
-    
-    try {
-        // Example argument preparation (MUST BE ADJUSTED)
-        const contractArgs = {
-            name: starknet.shortString.encodeShortString(formData.name),
-            total_amount: starknet.uint256.bnToUint256(BigInt(formData.amount * (10 ** ETH_DECIMALS))),
-            // ... other fields like payer, participant arrays, etc.
-        };
-
-        // 🛑 LIVE CALL: Execute the transaction
-        const tx = await window.splitMateContract.broadcast_bill(contractArgs);
-        
-        return tx;
-
-    } catch (error) {
-        throw new Error(`Transaction failed: ${error.message}`);
-    }
-}
-
-
-// ====================================================================
-// --- 5. INITIALIZATION ---
-// ====================================================================
-
-// Attempt to auto-connect if a wallet is already enabled/injected by the extension
 document.addEventListener('DOMContentLoaded', async () => {
-    // Check if Starknet provider is available
-    if (window.starknet) {
-        try {
-            // Attempt to connect immediately (will only prompt if not previously connected)
-            const provider = await window.starknet.enable({ showModal: false }); 
+    // Attempt to auto-connect if a wallet is already enabled/injected.
+    try {
+        // Use connect with modal: false to attempt auto-connection without a popup
+        const starknetConnector = await getStarknet.connect({ showModal: false }); 
+        
+        if (starknetConnector && starknetConnector.account && starknetConnector.account.address) {
+            window.starknet = starknetConnector;
+            window.currentAddress = window.starknet.account.address;
             
-            if (provider.account.address) {
-                window.currentAddress = provider.account.address;
-                
-                // Initialize contract
-                const Contract = new starknet.Contract(SPLITMATE_ABI, SPLITMATE_CONTRACT_ADDRESS, provider.provider);
-                window.splitMateContract = Contract.connect(provider.account);
+            // Initialize contract
+            const Contract = new starknet.Contract(SPLITMATE_ABI, SPLITMATE_CONTRACT_ADDRESS, window.starknet.provider);
+            window.splitMateContract = Contract.connect(window.starknet.account);
 
-                // Update UI after initial connection
-                if (typeof window.updateWalletUI === 'function') {
-                    window.updateWalletUI();
+            // Set up listener for address changes
+            window.starknet.on("accountsChanged", (accounts) => {
+                if (accounts.length > 0) {
+                    window.currentAddress = accounts[0];
+                } else {
+                    window.currentAddress = null;
                 }
+                window.updateWalletUI();
+            });
+
+            // Update UI after initial connection
+            if (typeof window.updateWalletUI === 'function') {
+                window.updateWalletUI();
             }
-        } catch (error) {
-            console.warn("Auto-connection failed:", error.message);
-            // If auto-connect fails, the 'Connect Wallet' button will handle manual connection.
         }
+    } catch (error) {
+        // If auto-connect fails (e.g., wallet not installed), we wait for the user to click 'Connect Wallet'.
+        console.warn("Auto-connection attempt failed:", error.message);
     }
 });
