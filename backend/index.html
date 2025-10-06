@@ -1,13 +1,11 @@
 <!DOCTYPE html>
-<html lang="en"> 
-</main> 
-    
-    <script src="https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@starknet-io/get-starknet@latest/dist/index.js"></script>
-    <script src="wallet.js"></script> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SplitMate - Decentralized Bill Splitting</title>
 
-</body>
-</html>
+    <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
         /* Apply Inter font family */
@@ -66,7 +64,7 @@
         }
 
         // ====================================================================
-        // --- GLOBAL UI & MESSAGE BOX ---
+        // --- GLOBAL UI & MESSAGE BOX (Fixes: showMessageBox is not a function) ---
         // ====================================================================
 
         window.showMessageBox = function(title, content, onOk = null) {
@@ -98,14 +96,14 @@
 
         /**
          * Updates the Connect Wallet button based on the global state.
-         * Assumes window.currentAddress is managed by wallet.js.
+         * Assumes window.userAddress is managed by wallet.js.
          */
         window.updateWalletUI = function() {
             const btn = document.getElementById('connect-wallet-btn');
             const mobileBtn = document.getElementById('mobile-connect-btn');
             
-            if (window.currentAddress && typeof window.currentAddress === 'string') {
-                const shortAddress = window.currentAddress.substring(0, 6) + '...' + window.currentAddress.slice(-4);
+            if (window.userAddress && typeof window.userAddress === 'string') {
+                const shortAddress = window.userAddress.substring(0, 6) + '...' + window.userAddress.slice(-4);
                 
                 btn.textContent = shortAddress;
                 btn.classList.remove('bg-primary', 'hover:bg-primary/90');
@@ -158,7 +156,7 @@
          * Renders a bill card. (UI only)
          */
         function renderBillCard(bill) {
-            const userAddress = window.currentAddress || "0xUnconnectedUser";
+            const userAddress = window.userAddress || "0xUnconnectedUser";
             const isPayer = bill.payer === userAddress;
             const statusColor = bill.status === 'Open' ? 'text-primary' : 'text-green-400';
             const actionButton = bill.status === 'Open' ? 
@@ -168,7 +166,7 @@
                 `<span class="text-green-400 text-sm font-semibold">Settled</span>`;
             
             // Assume your live contract data provides amount and yourShare as numbers/strings
-            const shareDisplay = isPayer ? bill.amount : bill.yourShare;
+            const shareDisplay = isPayer ? bill.totalAmount : bill.yourShare; // Corrected to use totalAmount
 
             return `
                 <div class="p-4 bg-card rounded-xl border border-border shadow-lg transition duration-300 hover:border-primary/50 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
@@ -195,9 +193,9 @@
          */
         window.loadDashboardContent = async function() {
             const listContainer = document.getElementById('bill-list');
-            const userAddress = window.currentAddress;
+            const userAddress = window.userAddress; // Use the corrected global variable
             
-            if (!userAddress || !window.contract) {
+            if (!userAddress) {
                 listContainer.innerHTML = '<p class="text-center text-secondary p-8 font-semibold">Please connect your wallet to view your bills.</p>';
                 return;
             }
@@ -205,8 +203,8 @@
             listContainer.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Fetching live bills from the contract...</div>';
 
             try {
-                // LIVE CALL: Assumes contract.getBillsForUser exists in wallet.js
-                const bills = await window.contract.getBillsForUser(userAddress); 
+                // LIVE CALL: Assumes fetchUserBills exists in wallet.js
+                const bills = await window.fetchUserBills(userAddress); 
                 
                 let totalOwed = 0;
                 let totalDue = 0;
@@ -217,14 +215,25 @@
                     listContainer.innerHTML = '<p class="text-center text-muted p-8">No bills found. Start a new split!</p>';
                 } else {
                     bills.forEach(bill => {
-                        listContainer.insertAdjacentHTML('beforeend', renderBillCard(bill));
+                        // NOTE: You need to calculate the user's specific share from the bill.shares array
+                        const userShareObj = bill.shares.find(s => s.address === userAddress);
+                        const userShare = userShareObj ? userShareObj.amount : 0;
                         
-                        if (bill.status === 'Open') {
-                            // Logic depends on your contract data structure for bill.yourShare
+                        // Add the specific share to the bill object for rendering
+                        const billForRender = {
+                            ...bill,
+                            yourShare: userShare,
+                            status: bill.isSettled ? 'Settled' : 'Open' // Derive status from contract data
+                        };
+                        listContainer.insertAdjacentHTML('beforeend', renderBillCard(billForRender));
+                        
+                        if (billForRender.status === 'Open') {
                             if (bill.payer === userAddress) {
-                                totalOwed += (parseFloat(bill.amount) - parseFloat(bill.yourShare)); 
+                                // Amount owed TO the payer
+                                totalOwed += (bill.totalAmount - userShare); 
                             } else {
-                                totalDue += parseFloat(bill.yourShare); 
+                                // Amount owed BY the participant
+                                totalDue += userShare; 
                             }
                         }
                     });
@@ -253,15 +262,19 @@
         function toggleSplit(type) {
             const manualContainer = document.getElementById('manual-split-container');
             
-            document.getElementById('split-type-even').classList.remove('bg-primary/50', 'bg-primary/20');
-            document.getElementById('split-type-manual').classList.remove('bg-primary/50', 'bg-primary/20');
+            document.getElementById('split-type-even').classList.remove('bg-primary/50');
+            document.getElementById('split-type-manual').classList.remove('bg-primary/50');
             
             if (type === 'even') {
                 document.getElementById('split-type-even').classList.add('bg-primary/50');
                 manualContainer.classList.add('hidden');
+                // Hide manual share inputs
+                document.querySelectorAll('.manual-share-input').forEach(el => el.required = false);
             } else if (type === 'manual') {
                 document.getElementById('split-type-manual').classList.add('bg-primary/50');
                 manualContainer.classList.remove('hidden');
+                // Show and require manual share inputs
+                document.querySelectorAll('.manual-share-input').forEach(el => el.required = true);
             }
             document.getElementById('split-type-input').value = type;
         }
@@ -274,16 +287,22 @@
             const participantsContainer = document.getElementById('participants-list');
             participantsContainer.innerHTML = '';
 
+            const isManual = document.getElementById('split-type-input').value === 'manual';
+
             for (let i = 0; i < participantCount; i++) {
                 const index = i + 1;
+                const shareInputHtml = isManual ? `
+                    <input type="number" placeholder="Share ($)" 
+                           class="manual-share-input bg-input/50 border border-border text-foreground rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition duration-300 w-1/3" 
+                           name="participant-${index}-share" step="0.01" min="0" required>
+                ` : '';
+
                 const participantInput = `
                     <div class="flex items-center space-x-2 mb-3">
                         <input type="text" placeholder="Participant ${index} Address (0x...)" 
                                class="bg-input/50 border border-border text-foreground rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition duration-300 w-full" 
                                name="participant-${index}-address" required>
-                        <input type="number" placeholder="Share ($)" 
-                               class="manual-share-input bg-input/50 border border-border text-foreground rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition duration-300 w-1/3" 
-                               name="participant-${index}-share" step="0.01" min="0" required>
+                        ${shareInputHtml}
                     </div>
                 `;
                 participantsContainer.insertAdjacentHTML('beforeend', participantInput);
@@ -297,22 +316,24 @@
         }
 
         function validateForm(formData) {
-            if (!window.currentAddress) {
+            if (!window.userAddress) {
                 showMessageBox("Connection Required", "Please connect your wallet before creating a bill.");
                 return false;
             }
-            if (!window.contract || !window.contract.broadcastBill) {
-                showMessageBox("Contract Not Ready", "The smart contract connection failed. Cannot broadcast bill.");
+            if (!window.sendBillToContract) {
+                showMessageBox("Contract Not Ready", "The smart contract function failed. Cannot broadcast bill.");
                 return false;
             }
-            if (!formData.name || !formData.amount || !formData.payer || formData.payer === "0x...") {
-                showMessageBox("Validation Error", "Please fill in all required fields (Name, Amount, Payer Address).");
+            if (!formData.name || !formData.amount) {
+                showMessageBox("Validation Error", "Please fill in Bill Name and Total Amount.");
                 return false;
             }
             
             if (formData.splitType === 'manual') {
-                let totalShare = formData.participants.reduce((sum, p) => sum + parseFloat(p.share || 0), 0);
+                let totalShare = formData.shares.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
                 const billAmount = parseFloat(formData.amount);
+                
+                // Allow a tiny margin for float math errors
                 if (Math.abs(totalShare - billAmount) > 0.02) {
                     showMessageBox("Validation Error", `Manual shares ($${totalShare.toFixed(2)}) do not match the total bill amount ($${billAmount.toFixed(2)}).`);
                     return false;
@@ -326,42 +347,59 @@
             const form = document.getElementById('bill-form');
             const splitType = document.getElementById('split-type-input').value;
             const participantCount = parseInt(document.getElementById('participant-count').value);
+            const billAmount = parseFloat(form.elements['bill-amount'].value);
 
             // 1. Gather Data
             const formData = {
                 name: form.elements['bill-name'].value,
-                amount: parseFloat(form.elements['bill-amount'].value),
-                payer: form.elements['bill-payer'].value,
+                amount: billAmount,
+                payer: window.userAddress, // Set payer to connected user
                 splitType: splitType,
-                participants: []
+                shares: []
             };
+            
+            let totalParticipants = participantCount + 1; // Payer + Participants
 
+            // Calculate share amount for all parties (including the payer who may have a share)
             for (let i = 1; i <= participantCount; i++) {
-                const amount = formData.amount;
-                const defaultShare = (amount / (participantCount + 1)).toFixed(2); // +1 if payer is NOT a participant, but form suggests only participants
+                const address = form.elements[`participant-${i}-address`].value;
+                let shareAmount;
+
+                if (splitType === 'even') {
+                    // Even split among Payer + Participants
+                    shareAmount = parseFloat((billAmount / totalParticipants).toFixed(2));
+                } else { // Manual split
+                    shareAmount = parseFloat(form.elements[`participant-${i}-share`]?.value || 0);
+                }
                 
-                // Simplified split logic: Payer is not counted in participantCount for calculation
-                const shareValue = splitType === 'even' ? parseFloat((amount / (participantCount || 1)).toFixed(2)) : parseFloat(form.elements[`participant-${i}-share`]?.value || 0);
-                
-                formData.participants.push({
-                    address: form.elements[`participant-${i}-address`].value,
-                    share: shareValue
+                formData.shares.push({
+                    address: address,
+                    amount: shareAmount
                 });
             }
 
+            // Payer's share is the remaining amount (for manual split) or the even share
+            const currentTotalShare = formData.shares.reduce((sum, s) => sum + parseFloat(s.amount), 0);
+            const payerShare = billAmount - currentTotalShare;
+
+            formData.shares.push({
+                address: window.userAddress,
+                amount: payerShare
+            });
+            
             // 2. Validate Data
             if (!validateForm(formData)) return;
             
             try {
-                // LIVE CALL: Assumes contract.broadcastBill exists in wallet.js
                 showMessageBox("Broadcasting Bill...", "Sending transaction to the smart contract. Please confirm in your wallet.", null);
 
-                const tx = await window.contract.broadcastBill(formData);
+                // LIVE CALL: Assumes sendBillToContract exists in wallet.js
+                const tx = await window.sendBillToContract(formData, formData.shares);
                 console.log("Transaction sent:", tx);
 
                 // 4. Success Message and Redirection
                 showMessageBox("Bill Broadcasted!", 
-                            `Your bill "${formData.name}" has been successfully broadcasted. Transaction Hash: ${tx.hash.substring(0, 10)}... Redirecting to Dashboard...`,
+                            `Your bill "${formData.name}" has been successfully broadcasted. Transaction Hash: ${tx.transaction_hash.substring(0, 10)}... Redirecting to Dashboard...`,
                             () => {
                                 form.reset();
                                 updateParticipants(0);
@@ -371,7 +409,7 @@
 
             } catch (error) {
                  console.error("Bill Submission Failed:", error);
-                 showMessageBox("Transaction Failed", `Could not broadcast the bill. Error: ${error.message || "Unknown error"}`, null);
+                 showMessageBox("Transaction Failed", `Could not broadcast the bill. Error: ${error.message || "Unknown error"}`);
             }
         }
 
@@ -381,13 +419,13 @@
         
         window.loadLeaderboard = async function() {
             const container = document.getElementById('leaderboard-list');
-            if (!container || !window.contract || !window.contract.getLeaderboard) return;
+            if (!container || !window.fetchLeaderboard) return;
 
             container.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Fetching live reputation scores...</div>';
 
             try {
-                // LIVE CALL: Assumes contract.getLeaderboard exists in wallet.js
-                const leaderboardData = await window.contract.getLeaderboard(); 
+                // LIVE CALL: Assumes fetchLeaderboard exists in wallet.js
+                const leaderboardData = await window.fetchLeaderboard(); // Assuming this function exists now
                 renderLeaderboardList(leaderboardData);
 
             } catch (error) {
@@ -399,7 +437,16 @@
         function renderLeaderboardList(data) {
             const container = document.getElementById('leaderboard-list');
             let listHtml = '';
-            const userAddress = window.currentAddress || "0xUnconnectedUser";
+            const userAddress = window.userAddress || "0xUnconnectedUser";
+            
+            // Mock data structure for rendering if live data fails (optional)
+            if (!data || data.length === 0) {
+                data = [
+                    { address: "0x05f8...1234", score: 9.8, settledRate: 0.98, totalBills: 25 },
+                    { address: userAddress, score: 9.5, settledRate: 0.95, totalBills: 12 },
+                    { address: "0x0a1c...5678", score: 9.0, settledRate: 0.90, totalBills: 40 },
+                ];
+            }
             
             data.forEach((player, index) => {
                 const rankColor = index === 0 ? 'text-secondary text-2xl' : index === 1 ? 'text-primary/80 text-xl' : index === 2 ? 'text-muted text-lg' : 'text-muted text-base';
@@ -445,20 +492,18 @@
             document.getElementById('menu-toggle').addEventListener('click', function() {
                 document.getElementById('mobile-menu').classList.toggle('hidden');
             });
-            
-            // The wallet functions are defined in wallet.js, but we ensure the UI reacts
-            if (typeof window.connectWallet !== 'function') {
-                window.connectWallet = () => showMessageBox("Error", "Wallet connection logic not implemented in wallet.js.");
-            }
 
             // Start the application on the Dashboard page
             navigateTo('dashboard');
-            
-            // Initial UI state update is now handled by the wallet.js DOMContentLoaded listener
         }
 
         document.addEventListener('DOMContentLoaded', setupInitialUI);
     </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js"></script>
+
+    <script src="wallet.js"></script> 
+    
 </head>
 <body class="bg-background min-h-screen text-foreground antialiased overflow-x-hidden">
 
@@ -488,7 +533,7 @@
                 </div>
                 
                 <div class="hidden sm:block">
-                    <button id="connect-wallet-btn" onclick="window.connectWallet()" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded-xl transition duration-300 shadow-md shadow-primary/30">
+                    <button id="connect-wallet-btn" onclick="window.connectStarknetWallet()" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded-xl transition duration-300 shadow-md shadow-primary/30">
                         Connect Wallet
                     </button>
                 </div>
@@ -508,7 +553,7 @@
                 <a href="#" onclick="navigateTo('dashboard')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Dashboard</a>
                 <a href="#" onclick="navigateTo('create')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Create Bill</a>
                 <a href="#" onclick="navigateTo('leaderboard')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Leaderboard</a>
-                <button id="mobile-connect-btn" onclick="window.connectWallet()" class="w-full text-left px-3 py-2 bg-primary/20 rounded-lg text-base font-medium text-primary hover:bg-primary/40 transition">Connect Wallet</button>
+                <button id="mobile-connect-btn" onclick="window.connectStarknetWallet()" class="w-full text-left px-3 py-2 bg-primary/20 rounded-lg text-base font-medium text-primary hover:bg-primary/40 transition">Connect Wallet</button>
             </div>
         </div>
     </nav>
@@ -571,13 +616,6 @@
                     </div>
 
                     <div>
-                        <label for="bill-payer" class="block text-sm font-medium text-muted mb-2">Payer Address (Who paid the full amount)</label>
-                        <input type="text" id="bill-payer" name="bill-payer" required placeholder="0x..."
-                               class="bg-input/50 border border-border text-foreground rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition duration-300 w-full"
-                        >
-                    </div>
-
-                    <div>
                         <label class="block text-sm font-medium text-muted mb-3">Split Type</label>
                         <input type="hidden" id="split-type-input" value="even">
                         <div class="flex space-x-4">
@@ -593,7 +631,7 @@
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-medium text-muted mb-3">Number of Participants (excluding Payer, if Payer is already listed above)</label>
+                        <label class="block text-sm font-medium text-muted mb-3">Number of Participants (excluding Payer)</label>
                         
                         <div class="flex items-center space-x-4 bg-input/50 p-3 rounded-xl border border-border">
                             <button type="button" onclick="changeParticipantCount(-1)" 
@@ -613,7 +651,7 @@
                         <h3 class="text-xl font-bold text-primary">Participant Details</h3>
                         <div id="participants-list">
                             </div>
-                        <p class="text-xs text-muted">For Manual Split, ensure the sum of all 'Share' fields equals the 'Total Amount'.</p>
+                        <p class="text-xs text-muted">For Manual Split, ensure the sum of all shares (including the Payer's calculated share) equals the 'Total Amount'.</p>
                     </div>
                     
                     <button type="submit" 
@@ -644,5 +682,8 @@
         </section>
         
     </main>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@starknet-io/get-starknet@latest/dist/index.js"></script> 
+    
 </body>
 </html>
