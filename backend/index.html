@@ -132,21 +132,28 @@
         
         const VIEWS = ['dashboard', 'create', 'leaderboard'];
         
-        window.navigateTo = function(viewId) {
-            if (!VIEWS.includes(viewId)) return;
+        // --- SPA ROUTING AND NAVIGATION ---
+	window.navigateTo = function(viewId) {
+    const VIEWS = ['dashboard', 'create', 'leaderboard'];
+    if (!VIEWS.includes(viewId)) return;
 
-            // Hide all views and show target view
-            VIEWS.forEach(id => { document.getElementById(id + '-view')?.classList.add('hidden'); });
-            document.getElementById(viewId + '-view')?.classList.remove('hidden');
+    // 1. Hide all views and show target view
+    VIEWS.forEach(id => { document.getElementById(id + '-view')?.classList.add('hidden'); });
+    document.getElementById(viewId + '-view')?.classList.remove('hidden');
 
-            const titleMap = { 'dashboard': 'Dashboard', 'create': 'Create Bill', 'leaderboard': 'Reputation Leaderboard' };
-            document.getElementById('main-header-title').textContent = titleMap[viewId] || 'SplitMate';
+    const titleMap = { 'dashboard': 'Dashboard', 'create': 'Create Bill', 'leaderboard': 'Reputation Leaderboard' };
+    document.getElementById('main-header-title').textContent = titleMap[viewId] || 'SplitMate';
 
-            if (viewId === 'dashboard') loadDashboardContent(); 
-            else if (viewId === 'leaderboard') loadLeaderboard();
+    // 2. Load necessary data
+    if (viewId === 'dashboard') loadDashboardContent(); 
+    else if (viewId === 'leaderboard') loadLeaderboard();
 
-            document.getElementById('mobile-menu').classList.add('hidden');
-        }
+    // 3. Hide mobile menu
+    document.getElementById('mobile-menu').classList.add('hidden');
+    
+    // 🛑 CRITICAL FIX: Ensure the wallet button UI is refreshed on the new page
+    window.updateWalletUI(); 
+}
 
         // ====================================================================
         // --- DASHBOARD LOGIC (Calls wallet.js/contract) ---
