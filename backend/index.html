@@ -43,7 +43,7 @@
 
 
         // ====================================================================
-        // --- 1. STARKNET CONFIGURATION (FROM wallet.js) ---
+        // --- 1. STARKNET CONFIGURATION ---
         // ====================================================================
 
         // >>> ⚠️ IMPORTANT: REPLACE THESE WITH YOUR DEPLOYED CONTRACT DETAILS ⚠️ <<<
@@ -51,6 +51,7 @@
         const ETH_ERC20_ADDRESS = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"; 
         const ETH_DECIMALS = 18;
         
+        // Minimal ABI (from wallet.js)
         const SPLITMATE_ABI = [
             { type: "function", name: "create_bill", inputs: [{ name: "bill_id", type: "felt" }, { name: "name", type: "felt" }, { name: "total_amount", type: "u256" }, { name: "payer", type: "ContractAddress" }, { name: "participants", type: "ContractAddress*" }, { name: "shares", type: "u256*" }], outputs: [], state_mutability: "external" },
             { type: "function", name: "settle_share", inputs: [{ name: "bill_id", type: "felt" }], outputs: [], state_mutability: "external" },
@@ -59,17 +60,20 @@
         ];
 
         // ====================================================================
-        // --- 2. GLOBAL STATE & UTILITIES (FROM wallet.js) ---
+        // --- 2. GLOBAL STATE & UTILITIES ---
         // ====================================================================
 
-        // Defined in the module scope
+        // Defined in the module scope and exposed to the global window
         window.starknetAccount = null; 
         window.starknetProvider = null; 
         window.splitMateContract = null; 
         window.userAddress = null; 
+        
+        // Exposed to the global window for use in index.html functions
+        window.cairo = cairo; // Expose cairo utility
+        window.shortString = shortString; // Expose shortString utility
 
         function toStarknetU256(amount, decimals = ETH_DECIMALS) {
-            // NOTE: cairo is imported above and available directly in this scope
             const multiplier = 10n ** BigInt(decimals);
             const value = BigInt(Math.floor(amount * (Number(multiplier))))
             return cairo.uint256(value.toString());
@@ -82,13 +86,12 @@
         }
 
         // ====================================================================
-        // --- 3. WALLET CONNECTION LOGIC (FROM wallet.js) ---
+        // --- 3. WALLET CONNECTION LOGIC ---
         // ====================================================================
 
         // 🛑 This function is correctly defined in the global scope via the module block
         window.connectWallet = async function() {
             try {
-                // NOTE: getStarknet is imported above and available directly in this scope
                 const starknet = getStarknet(); 
                 if (!starknet) {
                     window.showMessageBox("Wallet Required", "Please install ArgentX or Braavos.", () => {
@@ -104,13 +107,13 @@
                     window.userAddress = window.starknetAccount.address;
                     window.starknetProvider = window.starknetAccount.provider;
                     
-                    // NOTE: Contract is imported above and available directly in this scope
                     window.splitMateContract = new Contract(
                         SPLITMATE_ABI, 
                         SPLITMATE_CONTRACT_ADDRESS, 
                         window.starknetAccount 
                     );
 
+                    // Call the UI update function, which is defined later in this script
                     window.updateWalletUI(); 
                     return true;
                 }
@@ -131,7 +134,6 @@
             window.navigateTo('dashboard');
         }
 
-        // Placeholder functions
         window.connectMetamaskWallet = function() {
             window.showMessageBox("Connect Wallet", "Metamask is for Ethereum/EVM. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet);
         }
@@ -140,9 +142,10 @@
         }
 
         // ====================================================================
-        // --- 4. CONTRACT INTERACTION (WRITE LOGIC) (FROM wallet.js) ---
+        // --- 4. CONTRACT INTERACTION (WRITE LOGIC) ---
         // ====================================================================
 
+        // These functions use the Contract, cairo, etc. which are now imported/defined above
         window.sendBillToContract = async function(formData, shares) {
             if (!window.starknetAccount) {
                 throw new Error("Wallet not connected. Please connect your Starknet wallet.");
@@ -160,7 +163,7 @@
         }
 
         // ====================================================================
-        // --- 5. CONTRACT INTERACTION (READ LOGIC) (FROM wallet.js) ---
+        // --- 5. CONTRACT INTERACTION (READ LOGIC) ---
         // ====================================================================
 
         window.fetchUserBills = async function(userAddress) {
@@ -172,7 +175,6 @@
                 
                 return result.bills.map(rawBill => ({
                     id: rawBill.bill_id, 
-                    // NOTE: shortString is imported above and available directly in this scope
                     name: shortString.decodeShortString(rawBill.name),
                     totalAmount: fromStarknetU256(rawBill.total_amount),
                     payer: rawBill.payer,
