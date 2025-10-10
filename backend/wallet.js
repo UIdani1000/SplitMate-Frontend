@@ -77,20 +77,21 @@ const SPLITMATE_ABI = [
 // --- 2. GLOBAL STATE & UTILITIES ---
 // ====================================================================
 
-window.starknetAccount = null; // The connected wallet account (signer)
-window.starknetProvider = null; // The RPC provider for reads
-window.splitMateContract = null; // The Contract instance
-window.userAddress = null; // The connected user's address
+// Note: The global starknet object containing Coda/cairo utilities is available as 'starknet'
+window.starknetAccount = null; 
+window.starknetProvider = null; 
+window.splitMateContract = null; 
+window.userAddress = null; 
 
 /** Converts float amount to Starknet's u256 structure (with 18 decimals). */
 function toStarknetU256(amount, decimals = ETH_DECIMALS) {
-    if (!window.cairo) {
-        throw new Error("Starknet 'cairo' utilities are missing.");
+    // 🛑 BUG FIX: 'cairo' utilities are typically found directly on the global starknet object.
+    if (!starknet || !starknet.cairo) {
+        throw new Error("Starknet 'cairo' utilities are missing. Is starknet.js loaded?");
     }
-    // Convert float to BigInt string (18 decimals)
     const multiplier = 10n ** BigInt(decimals);
     const value = BigInt(Math.floor(amount * (Number(multiplier))))
-    return window.cairo.uint256(value.toString());
+    return starknet.cairo.uint256(value.toString());
 }
 
 /** Converts Starknet's u256 structure to a human-readable float amount. */
@@ -105,7 +106,6 @@ function fromStarknetU256(u256, decimals = ETH_DECIMALS) {
 // --- 3. WALLET CONNECTION LOGIC ---
 // ====================================================================
 
-// 🛑 RENAMED THIS FUNCTION TO MATCH THE INDEX.HTML BUTTON 🛑
 window.connectWallet = async function() {
     try {
         if (!window.starknet) {
@@ -115,31 +115,29 @@ window.connectWallet = async function() {
             return false;
         }
 
-        // --- 🛑 FIX STARTS HERE 🛑 ---
         let enabled;
         
-        // 1. If the wallet is already "connected" (enabled), use the existing session.
+        // 1. If the wallet is already "connected" (enabled), use the existing session object.
         if (window.starknet.isConnected) {
              enabled = window.starknet;
         } else {
-            // 2. Request connection. This will trigger the popup for new/disconnected wallets.
+            // 2. Request connection. This triggers the popup for new/disconnected wallets.
             enabled = await window.starknet.enable({ starknetVersion: "v5" });
         }
-        // --- 🛑 FIX ENDS HERE 🛑 ---
         
         if (enabled && enabled.account) {
             window.starknetAccount = enabled.account;
             window.userAddress = window.starknetAccount.address;
             window.starknetProvider = window.starknetAccount.provider;
             
-            // Initialize the Contract instance using the connected Account for signing
-            window.splitMateContract = new window.starknet.Contract(
+            // 🛑 CRITICAL FIX: Use the global 'starknet' object (the library) for the Contract constructor, 
+            // not the injected wallet object (window.starknet) which does not expose the Contract class.
+            window.splitMateContract = new starknet.Contract(
                 SPLITMATE_ABI, 
                 SPLITMATE_CONTRACT_ADDRESS, 
                 window.starknetAccount 
             );
 
-            // Rely on updateWalletUI from index.html to handle the button display
             window.updateWalletUI(); 
             
             return true;
@@ -150,7 +148,26 @@ window.connectWallet = async function() {
     }
     return false;
 }
-// ... rest of wallet.js
+
+window.disconnectWallet = function() {
+    // Note: Starknet wallets typically do not support an in-browser disconnect API,
+    // so we simply clear the application's local state.
+    window.starknetAccount = null;
+    window.userAddress = null;
+    window.starknetProvider = null;
+    window.splitMateContract = null;
+
+    window.updateWalletUI(); 
+    window.navigateTo('dashboard');
+}
+
+// Placeholder functions 
+window.connectMetamaskWallet = function() {
+    window.showMessageBox("Connect Wallet", "Metamask is for Ethereum/EVM. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet);
+}
+window.connectXverseWallet = function() {
+    window.showMessageBox("Connect Wallet", "Xverse is for Bitcoin/Stacks. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet);
+}
 
 
 // ====================================================================
@@ -161,11 +178,17 @@ window.connectWallet = async function() {
  * Creates and pays for a bill using a two-step multi-call transaction.
  */
 window.sendBillToContract = async function(formData, shares) {
-    // ... (Your implementation of the transaction multi-call goes here) ...
     if (!window.starknetAccount) {
         throw new Error("Wallet not connected. Please connect your Starknet wallet.");
     }
-    // ... (rest of the logic) ...
+    
+    // ⚠️ TODO: IMPLEMENT MULTI-CALL (APPROVE + CREATE_BILL)
+    // 1. Convert float amounts to u256 using toStarknetU256()
+    // 2. Build the multicall array: [approve_call, create_bill_call]
+    // 3. Send transaction: starknetAccount.execute(multicall_array);
+    
+    // Placeholder return until implemented
+    return { transaction_hash: "0xUNIMPLEMENTED_TX_HASH" };
 }
 
 
@@ -173,11 +196,16 @@ window.sendBillToContract = async function(formData, shares) {
  * Sends a transaction for a participant to pay their share of a bill.
  */
 window.payBill = async function(billId, amountToPay) {
-    // ... (Your implementation of the pay-bill transaction goes here) ...
     if (!window.starknetAccount) {
         throw new Error("Wallet not connected. Please connect your Starknet wallet.");
     }
-    // ... (rest of the logic) ...
+    
+    // ⚠️ TODO: IMPLEMENT PAYMENT LOGIC (APPROVE + SETTLE_SHARE)
+    // 1. Build multicall: [approve_call, settle_share_call]
+    // 2. Send transaction: starknetAccount.execute(multicall_array);
+    
+    // Placeholder return until implemented
+    return { transaction_hash: "0xUNIMPLEMENTED_TX_HASH" };
 }
 
 
@@ -189,12 +217,9 @@ window.payBill = async function(billId, amountToPay) {
  * Fetches the list of bills involving the connected user from the Starknet contract state.
  */
 window.fetchUserBills = async function(userAddress) {
-    // ... (logic remains the same) ...
     if (!window.splitMateContract) {
-        // Return an empty array if not connected, showing a clean dashboard
         return []; 
     }
-    // ... (rest of the logic) ...
     
     try {
         // Call the view function on the contract
@@ -202,9 +227,9 @@ window.fetchUserBills = async function(userAddress) {
         
         // This mapping logic depends heavily on your Cairo BillStruct definition!
         const bills = result.bills.map(rawBill => ({
-            // NOTE: You will need to adjust the field names (e.g., rawBill.id, rawBill.total)
             id: rawBill.bill_id, 
-            name: window.starknet.shortString.decodeShortString(rawBill.name),
+            // 🛑 BUG FIX: shortString utility is on the global starknet object, not the wallet object.
+            name: starknet.shortString.decodeShortString(rawBill.name),
             totalAmount: fromStarknetU256(rawBill.total_amount),
             payer: rawBill.payer,
             isSettled: rawBill.is_settled, 
@@ -222,6 +247,21 @@ window.fetchUserBills = async function(userAddress) {
     }
 }
 
+/**
+ * Fetches the reputation leaderboard.
+ */
+window.fetchLeaderboard = async function() {
+    // ⚠️ TODO: IMPLEMENT FETCH LEADERBOARD LOGIC
+    // This will likely be a read-only call to a contract function like 'get_leaderboard()'
+    
+    // Mock data for immediate testing
+    return [
+        { address: "0x05f8...1234", score: 9.8, settledRate: 0.98, totalBills: 25 },
+        { address: window.userAddress || "0xUnconnectedUser", score: 9.5, settledRate: 0.95, totalBills: 12 },
+        { address: "0x0a1c...5678", score: 9.0, settledRate: 0.90, totalBills: 40 },
+    ];
+}
+
 
 // ====================================================================
 // --- 6. INITIALIZATION ---
@@ -229,7 +269,7 @@ window.fetchUserBills = async function(userAddress) {
 
 // Attempt to auto-connect if a wallet is already enabled/injected by the extension
 document.addEventListener('DOMContentLoaded', () => {
-    // NOTE: Checking for window.starknet ensures the library is loaded first.
+    // Note: window.starknet is the wallet object injected by the extension
     if (window.starknet && window.starknet.isConnected) {
         window.connectWallet().catch(console.error);
     }
