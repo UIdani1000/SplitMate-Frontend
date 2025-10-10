@@ -6,21 +6,13 @@
  */
 
 // ====================================================================
-// --- 0. ENVIRONMENT CHECK AND GLOBAL MAPPING (CRITICAL FIX) ---
+// --- 0. ES MODULE IMPORTS (CRITICAL FIX) ---
 // ====================================================================
 
-// This check ensures that the main Starknet utility library (starknet.js) 
-// is correctly mapped to starknet_lib, regardless of loading order/naming conflict.
-// If index.html's onload failed, the utility object is still in the 'starknet' global.
+// Import the necessary utilities directly from the Starknet library
+import { Contract, cairo, shortString } from 'https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js';
 
-if (typeof window.starknet_lib === 'undefined' && typeof window.starknet !== 'undefined' && typeof window.starknet.Contract !== 'function') {
-    // This condition means: 
-    // 1. starknet_lib (the desired name) is missing.
-    // 2. The utility library is still in the 'starknet' global.
-    // 3. The injected wallet is NOT in the 'starknet' global (since it would have a Contract function).
-    window.starknet_lib = window.starknet;
-    delete window.starknet; // Clear the utility library to make room for the wallet object
-}
+// The getStarknet function is available via window.getStarknet (see index.html)
 
 // ====================================================================
 // --- 1. STARKNET CONFIGURATION (MUST BE REPLACED) ---
@@ -38,6 +30,7 @@ const SPLITMATE_ABI = [
 // ====================================================================
 // --- 2. GLOBAL STATE & UTILITIES ---
 // ====================================================================
+// Expose these global variables to the main script block
 window.starknetAccount = null; 
 window.starknetProvider = null; 
 window.splitMateContract = null; 
@@ -45,13 +38,13 @@ window.userAddress = null;
 
 /** Converts float amount to Starknet's u256 structure. */
 function toStarknetU256(amount, decimals = ETH_DECIMALS) {
-    // Uses the now guaranteed 'window.starknet_lib'
-    if (!window.starknet_lib || !window.starknet_lib.cairo) {
+    // Uses the imported 'cairo' object directly
+    if (!cairo) {
         throw new Error("Starknet 'cairo' utilities are missing.");
     }
     const multiplier = 10n ** BigInt(decimals);
     const value = BigInt(Math.floor(amount * (Number(multiplier))));
-    return window.starknet_lib.cairo.uint256(value.toString());
+    return cairo.uint256(value.toString());
 }
 
 /** Converts Starknet's u256 structure to a human-readable float amount. */
@@ -66,8 +59,10 @@ function fromStarknetU256(u256, decimals = ETH_DECIMALS) {
 // --- 3. WALLET CONNECTION LOGIC ---
 // ====================================================================
 
+// Expose connectWallet globally
 window.connectWallet = async function() {
     try {
+        // Use the wallet object injected into window.starknet by the extension
         if (!window.starknet) {
             window.showMessageBox("Wallet Required", "Please install ArgentX or Braavos.", () => {
                 window.open("https://www.starknet.io/en/ecosystem/wallets", "_blank");
@@ -76,7 +71,7 @@ window.connectWallet = async function() {
         }
 
         let enabled;
-        // Check for existing connection to avoid unnecessary pop-ups
+        // Check for existing connection
         if (window.starknet.isConnected) {
              enabled = window.starknet;
         } else {
@@ -88,8 +83,8 @@ window.connectWallet = async function() {
             window.userAddress = window.starknetAccount.address;
             window.starknetProvider = window.starknetAccount.provider;
             
-            // Uses the now guaranteed 'window.starknet_lib' for Contract constructor
-            window.splitMateContract = new window.starknet_lib.Contract(
+            // 🛑 FIX: Use the imported 'Contract' class directly (no global conflict)
+            window.splitMateContract = new Contract(
                 SPLITMATE_ABI, 
                 SPLITMATE_CONTRACT_ADDRESS, 
                 window.starknetAccount 
@@ -147,8 +142,8 @@ window.fetchUserBills = async function(userAddress) {
         
         return result.bills.map(rawBill => ({
             id: rawBill.bill_id, 
-            // Uses the now guaranteed 'window.starknet_lib' for shortString utility
-            name: window.starknet_lib.shortString.decodeShortString(rawBill.name),
+            // 🛑 FIX: Use the imported 'shortString' utility
+            name: shortString.decodeShortString(rawBill.name),
             totalAmount: fromStarknetU256(rawBill.total_amount),
             payer: rawBill.payer,
             isSettled: rawBill.is_settled, 
@@ -171,15 +166,3 @@ window.fetchLeaderboard = async function() {
         { address: "0x0a1c...5678", score: 9.0, settledRate: 0.90, totalBills: 40 },
     ];
 }
-
-
-// ====================================================================
-// --- 6. INITIALIZATION ---
-// ====================================================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Check for auto-connect ONLY after the DOM is ready
-    if (window.starknet && window.starknet.isConnected) {
-        window.connectWallet().catch(console.error);
-    }
-});
