@@ -115,8 +115,17 @@ window.connectWallet = async function() {
             return false;
         }
 
-        // Request connection and access to the user's account
-        const enabled = await window.starknet.enable({ starknetVersion: "v5" });
+        // --- 🛑 FIX STARTS HERE 🛑 ---
+        let enabled;
+        
+        // 1. If the wallet is already "connected" (enabled), use the existing session.
+        if (window.starknet.isConnected) {
+             enabled = window.starknet;
+        } else {
+            // 2. Request connection. This will trigger the popup for new/disconnected wallets.
+            enabled = await window.starknet.enable({ starknetVersion: "v5" });
+        }
+        // --- 🛑 FIX ENDS HERE 🛑 ---
         
         if (enabled && enabled.account) {
             window.starknetAccount = enabled.account;
@@ -137,32 +146,11 @@ window.connectWallet = async function() {
         }
     } catch (error) {
         console.error("Starknet wallet connection failed:", error);
-        // The 'User aborted' error is caught here
         window.showMessageBox("Connection Error", `Failed to connect: ${error.message || "User rejected connection."}`);
     }
     return false;
 }
-
-window.disconnectWallet = function() {
-    window.starknetAccount = null;
-    window.userAddress = null;
-    window.starknetProvider = null;
-    window.splitMateContract = null;
-
-    // Rely on updateWalletUI from index.html to handle the button reset
-    window.updateWalletUI(); 
-    
-    // After disconnect, redirecting to dashboard will ensure the UI updates
-    window.navigateTo('dashboard');
-}
-
-// Placeholder functions (for UI buttons that target other chains)
-window.connectMetamaskWallet = function() {
-    window.showMessageBox("Connect Wallet", "Metamask is for Ethereum/EVM. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet);
-}
-window.connectXverseWallet = function() {
-    window.showMessageBox("Connect Wallet", "Xverse is for Bitcoin/Stacks. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet);
-}
+// ... rest of wallet.js
 
 
 // ====================================================================
