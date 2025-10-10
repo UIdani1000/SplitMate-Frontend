@@ -9,11 +9,9 @@
 // --- 0. ES MODULE IMPORTS (CRITICAL FIX) ---
 // ====================================================================
 
-// Import the necessary utilities directly from the Starknet library
-// This fixes the 'Contract is not a constructor' error and makes cairo available.
+// Fixes: "does not provide an export named 'Contract'" and "cairo is not defined"
 import { Contract, cairo, shortString } from 'https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js';
 
-// The getStarknet function is available via window.getStarknet (see index.html)
 
 // ====================================================================
 // --- 1. STARKNET CONFIGURATION (MUST BE REPLACED) ---
@@ -93,7 +91,7 @@ window.userAddress = null; // The connected user's address
 
 /** Converts float amount to Starknet's u256 structure (with 18 decimals). */
 function toStarknetU256(amount, decimals = ETH_DECIMALS) {
-    // Uses the imported 'cairo' object directly
+    // 🛑 FIX: Use the imported 'cairo' object directly
     if (!cairo) {
         throw new Error("Starknet 'cairo' utilities are missing.");
     }
