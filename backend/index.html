@@ -151,7 +151,7 @@
     // 3. Hide mobile menu
     document.getElementById('mobile-menu').classList.add('hidden');
     
-    // 🛑 CRITICAL FIX: Ensure the wallet button UI is refreshed on the new page
+    // CRITICAL FIX: Ensure the wallet button UI is refreshed on the new page
     window.updateWalletUI(); 
 }
 
@@ -289,6 +289,8 @@
         function updateParticipants(count) {
             const participantCount = Math.max(0, count); // Allow 0 participants
             document.getElementById('participant-count').value = participantCount;
+            
+            // 🛑 FIX APPLIED HERE: This element is now guaranteed to exist in the HTML 
             document.getElementById('participant-count-display').textContent = participantCount;
 
             const participantsContainer = document.getElementById('participants-list');
@@ -643,8 +645,12 @@
                                     class="w-10 h-10 bg-primary/20 text-primary rounded-lg text-2xl font-bold hover:bg-primary/40 transition duration-200">
                                 &minus;
                             </button>
-                            <input type="number" id="participant-count" name="participant-count" value="0" min="0" readonly
-                                   class="w-16 text-center text-foreground bg-transparent text-xl font-bold border-none focus:outline-none">
+                            
+                            <span id="participant-count-display" 
+                                class="w-16 text-center text-foreground bg-transparent text-xl font-bold border-none focus:outline-none">0</span>
+                                
+                            <input type="hidden" id="participant-count" name="participant-count" value="0"> 
+                            
                             <button type="button" onclick="changeParticipantCount(1)" 
                                     class="w-10 h-10 bg-primary/20 text-primary rounded-lg text-2xl font-bold hover:bg-primary/40 transition duration-200">
                                 &plus;
