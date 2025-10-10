@@ -35,10 +35,10 @@
         // --- 0. ES MODULE IMPORTS (CRITICAL FIX: Solves all library errors) ---
         // ====================================================================
 
-        // 1. Import core Starknet tools (Contract, cairo, shortString)
+        // Import core Starknet tools (Contract, cairo, shortString)
         import { Contract, cairo, shortString } from 'https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js';
         
-        // 2. Import the wallet connector utility
+        // Import the wallet connector utility
         import { getStarknet } from 'https://cdn.jsdelivr.net/npm/@starknet-io/get-starknet@latest/dist/index.js';
 
 
@@ -69,9 +69,9 @@
         window.splitMateContract = null; 
         window.userAddress = null; 
         
-        // Exposed to the global window for use in index.html functions
-        window.cairo = cairo; // Expose cairo utility
-        window.shortString = shortString; // Expose shortString utility
+        // Expose utilities globally for the other functions to use
+        window.cairo = cairo; 
+        window.shortString = shortString; 
 
         function toStarknetU256(amount, decimals = ETH_DECIMALS) {
             const multiplier = 10n ** BigInt(decimals);
@@ -113,7 +113,7 @@
                         window.starknetAccount 
                     );
 
-                    // Call the UI update function, which is defined later in this script
+                    // Call the UI update function
                     window.updateWalletUI(); 
                     return true;
                 }
@@ -145,7 +145,6 @@
         // --- 4. CONTRACT INTERACTION (WRITE LOGIC) ---
         // ====================================================================
 
-        // These functions use the Contract, cairo, etc. which are now imported/defined above
         window.sendBillToContract = async function(formData, shares) {
             if (!window.starknetAccount) {
                 throw new Error("Wallet not connected. Please connect your Starknet wallet.");
@@ -171,6 +170,7 @@
                 return []; 
             }
             try {
+                // NOTE: Using the global shortString utility
                 const result = await window.splitMateContract.get_user_bills(userAddress);
                 
                 return result.bills.map(rawBill => ({
@@ -201,7 +201,7 @@
 
 
         // ====================================================================
-        // --- 6. TAILWIND CONFIGURATION & UI LOGIC (Original index.html) ---
+        // --- 6. TAILWIND CONFIGURATION & UI LOGIC (Original index.html content) ---
         // ====================================================================
 
         tailwind.config = {
@@ -405,7 +405,7 @@
         function updateParticipants(count) {
             const participantCount = Math.max(0, count);
             document.getElementById('participant-count').value = participantCount;
-            document.getElementById('participant-count-display').textContent = participantCount;
+            document.getElementById('participant-count-display').textContent = participantCount; // Update display span
 
             const participantsContainer = document.getElementById('participants-list');
             participantsContainer.innerHTML = '';
@@ -594,6 +594,7 @@
                 document.getElementById('mobile-menu').classList.toggle('hidden');
             });
 
+            // Start the application on the Dashboard page
             window.navigateTo('dashboard');
         }
 
@@ -601,7 +602,7 @@
             setupInitialUI();
             
             // Auto-connect attempt using the loaded module
-            const starknet = getStarknet();
+            const starknet = getStarknet(); // The function is available here
             if (starknet && starknet.isConnected) {
                 window.connectWallet().catch(console.error);
             }
