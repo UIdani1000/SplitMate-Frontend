@@ -77,10 +77,12 @@ const SPLITMATE_ABI = [
 // --- 2. GLOBAL STATE & UTILITIES ---
 // ====================================================================
 
-window.starknetAccount = null; // The connected wallet account (signer)
-window.starknetProvider = null; // The RPC provider for reads
-window.splitMateContract = null; // The Contract instance
-window.userAddress = null; // The connected user's address
+window.starknetAccount = null; // The connected Starknet wallet account (signer)
+window.starknetProvider = null; // The Starknet RPC provider for reads
+window.splitMateContract = null; // The Starknet Contract instance
+window.userAddress = null; // The connected user's address (Starknet or EVM)
+window.isStarknetWallet = false; // NEW: Flag to track wallet type
+window.evmProvider = null; // NEW: Ethers.js Provider for EVM
 
 /** Converts float amount to Starknet's u256 structure (with 18 decimals). */
 function toStarknetU256(amount, decimals = ETH_DECIMALS) {
@@ -105,11 +107,13 @@ function fromStarknetU256(u256, decimals = ETH_DECIMALS) {
 // --- 3. WALLET CONNECTION LOGIC ---
 // ====================================================================
 
-// 🛑 RENAMED THIS FUNCTION TO MATCH THE INDEX.HTML BUTTON 🛑
-window.connectWallet = async function() {
+/**
+ * Handles connection for ArgentX or Braavos (Starknet wallets).
+ */
+window.connectStarknetWallet = async function() {
     try {
         if (!window.starknet) {
-            window.showMessageBox("Wallet Required", "Please install ArgentX or Braavos.", () => {
+            window.showMessageBox("Wallet Required", "Please install ArgentX or Braavos for Starknet transactions.", () => {
                 window.open("https://www.starknet.io/en/ecosystem/wallets", "_blank");
             });
             return false;
@@ -122,6 +126,7 @@ window.connectWallet = async function() {
             window.starknetAccount = enabled.account;
             window.userAddress = window.starknetAccount.address;
             window.starknetProvider = window.starknetAccount.provider;
+            window.isStarknetWallet = true; // Set flag
             
             // Initialize the Contract instance using the connected Account for signing
             window.splitMateContract = new window.starknet.Contract(
@@ -130,45 +135,84 @@ window.connectWallet = async function() {
                 window.starknetAccount 
             );
 
-            // Update UI elements (assumes existing IDs)
-            document.getElementById('connect-status').textContent = `Connected: ${window.userAddress.slice(0, 6)}...${window.userAddress.slice(-4)}`;
-            document.getElementById('connect-button-container').classList.add('hidden');
-            document.getElementById('disconnect-button-container').classList.remove('hidden');
-            
             // This relies on updateWalletUI from index.html
-            window.updateWalletUI(); 
+            window.updateWalletUI(true); 
             
             return true;
         }
     } catch (error) {
         console.error("Starknet wallet connection failed:", error);
-        window.showMessageBox("Connection Error", `Failed to connect: ${error.message || "User rejected connection."}`);
+        window.showMessageBox("Connection Error", `Starknet connection failed: ${error.message || "User rejected connection."}`);
     }
     return false;
 }
 
+/**
+ * NEW: Handles connection for Metamask (EVM wallet).
+ */
+window.connectEVMWallet = async function() {
+    try {
+        if (!window.ethereum) {
+            window.showMessageBox("Metamask Required", "Please install Metamask to connect an EVM wallet.", () => {
+                window.open("https://metamask.io/", "_blank");
+            });
+            return false;
+        }
+
+        // Use Ethers.js to connect
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.send("eth_requestAccounts", []);
+        
+        if (accounts.length > 0) {
+            const signer = await provider.getSigner();
+            
+            // Clear Starknet state
+            window.starknetAccount = null;
+            window.splitMateContract = null;
+            
+            // Set EVM state
+            window.userAddress = accounts[0];
+            window.evmProvider = provider;
+            window.isStarknetWallet = false; // Set flag
+            
+            // Warn user about incompatibility
+            window.showMessageBox("EVM Wallet Connected", 
+                                  "You are now connected with Metamask (EVM). Please note: This wallet cannot natively sign or interact with Starknet contracts for bill splitting.", 
+                                  () => {
+                                      window.updateWalletUI(false); // Update UI without Starknet flag
+                                  });
+            return true;
+        }
+
+    } catch (error) {
+        console.error("EVM wallet connection failed:", error);
+        window.showMessageBox("Connection Error", `Metamask connection failed: ${error.message || "User rejected connection."}`);
+    }
+    return false;
+}
+
+// Renamed and repurposed the original connectWallet
+window.connectWallet = window.connectStarknetWallet; 
+
 window.disconnectWallet = function() {
+    // Clear all connection state
     window.starknetAccount = null;
     window.userAddress = null;
     window.starknetProvider = null;
     window.splitMateContract = null;
+    window.evmProvider = null;
+    window.isStarknetWallet = false;
 
-    document.getElementById('connect-status').textContent = 'Disconnected';
-    document.getElementById('connect-button-container').classList.remove('hidden');
-    document.getElementById('disconnect-button-container').classList.add('hidden');
-    
-    // Redirect to the connect page
-    window.loadPageContent('connect');
+    // Reset UI
+    window.updateWalletUI(false); 
+
+    // NOTE: Removed deprecated DOM manipulations like document.getElementById('connect-status')
+    // and let window.updateWalletUI handle the UI reset.
 }
 
-// Placeholder functions (for UI buttons that target other chains)
-window.connectMetamaskWallet = function() {
-    // 🛑 This is the current function in your code.
-    window.showMessageBox("Connect Wallet", "Metamask is for Ethereum/EVM. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet);
-}
-window.connectXverseWallet = function() {
-    window.showMessageBox("Connect Wallet", "Xverse is for Bitcoin/Stacks. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet);
-}
+// Placeholder functions for the old logic are now obsolete/removed
+window.connectMetamaskWallet = window.connectEVMWallet;
+window.connectXverseWallet = window.connectStarknetWallet; // Just points to the main Starknet function
 
 
 // ====================================================================
@@ -179,11 +223,10 @@ window.connectXverseWallet = function() {
  * Creates and pays for a bill using a two-step multi-call transaction.
  */
 window.sendBillToContract = async function(formData, shares) {
-    // ... (logic remains the same) ...
     if (!window.starknetAccount) {
-        throw new Error("Wallet not connected. Please connect your Starknet wallet.");
+        throw new Error("Starknet Wallet not connected or EVM wallet connected. Starknet transaction required.");
     }
-    // ... (rest of the logic) ...
+    // ... (rest of the Starknet logic remains the same) ...
 }
 
 
@@ -191,11 +234,10 @@ window.sendBillToContract = async function(formData, shares) {
  * Sends a transaction for a participant to pay their share of a bill.
  */
 window.payBill = async function(billId, amountToPay) {
-    // ... (logic remains the same) ...
     if (!window.starknetAccount) {
-        throw new Error("Wallet not connected. Please connect your Starknet wallet.");
+        throw new Error("Starknet Wallet not connected or EVM wallet connected. Starknet transaction required.");
     }
-    // ... (rest of the logic) ...
+    // ... (rest of the Starknet logic remains the same) ...
 }
 
 
@@ -207,12 +249,11 @@ window.payBill = async function(billId, amountToPay) {
  * Fetches the list of bills involving the connected user from the Starknet contract state.
  */
 window.fetchUserBills = async function(userAddress) {
-    // ... (logic remains the same) ...
-    if (!window.splitMateContract) {
-        // Return an empty array if not connected, showing a clean dashboard
+    if (!window.splitMateContract || !window.isStarknetWallet) {
+        // Return an empty array if not connected OR if EVM wallet is connected
         return []; 
     }
-    // ... (rest of the logic) ...
+    // ... (rest of the Starknet logic remains the same) ...
 }
 
 
@@ -222,8 +263,9 @@ window.fetchUserBills = async function(userAddress) {
 
 // Attempt to auto-connect if a wallet is already enabled/injected by the extension
 document.addEventListener('DOMContentLoaded', () => {
-    // NOTE: Checking for window.starknet ensures the library is loaded first.
+    // Attempt Starknet auto-connect
     if (window.starknet && window.starknet.isConnected) {
-        window.connectWallet().catch(console.error);
+        window.connectStarknetWallet().catch(console.error);
     }
+    // You could optionally add Metamask auto-connect here, but it's often best to wait for user interaction.
 });
