@@ -35,10 +35,10 @@
         // --- 0. ES MODULE IMPORTS (CRITICAL FIX: Solves all library errors) ---
         // ====================================================================
 
-        // Import core Starknet tools (Contract, cairo, shortString)
+        // 1. Import core Starknet tools (Contract, cairo, shortString)
         import { Contract, cairo, shortString } from 'https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js';
         
-        // Import the wallet connector utility
+        // 2. Import the wallet connector utility
         import { getStarknet } from 'https://cdn.jsdelivr.net/npm/@starknet-io/get-starknet@latest/dist/index.js';
 
 
@@ -52,7 +52,6 @@
         const ETH_DECIMALS = 18;
         
         const SPLITMATE_ABI = [
-            // Minimal ABI for the required functions 
             { type: "function", name: "create_bill", inputs: [{ name: "bill_id", type: "felt" }, { name: "name", type: "felt" }, { name: "total_amount", type: "u256" }, { name: "payer", type: "ContractAddress" }, { name: "participants", type: "ContractAddress*" }, { name: "shares", type: "u256*" }], outputs: [], state_mutability: "external" },
             { type: "function", name: "settle_share", inputs: [{ name: "bill_id", type: "felt" }], outputs: [], state_mutability: "external" },
             { type: "function", name: "get_user_bills", inputs: [{ name: "user_address", type: "ContractAddress" }], outputs: [{ name: "bills", type: "BillStruct*" }], state_mutability: "view" },
@@ -63,13 +62,14 @@
         // --- 2. GLOBAL STATE & UTILITIES (FROM wallet.js) ---
         // ====================================================================
 
+        // Defined in the module scope
         window.starknetAccount = null; 
         window.starknetProvider = null; 
         window.splitMateContract = null; 
         window.userAddress = null; 
 
         function toStarknetU256(amount, decimals = ETH_DECIMALS) {
-            if (!cairo) throw new Error("Starknet 'cairo' utilities are missing.");
+            // NOTE: cairo is imported above and available directly in this scope
             const multiplier = 10n ** BigInt(decimals);
             const value = BigInt(Math.floor(amount * (Number(multiplier))))
             return cairo.uint256(value.toString());
@@ -85,9 +85,10 @@
         // --- 3. WALLET CONNECTION LOGIC (FROM wallet.js) ---
         // ====================================================================
 
-        // 🛑 This function is now correctly defined in the global scope via the <script type="module"> block
+        // 🛑 This function is correctly defined in the global scope via the module block
         window.connectWallet = async function() {
             try {
+                // NOTE: getStarknet is imported above and available directly in this scope
                 const starknet = getStarknet(); 
                 if (!starknet) {
                     window.showMessageBox("Wallet Required", "Please install ArgentX or Braavos.", () => {
@@ -103,6 +104,7 @@
                     window.userAddress = window.starknetAccount.address;
                     window.starknetProvider = window.starknetAccount.provider;
                     
+                    // NOTE: Contract is imported above and available directly in this scope
                     window.splitMateContract = new Contract(
                         SPLITMATE_ABI, 
                         SPLITMATE_CONTRACT_ADDRESS, 
@@ -170,6 +172,7 @@
                 
                 return result.bills.map(rawBill => ({
                     id: rawBill.bill_id, 
+                    // NOTE: shortString is imported above and available directly in this scope
                     name: shortString.decodeShortString(rawBill.name),
                     totalAmount: fromStarknetU256(rawBill.total_amount),
                     payer: rawBill.payer,
@@ -652,7 +655,7 @@
                 <a href="#" onclick="navigateTo('dashboard')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Dashboard</a>
                 <a href="#" onclick="navigateTo('create')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Create Bill</a>
                 <a href="#" onclick="navigateTo('leaderboard')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Leaderboard</a>
-                    <button id="mobile-connect-btn" onclick="window.connectWallet()" class="w-full text-left px-3 py-2 bg-primary/20 rounded-lg text-base font-medium text-primary hover:bg-primary/40 transition">
+                <button id="mobile-connect-btn" onclick="window.connectWallet()" class="w-full text-left px-3 py-2 bg-primary/20 rounded-lg text-base font-medium text-primary hover:bg-primary/40 transition">
     Connect Wallet
 </button>
             </div>
