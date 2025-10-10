@@ -283,7 +283,7 @@
             const participantCount = Math.max(0, count);
             document.getElementById('participant-count').value = participantCount;
             
-            // 🛑 CRITICAL FIX: This span now exists to update the display count without crashing
+            // CRITICAL FIX: The element the script expects to update
             document.getElementById('participant-count-display').textContent = participantCount;
 
             const participantsContainer = document.getElementById('participants-list');
@@ -566,7 +566,7 @@
         
     </main>
     
-    <script src="https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js" onload="window.starknet_lib = starknet; delete starknet;"></script>
     
     <script src="https://cdn.jsdelivr.net/npm/@starknet-io/get-starknet@latest/dist/index.js"></script>
     

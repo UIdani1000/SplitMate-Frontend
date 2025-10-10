@@ -21,20 +21,21 @@ const SPLITMATE_ABI = [
 // ====================================================================
 // --- 2. GLOBAL STATE & UTILITIES ---
 // ====================================================================
-window.starknetAccount = null;
-window.starknetProvider = null;
-window.splitMateContract = null;
-window.userAddress = null;
+// Note: starknet_lib is the renamed Starknet utility library (see index.html)
+window.starknetAccount = null; 
+window.starknetProvider = null; 
+window.splitMateContract = null; 
+window.userAddress = null; 
 
 /** Converts float amount to Starknet's u256 structure. */
 function toStarknetU256(amount, decimals = ETH_DECIMALS) {
-    // 🛑 FIX: Use global 'starknet' object for cairo utilities
-    if (!starknet || !starknet.cairo) {
-        throw new Error("Starknet 'cairo' utilities are missing.");
+    // 🛑 FIX: Use the renamed library object 'starknet_lib'
+    if (!window.starknet_lib || !window.starknet_lib.cairo) {
+        throw new Error("Starknet 'cairo' utilities are missing. Is starknet.js loaded?");
     }
     const multiplier = 10n ** BigInt(decimals);
     const value = BigInt(Math.floor(amount * (Number(multiplier))));
-    return starknet.cairo.uint256(value.toString());
+    return window.starknet_lib.cairo.uint256(value.toString());
 }
 
 /** Converts Starknet's u256 structure to a human-readable float amount. */
@@ -59,7 +60,7 @@ window.connectWallet = async function() {
         }
 
         let enabled;
-        // Check for existing connection to avoid unnecessary pop-ups (Fixes "nothing happens")
+        // Check for existing connection to avoid unnecessary pop-ups
         if (window.starknet.isConnected) {
              enabled = window.starknet;
         } else {
@@ -71,14 +72,13 @@ window.connectWallet = async function() {
             window.userAddress = window.starknetAccount.address;
             window.starknetProvider = window.starknetAccount.provider;
             
-            // 🛑 CRITICAL FIX: Use global 'starknet' (the library) for Contract constructor
-            window.splitMateContract = new starknet.Contract(
+            // 🛑 CRITICAL FIX: Use the renamed library object 'starknet_lib' for Contract constructor
+            window.splitMateContract = new window.starknet_lib.Contract(
                 SPLITMATE_ABI, 
                 SPLITMATE_CONTRACT_ADDRESS, 
                 window.starknetAccount 
             );
 
-            // Rely on updateWalletUI from index.html (removed redundant UI updates)
             window.updateWalletUI(); 
             
             return true;
@@ -92,17 +92,24 @@ window.connectWallet = async function() {
 }
 
 window.disconnectWallet = function() {
+    // Note: Starknet wallets typically do not support an in-browser disconnect API,
+    // so we simply clear the application's local state.
     window.starknetAccount = null;
     window.userAddress = null;
     window.starknetProvider = null;
     window.splitMateContract = null;
 
-    // Rely on updateWalletUI from index.html (removed redundant UI updates)
     window.updateWalletUI(); 
     window.navigateTo('dashboard');
 }
 
-// ... (Other connection placeholder functions remain the same) ...
+// Placeholder functions 
+window.connectMetamaskWallet = function() {
+    window.showMessageBox("Connect Wallet", "Metamask is for Ethereum/EVM. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet);
+}
+window.connectXverseWallet = function() {
+    window.showMessageBox("Connect Wallet", "Xverse is for Bitcoin/Stacks. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet);
+}
 
 
 // ====================================================================
@@ -125,11 +132,11 @@ window.fetchUserBills = async function(userAddress) {
     if (!window.splitMateContract) return []; 
     try {
         const result = await window.splitMateContract.get_user_bills(userAddress);
-        // ... (Mapping logic for bills remains the same) ...
+        
         return result.bills.map(rawBill => ({
             id: rawBill.bill_id, 
-            // 🛑 FIX: Use global 'starknet' object for shortString utility
-            name: starknet.shortString.decodeShortString(rawBill.name),
+            // 🛑 FIX: Use the renamed library object 'starknet_lib' for shortString utility
+            name: window.starknet_lib.shortString.decodeShortString(rawBill.name),
             totalAmount: fromStarknetU256(rawBill.total_amount),
             payer: rawBill.payer,
             isSettled: rawBill.is_settled, 
