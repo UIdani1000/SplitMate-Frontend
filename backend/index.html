@@ -294,10 +294,13 @@
         function updateParticipants(count) {
             const participantCount = Math.max(0, count); // Allow 0 participants
             document.getElementById('participant-count').value = participantCount;
-            // FIX: This element was previously misnamed in the HTML. It should be an input or a span
+            // FIX: Ensure the display element is updated (based on your original logic)
             const displayElement = document.getElementById('participant-count-display');
             if (displayElement) {
                 displayElement.textContent = participantCount;
+            } else {
+                // If using the number input itself as the display:
+                document.getElementById('participant-count').value = participantCount;
             }
 
 
@@ -377,7 +380,7 @@
             
             let totalParticipants = participantCount + 1; // Payer + Participants
 
-            // Calculate share amount for all parties (excluding the payer who may have a share)
+            // Calculate share amount for all parties (including the payer who may have a share)
             for (let i = 1; i <= participantCount; i++) {
                 const address = form.elements[`participant-${i}-address`].value;
                 let shareAmount;
@@ -516,190 +519,19 @@
 
         document.addEventListener('DOMContentLoaded', setupInitialUI);
     </script>
-</head>
+    
+    </head>
 <body class="bg-background min-h-screen text-foreground antialiased overflow-x-hidden">
 
     <div id="message-box" class="hidden fixed inset-0 z-50 bg-background/80 backdrop-blur-sm items-center justify-center p-4">
-        <div class="bg-[#1a0035] border border-primary/50 rounded-xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 id="message-title" class="text-xl font-bold mb-2 text-primary">Notification</h3>
-            <p id="message-content" class="text-muted mb-6"></p>
-            <div class="flex justify-end">
-                <button onclick="closeMessageBox()" class="px-6 py-2 bg-primary/70 rounded-lg text-white font-semibold hover:bg-primary transition duration-200 shadow-lg">
-                    OK
-                </button>
-            </div>
         </div>
-    </div>
     
     <nav class="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex-shrink-0">
-                    <span class="text-3xl font-extrabold text-primary tracking-wider">Split<span class="text-secondary">Mate</span></span>
-                </div>
-                
-                <div class="hidden sm:ml-6 sm:flex sm:space-x-4">
-                    <a href="#" onclick="navigateTo('dashboard')" class="text-muted hover:text-primary px-3 py-2 rounded-lg text-sm font-medium transition duration-200">Dashboard</a>
-                    <a href="#" onclick="navigateTo('create')" class="text-muted hover:text-primary px-3 py-2 rounded-lg text-sm font-medium transition duration-200">Create Bill</a>
-                    <a href="#" onclick="navigateTo('leaderboard')" class="text-muted hover:text-primary px-3 py-2 rounded-lg text-sm font-medium transition duration-200">Leaderboard</a>
-                </div>
-                
-                <div class="hidden sm:block">
-                    <button id="connect-wallet-btn" onclick="window.connectWallet()" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded-xl transition duration-300 shadow-md shadow-primary/30">
-    Connect Wallet
-</button>
-                </div>
-
-                <div class="sm:hidden flex items-center">
-                    <button id="menu-toggle" type="button" class="inline-flex items-center justify-center p-2 rounded-lg text-primary hover:text-white hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary/50" aria-controls="mobile-menu" aria-expanded="false">
-                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div class="sm:hidden hidden" id="mobile-menu">
-            <div class="px-2 pt-2 pb-3 space-y-1">
-                <a href="#" onclick="navigateTo('dashboard')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Dashboard</a>
-                <a href="#" onclick="navigateTo('create')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Create Bill</a>
-                <a href="#" onclick="navigateTo('leaderboard')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Leaderboard</a>
-                <button id="mobile-connect-btn" onclick="window.connectWallet()" class="w-full text-left px-3 py-2 bg-primary/20 rounded-lg text-base font-medium text-primary hover:bg-primary/40 transition">
-    Connect Wallet
-</button>
-            </div>
-        </div>
-    </nav>
+        </nav>
 
     <main class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <h1 id="main-header-title" class="text-3xl sm:text-4xl font-extrabold text-foreground mb-8 border-b-2 border-primary/20 pb-2">Dashboard</h1>
+        </main>
 
-        <section id="dashboard-view" class="space-y-8">
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                <div class="bg-card rounded-xl p-6 border border-border shadow-2xl">
-                    <h2 class="text-muted text-lg font-medium mb-1">Total Owed To You</h2>
-                    <p id="total-owed" class="text-4xl font-extrabold text-green-400">$0.00</p>
-                </div>
-                
-                <div class="bg-card rounded-xl p-6 border border-border shadow-2xl">
-                    <h2 class="text-muted text-lg font-medium mb-1">Total You Owe</h2>
-                    <p id="total-due" class="text-4xl font-extrabold text-red-400">$0.00</p>
-                </div>
-
-                <div class="bg-card rounded-xl p-6 border border-border shadow-2xl">
-                    <h2 class="text-muted text-lg font-medium mb-1">Net Balance</h2>
-                    <p id="net-balance" class="text-4xl font-extrabold text-foreground">$0.00</p>
-                </div>
-            </div>
-
-            <div>
-                <h2 class="text-2xl font-bold text-primary mb-4">Your Recent Bills</h2>
-                <div id="bill-list" class="space-y-4">
-                    <div class="text-center p-8 text-muted">Please connect your wallet...</div>
-                </div>
-            </div>
-
-            <div class="pt-4 text-center">
-                <button onclick="navigateTo('create')" class="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-xl transition duration-300 text-lg shadow-lg shadow-primary/30">
-                    Split a New Bill
-                </button>
-            </div>
-
-        </section>
-
-        <section id="create-view" class="hidden">
-            <div class="max-w-2xl mx-auto bg-card p-6 sm:p-8 rounded-xl border border-border shadow-2xl">
-                <form id="bill-form" class="space-y-6">
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label for="bill-name" class="block text-sm font-medium text-muted mb-2">Bill Name (e.g., Dinner, Rent)</label>
-                            <input type="text" id="bill-name" name="bill-name" required placeholder="Enter bill name"
-                                   class="bg-input/50 border border-border text-foreground rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition duration-300 w-full"
-                            >
-                        </div>
-                        <div>
-                            <label for="bill-amount" class="block text-sm font-medium text-muted mb-2">Total Amount (USDC/ETH)</label>
-                            <input type="number" id="bill-amount" name="bill-amount" required step="0.01" min="0.01" placeholder="100.00"
-                                   class="bg-input/50 border border-border text-foreground rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition duration-300 w-full"
-                            >
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-muted mb-3">Split Type</label>
-                        <input type="hidden" id="split-type-input" value="even">
-                        <div class="flex space-x-4">
-                            <button type="button" id="split-type-even" onclick="toggleSplit('even')"
-                                    class="flex-1 px-4 py-3 rounded-xl border border-primary/50 text-foreground font-semibold transition duration-200 bg-primary/50 hover:bg-primary/20">
-                                Evenly
-                            </button>
-                            <button type="button" id="split-type-manual" onclick="toggleSplit('manual')"
-                                    class="flex-1 px-4 py-3 rounded-xl border border-primary/50 text-foreground font-semibold transition duration-200 hover:bg-primary/20">
-                                Manual Shares
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-muted mb-3">Number of Participants (excluding Payer)</label>
-                        
-                        <div class="flex items-center space-x-4 bg-input/50 p-3 rounded-xl border border-border">
-                            <button type="button" onclick="changeParticipantCount(-1)" 
-                                    class="w-10 h-10 bg-primary/20 text-primary rounded-lg text-2xl font-bold hover:bg-primary/40 transition duration-200">
-                                &minus;
-                            </button>
-                            <span id="participant-count-display" 
-                                class="w-16 text-center text-foreground bg-transparent text-xl font-bold border-none focus:outline-none">0</span>
-                                
-                            <input type="hidden" id="participant-count" name="participant-count" value="0"> 
-                            
-                            <button type="button" onclick="changeParticipantCount(1)" 
-                                    class="w-10 h-10 bg-primary/20 text-primary rounded-lg text-2xl font-bold hover:bg-primary/40 transition duration-200">
-                                &plus;
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="manual-split-container" class="space-y-4 hidden pt-4 border-t border-border mt-6">
-                        <h3 class="text-xl font-bold text-primary">Participant Details</h3>
-                        <div id="participants-list">
-                            </div>
-                        <p class="text-xs text-muted">For Manual Split, ensure the sum of all shares (including the Payer's calculated share) equals the 'Total Amount'.</p>
-                    </div>
-                    
-                    <button type="submit" 
-                            class="w-full bg-secondary hover:bg-secondary/90 text-white font-bold py-3 rounded-xl transition duration-300 text-lg shadow-lg shadow-secondary/30">
-                        Broadcast Bill to SplitMate
-                    </button>
-                </form>
-            </div>
-        </section>
-
-        <section id="leaderboard-view" class="hidden">
-            <div class="max-w-3xl mx-auto">
-                <div class="bg-card p-6 rounded-xl border border-border shadow-2xl mb-6">
-                    <p class="text-muted text-center">
-                        The SplitMate Leaderboard ranks users based on their on-chain bill settlement history. Higher reputation scores indicate a greater commitment to prompt payments.
-                    </p>
-                </div>
-                
-                <div class="mb-4 flex justify-between items-center text-sm font-semibold text-muted border-b border-border pb-2">
-                    <span class="w-1/2">Rank / Address</span>
-                    <span class="text-right">Reputation Score / Settled Rate</span>
-                </div>
-
-                <div id="leaderboard-list" class="space-y-3">
-                    <div class="text-center p-8 text-muted">Loading leaderboard...</div>
-                </div>
-            </div>
-        </section>
-        
-    </main>
-    
     <script type="module">
         import { getStarknet } from 'https://cdn.jsdelivr.net/npm/@starknet-io/get-starknet@latest/dist/index.js';
         

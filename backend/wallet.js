@@ -10,6 +10,7 @@
 // ====================================================================
 
 // Import the necessary utilities directly from the Starknet library
+// This fixes the 'Contract is not a constructor' error and makes cairo available.
 import { Contract, cairo, shortString } from 'https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js';
 
 // The getStarknet function is available via window.getStarknet (see index.html)
@@ -17,33 +18,88 @@ import { Contract, cairo, shortString } from 'https://cdn.jsdelivr.net/npm/stark
 // ====================================================================
 // --- 1. STARKNET CONFIGURATION (MUST BE REPLACED) ---
 // ====================================================================
+// >>> ⚠️ IMPORTANT: REPLACE THESE WITH YOUR DEPLOYED CONTRACT DETAILS ⚠️ <<<
+
+// Your SplitMate Smart Contract Address on Starknet
 const SPLITMATE_CONTRACT_ADDRESS = "0xYOUR_SPLITMATE_CONTRACT_ADDRESS_HERE";
+
+// Standard L2 ETH Token Contract Address (Used for fees and payment)
 const ETH_ERC20_ADDRESS = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"; 
 const ETH_DECIMALS = 18;
+
+// Minimal ABI for the required functions (MUST be replaced with your full contract ABI)
 const SPLITMATE_ABI = [
-    { type: "function", name: "create_bill", /* ... */ },
-    { type: "function", name: "settle_share", /* ... */ },
-    { type: "function", name: "get_user_bills", /* ... */ },
-    { type: "function", name: "approve", /* ... */ }
+    // create_bill function (Bill Creator action)
+    {
+        type: "function",
+        name: "create_bill",
+        inputs: [
+            { name: "bill_id", type: "felt" },
+            { name: "name", type: "felt" },
+            { name: "total_amount", type: "u256" },
+            { name: "payer", type: "ContractAddress" },
+            { name: "participants", type: "ContractAddress*" },
+            { name: "shares", type: "u256*" }
+        ],
+        outputs: [],
+        state_mutability: "external"
+    },
+    // settle_share function (Participant action)
+    {
+        type: "function",
+        name: "settle_share",
+        inputs: [
+            { name: "bill_id", type: "felt" }
+        ],
+        outputs: [],
+        state_mutability: "external"
+    },
+    // get_user_bills function (Dashboard read)
+    {
+        type: "function",
+        name: "get_user_bills",
+        inputs: [
+            { name: "user_address", type: "ContractAddress" }
+        ],
+        outputs: [
+            { name: "bills", type: "BillStruct*" } // Assuming a custom struct is returned
+        ],
+        state_mutability: "view"
+    },
+    // ERC20 approve function (Required for all token payments)
+    {
+        type: "function",
+        name: "approve",
+        inputs: [
+            { name: "spender", type: "ContractAddress" },
+            { name: "amount", type: "u256" }
+        ],
+        outputs: [
+            { name: "success", type: "bool" }
+        ],
+        state_mutability: "external"
+    }
 ];
+
 
 // ====================================================================
 // --- 2. GLOBAL STATE & UTILITIES ---
 // ====================================================================
-// Expose these global variables to the main script block
-window.starknetAccount = null; 
-window.starknetProvider = null; 
-window.splitMateContract = null; 
-window.userAddress = null; 
 
-/** Converts float amount to Starknet's u256 structure. */
+window.starknetAccount = null; // The connected wallet account (signer)
+window.starknetProvider = null; // The RPC provider for reads
+window.splitMateContract = null; // The Contract instance
+window.userAddress = null; // The connected user's address
+
+/** Converts float amount to Starknet's u256 structure (with 18 decimals). */
 function toStarknetU256(amount, decimals = ETH_DECIMALS) {
     // Uses the imported 'cairo' object directly
     if (!cairo) {
         throw new Error("Starknet 'cairo' utilities are missing.");
     }
+    // Convert float to BigInt string (18 decimals)
     const multiplier = 10n ** BigInt(decimals);
-    const value = BigInt(Math.floor(amount * (Number(multiplier))));
+    const value = BigInt(Math.floor(amount * (Number(multiplier))))
     return cairo.uint256(value.toString());
 }
 
@@ -62,7 +118,6 @@ function fromStarknetU256(u256, decimals = ETH_DECIMALS) {
 // Expose connectWallet globally
 window.connectWallet = async function() {
     try {
-        // Use the wallet object injected into window.starknet by the extension
         if (!window.starknet) {
             window.showMessageBox("Wallet Required", "Please install ArgentX or Braavos.", () => {
                 window.open("https://www.starknet.io/en/ecosystem/wallets", "_blank");
@@ -75,6 +130,7 @@ window.connectWallet = async function() {
         if (window.starknet.isConnected) {
              enabled = window.starknet;
         } else {
+            // Request connection and access to the user's account
             enabled = await window.starknet.enable({ starknetVersion: "v5" });
         }
         
@@ -83,13 +139,14 @@ window.connectWallet = async function() {
             window.userAddress = window.starknetAccount.address;
             window.starknetProvider = window.starknetAccount.provider;
             
-            // 🛑 FIX: Use the imported 'Contract' class directly (no global conflict)
+            // 🛑 FIX: Use the imported 'Contract' class directly
             window.splitMateContract = new Contract(
                 SPLITMATE_ABI, 
                 SPLITMATE_CONTRACT_ADDRESS, 
                 window.starknetAccount 
             );
 
+            // Update UI elements (relies on window.updateWalletUI from index.html)
             window.updateWalletUI(); 
             
             return true;
@@ -111,6 +168,7 @@ window.disconnectWallet = function() {
     window.navigateTo('dashboard');
 }
 
+// Placeholder functions (for UI buttons that target other chains)
 window.connectMetamaskWallet = function() {
     window.showMessageBox("Connect Wallet", "Metamask is for Ethereum/EVM. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet);
 }
@@ -120,23 +178,45 @@ window.connectXverseWallet = function() {
 
 
 // ====================================================================
-// --- 4 & 5. CONTRACT INTERACTION (WRITE/READ LOGIC) ---
+// --- 4. CONTRACT INTERACTION (WRITE LOGIC) ---
 // ====================================================================
 
+/**
+ * Creates and pays for a bill using a two-step multi-call transaction.
+ */
 window.sendBillToContract = async function(formData, shares) {
-    if (!window.starknetAccount) throw new Error("Wallet not connected.");
+    if (!window.starknetAccount) {
+        throw new Error("Wallet not connected. Please connect your Starknet wallet.");
+    }
     // ⚠️ TODO: IMPLEMENT MULTI-CALL
     return { transaction_hash: "0xUNIMPLEMENTED_TX_HASH" };
 }
 
+
+/**
+ * Sends a transaction for a participant to pay their share of a bill.
+ */
 window.payBill = async function(billId, amountToPay) {
-    if (!window.starknetAccount) throw new Error("Wallet not connected.");
+    if (!window.starknetAccount) {
+        throw new Error("Wallet not connected. Please connect your Starknet wallet.");
+    }
     // ⚠️ TODO: IMPLEMENT PAYMENT LOGIC
     return { transaction_hash: "0xUNIMPLEMENTED_TX_HASH" };
 }
 
+
+// ====================================================================
+// --- 5. CONTRACT INTERACTION (READ LOGIC) ---
+// ====================================================================
+
+/**
+ * Fetches the list of bills involving the connected user from the Starknet contract state.
+ */
 window.fetchUserBills = async function(userAddress) {
-    if (!window.splitMateContract) return []; 
+    if (!window.splitMateContract) {
+        // Return an empty array if not connected, showing a clean dashboard
+        return []; 
+    }
     try {
         const result = await window.splitMateContract.get_user_bills(userAddress);
         
