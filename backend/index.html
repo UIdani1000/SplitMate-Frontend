@@ -98,22 +98,18 @@
          * Updates the Connect Wallet button based on the global state.
          * Assumes window.userAddress is managed by wallet.js.
          */
-        window.updateWalletUI = function(isStarknet = true) {
+        window.updateWalletUI = function() {
             const btn = document.getElementById('connect-wallet-btn');
             const mobileBtn = document.getElementById('mobile-connect-btn');
             
-            // Hide the wallet choice menu if it's open
-            document.getElementById('wallet-choice-menu').classList.add('hidden');
-
             if (window.userAddress && typeof window.userAddress === 'string') {
                 const shortAddress = window.userAddress.substring(0, 6) + '...' + window.userAddress.slice(-4);
-                const walletType = isStarknet ? 'SN' : 'EVM';
                 
-                btn.textContent = `${shortAddress} (${walletType})`;
+                btn.textContent = shortAddress;
                 btn.classList.remove('bg-primary', 'hover:bg-primary/90');
                 btn.classList.add('bg-green-600', 'hover:bg-green-500', 'text-white', 'font-mono'); 
                 
-                mobileBtn.textContent = `${shortAddress} (${walletType})`;
+                mobileBtn.textContent = shortAddress;
                 mobileBtn.classList.remove('text-primary', 'bg-primary/20');
                 mobileBtn.classList.add('bg-green-600/20', 'text-green-400');
             } else {
@@ -129,15 +125,6 @@
             loadDashboardContent();
             loadLeaderboard(); 
         }
-        
-        // ====================================================================
-        // --- NEW WALLET CHOICE MENU LOGIC ---
-        // ====================================================================
-        window.toggleWalletChoiceMenu = function() {
-             // The main Connect Wallet button is now a UI toggle
-            document.getElementById('wallet-choice-menu').classList.toggle('hidden');
-        }
-
 
         // ====================================================================
         // --- SPA ROUTING AND NAVIGATION ---
@@ -165,7 +152,7 @@
     document.getElementById('mobile-menu').classList.add('hidden');
     
     // 🛑 CRITICAL FIX: Ensure the wallet button UI is refreshed on the new page
-    window.updateWalletUI(window.isStarknetWallet); // Pass the connected wallet type
+    window.updateWalletUI(); 
 }
 
         // ====================================================================
@@ -217,11 +204,6 @@
             
             if (!userAddress) {
                 listContainer.innerHTML = '<p class="text-center text-secondary p-8 font-semibold">Please connect your wallet to view your bills.</p>';
-                return;
-            }
-            // Add a specific warning if Metamask is connected (EVM)
-            if (!window.isStarknetWallet) {
-                listContainer.innerHTML = '<p class="text-center text-red-400 p-8 font-semibold">EVM Wallet Connected. Contract interaction is not supported on this chain.</p>';
                 return;
             }
 
@@ -345,12 +327,6 @@
                 showMessageBox("Connection Required", "Please connect your wallet before creating a bill.");
                 return false;
             }
-            // NEW CHECK: Prevent Starknet contract calls if an EVM wallet is connected
-            if (!window.isStarknetWallet) {
-                showMessageBox("Chain Incompatibility", "You are connected with an EVM wallet (Metamask). SplitMate contracts are on Starknet and cannot be called by this wallet.");
-                return false;
-            }
-            
             if (!window.sendBillToContract) {
                 showMessageBox("Contract Not Ready", "The smart contract function failed. Cannot broadcast bill.");
                 return false;
@@ -452,16 +428,6 @@
             const container = document.getElementById('leaderboard-list');
             if (!container || !window.fetchLeaderboard) return;
 
-             // NEW CHECK: Prevent Starknet contract calls if an EVM wallet is connected
-            if (!window.isStarknetWallet && window.userAddress) {
-                container.innerHTML = '<p class="text-center text-red-400 p-8 font-semibold">EVM Wallet Connected. Reputation data cannot be fetched from the Starknet contract.</p>';
-                return;
-            }
-            if (!window.userAddress) {
-                container.innerHTML = '<p class="text-center text-secondary p-8 font-semibold">Connect a wallet to view the Leaderboard.</p>';
-                return;
-            }
-
             container.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Fetching live reputation scores...</div>';
 
             try {
@@ -534,29 +500,12 @@
                 document.getElementById('mobile-menu').classList.toggle('hidden');
             });
 
-             // Close wallet choice menu when clicking elsewhere
-            document.addEventListener('click', function(event) {
-                const menu = document.getElementById('wallet-choice-menu');
-                const button = document.getElementById('connect-wallet-btn');
-                if (!button.contains(event.target) && !menu.contains(event.target)) {
-                    menu.classList.add('hidden');
-                }
-            });
-
             // Start the application on the Dashboard page
             navigateTo('dashboard');
         }
 
         document.addEventListener('DOMContentLoaded', setupInitialUI);
     </script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@starknet-io/get-starknet@latest/dist/index.js"></script> 
-    
-    <script src="https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.umd.min.js"></script>
-
-    <script src="wallet.js"></script> 
     
 </head>
 <body class="bg-background min-h-screen text-foreground antialiased overflow-x-hidden">
@@ -586,22 +535,10 @@
                     <a href="#" onclick="navigateTo('leaderboard')" class="text-muted hover:text-primary px-3 py-2 rounded-lg text-sm font-medium transition duration-200">Leaderboard</a>
                 </div>
                 
-                <div class="hidden sm:block relative">
-                    <button id="connect-wallet-btn" onclick="window.toggleWalletChoiceMenu()" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded-xl transition duration-300 shadow-md shadow-primary/30">
+                <div class="hidden sm:block">
+                    <button id="connect-wallet-btn" onclick="window.connectWallet()" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded-xl transition duration-300 shadow-md shadow-primary/30">
     Connect Wallet
 </button>
-                    
-                    <div id="wallet-choice-menu" class="hidden absolute right-0 mt-3 w-64 bg-[#1a0035] rounded-xl border border-primary/50 shadow-2xl z-50 overflow-hidden">
-                        <div class="p-4 text-sm font-semibold text-primary/80 border-b border-border">Choose Your Wallet</div>
-                        <button onclick="window.connectStarknetWallet()" class="w-full text-left flex items-center p-3 hover:bg-primary/20 transition">
-                            <span class="text-xl mr-3">🚀</span> Starknet Wallets (ArgentX/Braavos)
-                        </button>
-                        <button onclick="window.connectEVMWallet()" class="w-full text-left flex items-center p-3 hover:bg-primary/20 transition border-t border-border">
-                            <span class="text-xl mr-3">🦊</span> Metamask (EVM)
-                        </button>
-                        <p class="p-3 text-xs text-red-400 bg-red-900/10">Metamask cannot interact with Starknet contracts.</p>
-                    </div>
-
                 </div>
 
                 <div class="sm:hidden flex items-center">
@@ -751,6 +688,11 @@
         
     </main>
     
+    <script src="https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js"></script> 
+    
+    <script src="https://cdn.jsdelivr.net/npm/@starknet-io/get-starknet@latest/dist/index.js"></script> 
+    
+    <script src="wallet.js"></script> 
     
 </body>
 </html>
