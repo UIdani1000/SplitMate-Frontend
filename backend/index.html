@@ -126,11 +126,10 @@
 </div>
 <script type="module">
     // 1. STARKNET LIBRARY IMPORTS (STABLE CDNS)
-    import { connect, disconnect } from 'https://cdn.jsdelivr.net/npm/@argent/get-starknet@5.3.0/dist/index.js';
-    import { Account, Contract, Provider, stark, shortString, cairo } from 'https://cdn.jsdelivr.net/npm/starknet@5.23.0/dist/esm.js';
-
-    // 2. MAIN EXECUTION BLOCK (Runs ONLY when the entire page is loaded)
-    document.addEventListener('DOMContentLoaded', () => {
+// Keep get-starknet CDN
+import { connect, disconnect } from 'https://cdn.jsdelivr.net/npm/@argent/get-starknet@5.3.0/dist/index.js';
+// NEW: Switch Starknet.js to unpkg for stable browser module support
+import { Account, Contract, Provider, stark, shortString, cairo } from 'https://unpkg.com/starknet@5.23.0/dist/index.mjs';
 
         // 3. CONSTANTS AND GLOBAL VARIABLES (Declared here for proper scope)
         const SPLITMATE_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000000000000000000000000001"; // Placeholder
