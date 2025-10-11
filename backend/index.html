@@ -128,10 +128,8 @@
     </main>
 </div>
 
-<!-- 1. ADD THIS SCRIPT TO LOAD THE ETHEREUM LIBRARY GLOBALLY (Web3.js) -->
 <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
 
-<!-- 2. MAIN APP LOGIC FOR METAMASK/EVM CONNECTION AND FORM HANDLING -->
 <script>
     // Global state variables
     let web3 = null;
@@ -152,20 +150,25 @@
         try {
             if (window.ethereum) {
                 web3 = new Web3(window.ethereum);
-                // Request account access
+                
+                // CRITICAL FIX: This line explicitly forces MetaMask to pop up the connection prompt.
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 
                 if (accounts.length > 0) {
                     currentAccount = accounts[0];
                     updateWalletUI(currentAccount);
+                    console.log("MetaMask connected successfully! Address:", currentAccount);
+                } else {
+                     console.log("Connection failed: No accounts returned.");
+                     showStatusMessage("error", "Connection failed: No accounts returned.");
                 }
             } else {
-                // We are using a custom message box instead of alert()
                 showStatusMessage("error", 'MetaMask is not installed. Please install it to use this DApp.');
             }
         } catch (error) {
+            // This catches if the user rejects the MetaMask prompt
             console.error("MetaMask Connection Error:", error);
-            showStatusMessage("error", `Connection failed. Error: ${error.message || "User rejected."}`);
+            showStatusMessage("error", `Connection failed. Error: User rejected connection.`);
         }
     };
 
@@ -241,19 +244,13 @@
         
         showStatusMessage("loading", `Preparing to submit bill "${billName}" for $${totalAmount.toFixed(2)}. Each person owes $${shareAmount.toFixed(2)}.`);
 
-        // --- CORE EVM INTERACTION (MOCK) ---
-        // 
-        // 1. Get Contract ABI and address (We'd need your actual ABI here!)
-        // 2. Instantiate Contract: const splitMateContract = new web3.eth.Contract(ABI, SPLITMATE_CONTRACT_ADDRESS);
-        // 3. Call the send transaction method (e.g., contract.methods.createBill(billName, totalAmount, totalPeople).send({ from: currentAccount }))
-        //
-        // --- MOCK API CALL FOR DEMONSTRATION ---
+        // --- CORE EVM INTERACTION (MOCK/PLACEHOLDER) ---
+        // REPLACE THIS BLOCK with your actual contract call once you have the ABI.
         try {
-            // Replace this setTimeout with your actual contract call!
             submitBillButton.disabled = true;
-            await new Promise(resolve => setTimeout(resolve, 2000)); 
+            await new Promise(resolve => setTimeout(resolve, 3000)); // Mocking a 3-second transaction delay
 
-            showStatusMessage("success", `Bill submitted! Transaction Mock Hash: 0x... Successfully split among ${totalPeople} people.`);
+            showStatusMessage("success", `Bill submitted! Mock Transaction Hash: 0x... The next step is to replace this mock with your actual contract call.`);
 
             // Optionally clear form
             billForm.reset();
