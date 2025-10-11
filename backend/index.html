@@ -135,41 +135,45 @@
     let web3 = null;
     let currentAccount = null;
     
-    // Constants
-    const SPLITMATE_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"; // Placeholder EVM Address
+    // 🚨 1. PASTE YOUR ACTUAL DEPLOYED CONTRACT ADDRESS HERE 🚨
+    const SPLITMATE_CONTRACT_ADDRESS = "0x..."; 
 
-    // Get elements
-    const connectButton = document.getElementById('connect-wallet-btn');
-    const submitBillButton = document.getElementById('submit-bill-btn');
-    const billStatusMessage = document.getElementById('bill-status-message');
-    const billForm = document.getElementById('create-bill-form');
+    // ... (inside handleBillSubmission) ...
 
-    // --- WALLET FUNCTIONS ---
+    // --- CORE EVM INTERACTION (REAL) ---
+    // 🚨 2. PASTE YOUR ACTUAL CONTRACT ABI JSON ARRAY HERE 🚨
+    const CONTRACT_ABI = [
+        // Example: The JSON array describing your contract's functions
+        // It looks like: { "inputs": [...], "name": "createBill", "outputs": [...], "type": "function" }, ...
+    ]; 
 
-    const handleConnectWallet = async () => {
-        try {
-            if (window.ethereum) {
-                web3 = new Web3(window.ethereum);
-                
-                // CRITICAL FIX: This line explicitly forces MetaMask to pop up the connection prompt.
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                
-                if (accounts.length > 0) {
-                    currentAccount = accounts[0];
-                    updateWalletUI(currentAccount);
-                    console.log("MetaMask connected successfully! Address:", currentAccount);
-                } else {
-                     console.log("Connection failed: No accounts returned.");
-                     showStatusMessage("error", "Connection failed: No accounts returned.");
-                }
-            } else {
-                showStatusMessage("error", 'MetaMask is not installed. Please install it to use this DApp.');
-            }
-        } catch (error) {
-            // This catches if the user rejects the MetaMask prompt
-            console.error("MetaMask Connection Error:", error);
-            showStatusMessage("error", `Connection failed. Error: User rejected connection.`);
-        }
+    try {
+        submitBillButton.disabled = true;
+        
+        // 3. This line now instantiates your REAL contract
+        const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
+
+        // 4. Convert USD amount to WEI for the contract
+        const totalAmountInWei = web3.utils.toWei(totalAmount.toString(), 'ether'); 
+        
+        showStatusMessage("loading", `Awaiting transaction confirmation for bill "${billName}"...`);
+
+        // 5. This line executes the actual transaction!
+        const result = await splitMateContract.methods.createBill(
+            billName, 
+            totalAmountInWei, 
+            totalPeople
+        ).send({ from: currentAccount }); 
+
+        showStatusMessage("success", `Bill submitted! Transaction Hash: ${result.transactionHash.slice(0, 4)}...${result.transactionHash.slice(-4)}`);
+
+        billForm.reset();
+        
+    } catch (error) {
+        // ...
+    } finally {
+         submitBillButton.disabled = false;
+    }
     };
 
     function updateWalletUI(address) {
