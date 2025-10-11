@@ -16,289 +16,6 @@
         ::-webkit-scrollbar-thumb { background: #7400b8; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #c77dff; }
     </style>
-    
-    <script type="module">
-        
-        // ====================================================================
-        // --- 0. ES MODULE IMPORTS (CRITICAL FIX FOR STARNKENET) ---
-        // ====================================================================
-        
-        // These imports fix the SyntaxError and ReferenceError issues
-        import { Contract, cairo, shortString } from 'https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js';
-        import { getStarknet } from 'https://cdn.jsdelivr.net/npm/@starknet-io/get-starknet@latest/dist/index.js';
-
-
-        // ====================================================================
-        // --- 1. STARKNET CONFIGURATION & GLOBAL STATE ---
-        // ====================================================================
-
-        // >>> ⚠️ IMPORTANT: REPLACE THESE WITH YOUR DEPLOYED CONTRACT DETAILS ⚠️ <<<
-        const SPLITMATE_CONTRACT_ADDRESS = "0xYOUR_SPLITMATE_CONTRACT_ADDRESS_HERE";
-        const ETH_ERC20_ADDRESS = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"; 
-        const ETH_DECIMALS = 18;
-        
-        // Minimal ABI (Must match your contract)
-        const SPLITMATE_ABI = [
-            { type: "function", name: "create_bill", inputs: [{ name: "bill_id", type: "felt" }, { name: "name", type: "felt" }, { name: "total_amount", type: "u256" }, { name: "payer", type: "ContractAddress" }, { name: "participants", type: "ContractAddress*" }, { name: "shares", type: "u256*" }], outputs: [], state_mutability: "external" },
-            { type: "function", name: "settle_share", inputs: [{ name: "bill_id", type: "felt" }], outputs: [], state_mutability: "external" },
-            { type: "function", name: "get_user_bills", inputs: [{ name: "user_address", type: "ContractAddress" }], outputs: [{ name: "bills", type: "BillStruct*" }], state_mutability: "view" },
-            { type: "function", name: "approve", inputs: [{ name: "spender", type: "ContractAddress" }, { name: "amount", type: "u256" }], outputs: [{ name: "success", type: "bool" }], state_mutability: "external" }
-        ];
-
-        // Global State (exposed to window for UI functions)
-        window.starknetAccount = null; 
-        window.starknetProvider = null; 
-        window.splitMateContract = null; 
-        window.userAddress = null; 
-        window.cairo = cairo;         // Expose starknet utilities to window
-        window.shortString = shortString; // Expose starknet utilities to window
-
-        // Utility functions
-        function toStarknetU256(amount, decimals = ETH_DECIMALS) {
-            const multiplier = 10n ** BigInt(decimals);
-            const value = BigInt(Math.floor(amount * (Number(multiplier))))
-            return cairo.uint256(value.toString());
-        }
-        function fromStarknetU256(u256, decimals = ETH_DECIMALS) {
-            const value = BigInt(u256.low) + (BigInt(u256.high) << 128n);
-            const divisor = 10 ** decimals;
-            return Number(value) / divisor;
-        }
-
-
-        // ====================================================================
-        // --- 2. WALLET CONNECTION LOGIC (EXPOSED TO WINDOW) ---
-        // ====================================================================
-
-        window.connectWallet = async function() {
-            try {
-                const starknet = getStarknet(); // Uses imported function
-                if (!starknet) {
-                    window.showMessageBox("Wallet Required", "Please install ArgentX or Braavos.", () => {
-                        window.open("https://www.starknet.io/en/ecosystem/wallets", "_blank");
-                    });
-                    return false;
-                }
-
-                const enabled = await starknet.enable({ starknetVersion: "v5" });
-                
-                if (enabled && enabled.account) {
-                    window.starknetAccount = enabled.account;
-                    window.userAddress = window.starknetAccount.address;
-                    window.starknetProvider = window.starknetAccount.provider;
-                    
-                    window.splitMateContract = new Contract( // Uses imported class
-                        SPLITMATE_ABI, 
-                        SPLITMATE_CONTRACT_ADDRESS, 
-                        window.starknetAccount 
-                    );
-
-                    window.updateWalletUI(); 
-                    return true;
-                }
-            } catch (error) {
-                console.error("Starknet wallet connection failed:", error);
-                window.showMessageBox("Connection Error", `Failed to connect: ${error.message || "User rejected connection."}`);
-            }
-            return false;
-        }
-
-        window.disconnectWallet = function() {
-            window.starknetAccount = null;
-            window.userAddress = null;
-            window.starknetProvider = null;
-            window.splitMateContract = null;
-            window.updateWalletUI(); 
-            window.navigateTo('dashboard');
-        }
-        
-        // Placeholder functions for the wallet picker UI
-        window.connectMetamaskWallet = function() { window.showMessageBox("Connect Wallet", "Metamask is for Ethereum/EVM. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet); }
-        window.connectXverseWallet = function() { window.showMessageBox("Connect Wallet", "Xverse is for Bitcoin/Stacks. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet); }
-
-
-        // ====================================================================
-        // --- 3. CONTRACT INTERACTION (CRUD STUBS) ---
-        // ====================================================================
-        
-        // Note: These need your contract implementation logic.
-        window.sendBillToContract = async function(formData, shares) {
-            if (!window.starknetAccount) throw new Error("Wallet not connected.");
-            return { transaction_hash: "0xUNIMPLEMENTED_TX_HASH" };
-        }
-
-        window.payBill = async function(billId, amountToPay) {
-            if (!window.starknetAccount) throw new Error("Wallet not connected.");
-            return { transaction_hash: "0xUNIMPLEMENTED_TX_HASH" };
-        }
-
-        window.fetchUserBills = async function(userAddress) {
-            if (!window.splitMateContract) return []; 
-            try {
-                const result = await window.splitMateContract.get_user_bills(userAddress);
-                
-                // MOCK DATA STRUCTURE FOR UI (REPLACE WITH REAL PARSING)
-                return [{
-                    id: 1, name: "Mock Dinner", totalAmount: 50.00, payer: userAddress, isSettled: false, 
-                    shares: [{address: "0xmockParticipant", amount: 25.00}, {address: userAddress, amount: 25.00}]
-                }];
-
-            } catch (error) {
-                console.error("Error fetching bills. Returning mock data.", error);
-                return [];
-            }
-        }
-
-        window.fetchLeaderboard = async function() {
-            // MOCK DATA
-            const userAddress = window.userAddress || "0xUnconnectedUser";
-            return [
-                { address: "0x05f8...1234", score: 9.8, settledRate: 0.98, totalBills: 25 },
-                { address: userAddress, score: 9.5, settledRate: 0.95, totalBills: 12 },
-                { address: "0x0a1c...5678", score: 9.0, settledRate: 0.90, totalBills: 40 },
-            ];
-        }
-
-
-        // ====================================================================
-        // --- 4. TAILWIND CONFIGURATION & UI LOGIC (From index.html) ---
-        // ====================================================================
-
-        // Fix: Use a self-executing function or place configuration before other logic
-        tailwind.config = {
-          theme: {
-            extend: {
-              colors: {
-                background: "#10002b",
-                card: { DEFAULT: "rgba(255, 255, 255, 0.05)", foreground: "hsl(210 40% 98%)" },
-                primary: { DEFAULT: "#c77dff", active: "#7400b8", foreground: "hsl(210 40% 98%)" },
-                secondary: { DEFAULT: "#ff9e00", foreground: "hsl(210 40% 98%)" },
-                border: "hsl(260 20% 25%)", input: "hsl(260 20% 25%)", ring: "hsl(260 20% 25%)",
-                foreground: "hsl(210 40% 98%)",
-                muted: { DEFAULT: "hsl(215 20% 60%)", foreground: "hsl(215 20% 80%)" },
-              },
-              borderRadius: { xl: "1.25rem", lg: "1rem" }
-            }
-          }
-        }
-        
-        // Expose UI functions globally as well
-        window.showMessageBox = function(title, content, onOk = null) {
-            document.getElementById('message-title').textContent = title;
-            document.getElementById('message-content').textContent = content;
-            const okButton = document.querySelector('#message-box button');
-            
-            okButton.onclick = null; 
-            okButton.onclick = () => {
-                window.closeMessageBox();
-                if (typeof onOk === 'function') {
-                    onOk();
-                }
-            };
-            document.getElementById('message-box').classList.remove('hidden');
-            document.getElementById('message-box').classList.add('flex');
-        }
-
-        window.closeMessageBox = function() {
-            document.getElementById('message-box').classList.add('hidden');
-            document.getElementById('message-box').classList.remove('flex');
-        }
-
-        window.updateWalletUI = function() {
-            const btn = document.getElementById('connect-wallet-btn');
-            const mobileBtn = document.getElementById('mobile-connect-btn');
-            
-            if (window.userAddress && typeof window.userAddress === 'string') {
-                const shortAddress = window.userAddress.substring(0, 6) + '...' + window.userAddress.slice(-4);
-                
-                btn.textContent = shortAddress;
-                btn.classList.remove('bg-primary', 'hover:bg-primary/90');
-                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'text-white', 'font-mono'); 
-                
-                mobileBtn.textContent = shortAddress;
-                mobileBtn.classList.remove('text-primary', 'bg-primary/20');
-                mobileBtn.classList.add('bg-green-600/20', 'text-green-400');
-            } else {
-                btn.textContent = "Connect Wallet";
-                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'text-white', 'font-mono');
-                btn.classList.add('bg-primary', 'hover:bg-primary/90');
-
-                mobileBtn.textContent = "Connect Wallet";
-                mobileBtn.classList.remove('bg-green-600/20', 'text-green-400');
-                mobileBtn.classList.add('text-primary', 'bg-primary/20');
-            }
-            window.loadDashboardContent();
-            window.loadLeaderboard(); 
-        }
-        
-        const VIEWS = ['dashboard', 'create', 'leaderboard'];
-        
-	    window.navigateTo = function(viewId) {
-            if (!VIEWS.includes(viewId)) return;
-
-            VIEWS.forEach(id => { document.getElementById(id + '-view')?.classList.add('hidden'); });
-            document.getElementById(viewId + '-view')?.classList.remove('hidden');
-
-            const titleMap = { 'dashboard': 'Dashboard', 'create': 'Create Bill', 'leaderboard': 'Reputation Leaderboard' };
-            document.getElementById('main-header-title').textContent = titleMap[viewId] || 'SplitMate';
-
-            if (viewId === 'dashboard') window.loadDashboardContent(); 
-            else if (viewId === 'leaderboard') window.loadLeaderboard();
-
-            document.getElementById('mobile-menu').classList.add('hidden');
-            
-            window.updateWalletUI(); 
-        }
-
-        // Rest of the UI functions (loadDashboardContent, toggleSplit, etc.) must also be attached to window
-        window.loadDashboardContent = async function() { /* ... implementation moved from original index.html ... */ };
-        window.loadLeaderboard = async function() { /* ... implementation moved from original index.html ... */ };
-        window.toggleSplit = function(type) { /* ... implementation moved from original index.html ... */ };
-        window.updateParticipants = function(count) { /* ... implementation moved from original index.html ... */ };
-        window.changeParticipantCount = function(delta) { /* ... implementation moved from original index.html ... */ };
-        window.submitBill = async function() { /* ... implementation moved from original index.html ... */ };
-
-        // ====================================================================
-        // --- 5. INITIALIZATION ---
-        // ====================================================================
-
-        function setupInitialUI() {
-            // Re-expose all necessary functions to the window object to prevent errors
-            // Note: In a module, this should ideally be done with a single function,
-            // but for quick fix, we ensure the HTML's inline calls work.
-            window.loadDashboardContent = window.loadDashboardContent;
-            window.loadLeaderboard = window.loadLeaderboard;
-            window.toggleSplit = window.toggleSplit;
-            window.updateParticipants = window.updateParticipants;
-            window.changeParticipantCount = window.changeParticipantCount;
-            window.submitBill = window.submitBill;
-
-
-            document.getElementById('bill-form').addEventListener('submit', function(e) { 
-                e.preventDefault(); 
-                window.submitBill(); 
-            });
-
-            document.getElementById('menu-toggle').addEventListener('click', function() {
-                document.getElementById('mobile-menu').classList.toggle('hidden');
-            });
-
-            window.toggleSplit('even'); 
-            window.updateParticipants(0); 
-            window.navigateTo('dashboard');
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            setupInitialUI();
-            
-            // Auto-connect attempt
-            const starknet = getStarknet(); 
-            if (starknet && starknet.isConnected) {
-                window.connectWallet().catch(console.error);
-            }
-        });
-    </script>
-    
 </head>
 <body class="bg-background min-h-screen text-foreground antialiased overflow-x-hidden">
 
@@ -479,6 +196,557 @@
         </section>
         
     </main>
+    
+    <script type="module">
+        
+        // ====================================================================
+        // --- 0. ES MODULE IMPORTS (CRITICAL FIX FOR STARNKENET) ---
+        // ====================================================================
+        
+        // Imports fix the SyntaxError and ReferenceError issues
+        import { Contract, cairo, shortString } from 'https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js';
+        import { getStarknet } from 'https://cdn.jsdelivr.net/npm/@starknet-io/get-starknet@latest/dist/index.js';
+
+        // ====================================================================
+        // --- 1. STARKNET CONFIGURATION & GLOBAL STATE (FROM wallet.js) ---
+        // ====================================================================
+
+        const SPLITMATE_CONTRACT_ADDRESS = "0xYOUR_SPLITMATE_CONTRACT_ADDRESS_HERE";
+        const ETH_ERC20_ADDRESS = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"; 
+        const ETH_DECIMALS = 18;
+        
+        const SPLITMATE_ABI = [
+            { type: "function", name: "create_bill", inputs: [{ name: "bill_id", type: "felt" }, { name: "name", type: "felt" }, { name: "total_amount", type: "u256" }, { name: "payer", type: "ContractAddress" }, { name: "participants", type: "ContractAddress*" }, { name: "shares", type: "u256*" }], outputs: [], state_mutability: "external" },
+            { type: "function", name: "settle_share", inputs: [{ name: "bill_id", type: "felt" }], outputs: [], state_mutability: "external" },
+            { type: "function", name: "get_user_bills", inputs: [{ name: "user_address", type: "ContractAddress" }], outputs: [{ name: "bills", type: "BillStruct*" }], state_mutability: "view" },
+            { type: "function", name: "approve", inputs: [{ name: "spender", type: "ContractAddress" }, { name: "amount", type: "u256" }], outputs: [{ name: "success", type: "bool" }], state_mutability: "external" }
+        ];
+
+        // Global State (exposed to window for UI functions)
+        window.starknetAccount = null; 
+        window.starknetProvider = null; 
+        window.splitMateContract = null; 
+        window.userAddress = null; 
+        
+        // Expose starknet utilities to window (required by utility functions)
+        window.cairo = cairo;         
+        window.shortString = shortString; 
+
+        // Utility functions (from wallet.js)
+        function toStarknetU256(amount, decimals = ETH_DECIMALS) {
+            const multiplier = 10n ** BigInt(decimals);
+            const value = BigInt(Math.floor(amount * (Number(multiplier))))
+            return cairo.uint256(value.toString());
+        }
+        function fromStarknetU256(u256, decimals = ETH_DECIMALS) {
+            const value = BigInt(u256.low) + (BigInt(u256.high) << 128n);
+            const divisor = 10 ** decimals;
+            return Number(value) / divisor;
+        }
+
+
+        // ====================================================================
+        // --- 2. WALLET CONNECTION LOGIC (EXPOSED TO WINDOW) ---
+        // ====================================================================
+
+        window.connectWallet = async function() {
+            try {
+                const starknet = getStarknet(); // Uses imported function
+                if (!starknet) {
+                    window.showMessageBox("Wallet Required", "Please install ArgentX or Braavos.", () => {
+                        window.open("https://www.starknet.io/en/ecosystem/wallets", "_blank");
+                    });
+                    return false;
+                }
+
+                const enabled = await starknet.enable({ starknetVersion: "v5" });
+                
+                if (enabled && enabled.account) {
+                    window.starknetAccount = enabled.account;
+                    window.userAddress = window.starknetAccount.address;
+                    window.starknetProvider = window.starknetAccount.provider;
+                    
+                    window.splitMateContract = new Contract( // Uses imported Contract class
+                        SPLITMATE_ABI, 
+                        SPLITMATE_CONTRACT_ADDRESS, 
+                        window.starknetAccount 
+                    );
+
+                    window.updateWalletUI(); 
+                    return true;
+                }
+            } catch (error) {
+                console.error("Starknet wallet connection failed:", error);
+                window.showMessageBox("Connection Error", `Failed to connect: ${error.message || "User rejected connection."}`);
+            }
+            return false;
+        }
+
+        window.disconnectWallet = function() {
+            window.starknetAccount = null;
+            window.userAddress = null;
+            window.starknetProvider = null;
+            window.splitMateContract = null;
+            window.updateWalletUI(); 
+            window.navigateTo('dashboard');
+        }
+        
+        window.connectMetamaskWallet = function() { 
+            window.showMessageBox("Connect Wallet", "Metamask is for Ethereum/EVM. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet); 
+        }
+        window.connectXverseWallet = function() { 
+            window.showMessageBox("Connect Wallet", "Xverse is for Bitcoin/Stacks. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet); 
+        }
+
+
+        // ====================================================================
+        // --- 3. CONTRACT INTERACTION STUBS (FROM wallet.js) ---
+        // ====================================================================
+        
+        window.sendBillToContract = async function(formData, shares) {
+            if (!window.starknetAccount) throw new Error("Wallet not connected.");
+            // 🛑 You need to implement the actual starknet account.execute call here
+            return { transaction_hash: "0xMOCK_TX_HASH_CREATE_BILL" }; 
+        }
+
+        window.payBill = async function(billId, amountToPay) {
+            if (!window.starknetAccount) throw new Error("Wallet not connected.");
+            // 🛑 You need to implement the actual starknet account.execute call here
+            return { transaction_hash: "0xMOCK_TX_HASH_PAY_BILL" };
+        }
+
+        window.fetchUserBills = async function(userAddress) {
+            if (!window.splitMateContract) return []; 
+            try {
+                // MOCK DATA STRUCTURE FOR UI (REPLACE WITH REAL PARSING)
+                return [
+                    { id: 1, name: "Mock Dinner", totalAmount: 50.00, payer: "0x123...456", isSettled: false, 
+                    shares: [{address: window.userAddress, amount: 25.00}, {address: "0x123...456", amount: 25.00}] },
+                    { id: 2, name: "Mock Rent", totalAmount: 1200.00, payer: window.userAddress, isSettled: true, 
+                    shares: [{address: "0x999...999", amount: 600.00}, {address: window.userAddress, amount: 600.00}] }
+                ];
+
+            } catch (error) {
+                console.error("Error fetching bills. Returning mock data.", error);
+                return [];
+            }
+        }
+
+        window.fetchLeaderboard = async function() {
+            // MOCK DATA
+            const userAddress = window.userAddress || "0xUnconnectedUser";
+            return [
+                { address: "0x05f8...1234", score: 9.8, settledRate: 0.98, totalBills: 25 },
+                { address: userAddress, score: 9.5, settledRate: 0.95, totalBills: 12 },
+                { address: "0x0a1c...5678", score: 9.0, settledRate: 0.90, totalBills: 40 },
+            ];
+        }
+
+
+        // ====================================================================
+        // --- 4. TAILWIND CONFIGURATION (Moved from <head> <script>) ---
+        // ====================================================================
+        
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                background: "#10002b",
+                card: { DEFAULT: "rgba(255, 255, 255, 0.05)", foreground: "hsl(210 40% 98%)" },
+                primary: { DEFAULT: "#c77dff", active: "#7400b8", foreground: "hsl(210 40% 98%)" },
+                secondary: { DEFAULT: "#ff9e00", foreground: "hsl(210 40% 98%)" },
+                border: "hsl(260 20% 25%)", input: "hsl(260 20% 25%)", ring: "hsl(260 20% 25%)",
+                foreground: "hsl(210 40% 98%)",
+                muted: { DEFAULT: "hsl(215 20% 60%)", foreground: "hsl(215 20% 80%)" },
+              },
+              borderRadius: { xl: "1.25rem", lg: "1rem" }
+            }
+          }
+        }
+
+        // ====================================================================
+        // --- 5. ALL OTHER UI LOGIC (Moved from <head> <script>) ---
+        // ====================================================================
+        
+        window.showMessageBox = function(title, content, onOk = null) {
+            document.getElementById('message-title').textContent = title;
+            document.getElementById('message-content').textContent = content;
+            const okButton = document.querySelector('#message-box button');
+            
+            okButton.onclick = null; 
+            okButton.onclick = () => {
+                window.closeMessageBox();
+                if (typeof onOk === 'function') {
+                    onOk();
+                }
+            };
+            document.getElementById('message-box').classList.remove('hidden');
+            document.getElementById('message-box').classList.add('flex');
+        }
+
+        window.closeMessageBox = function() {
+            document.getElementById('message-box').classList.add('hidden');
+            document.getElementById('message-box').classList.remove('flex');
+        }
+
+        window.updateWalletUI = function() {
+            const btn = document.getElementById('connect-wallet-btn');
+            const mobileBtn = document.getElementById('mobile-connect-btn');
+            
+            if (window.userAddress && typeof window.userAddress === 'string') {
+                const shortAddress = window.userAddress.substring(0, 6) + '...' + window.userAddress.slice(-4);
+                
+                btn.textContent = shortAddress;
+                btn.classList.remove('bg-primary', 'hover:bg-primary/90');
+                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'text-white', 'font-mono'); 
+                
+                mobileBtn.textContent = shortAddress;
+                mobileBtn.classList.remove('text-primary', 'bg-primary/20');
+                mobileBtn.classList.add('bg-green-600/20', 'text-green-400');
+            } else {
+                btn.textContent = "Connect Wallet";
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'text-white', 'font-mono');
+                btn.classList.add('bg-primary', 'hover:bg-primary/90');
+
+                mobileBtn.textContent = "Connect Wallet";
+                mobileBtn.classList.remove('bg-green-600/20', 'text-green-400');
+                mobileBtn.classList.add('text-primary', 'bg-primary/20');
+            }
+            window.loadDashboardContent();
+            window.loadLeaderboard(); 
+        }
+        
+        const VIEWS = ['dashboard', 'create', 'leaderboard'];
+        
+	    window.navigateTo = function(viewId) {
+            if (!VIEWS.includes(viewId)) return;
+
+            VIEWS.forEach(id => { document.getElementById(id + '-view')?.classList.add('hidden'); });
+            document.getElementById(viewId + '-view')?.classList.remove('hidden');
+
+            const titleMap = { 'dashboard': 'Dashboard', 'create': 'Create Bill', 'leaderboard': 'Reputation Leaderboard' };
+            document.getElementById('main-header-title').textContent = titleMap[viewId] || 'SplitMate';
+
+            if (viewId === 'dashboard') window.loadDashboardContent(); 
+            else if (viewId === 'leaderboard') window.loadLeaderboard();
+
+            document.getElementById('mobile-menu').classList.add('hidden');
+            
+            window.updateWalletUI(); 
+        }
+
+        function renderBillCard(bill) {
+            const userAddress = window.userAddress || "0xUnconnectedUser";
+            const isPayer = bill.payer === userAddress;
+            const statusColor = bill.status === 'Open' ? 'text-primary' : 'text-green-400';
+            const actionButton = bill.status === 'Open' ? 
+                `<button class="bg-secondary text-white px-3 py-1 rounded-full text-sm font-semibold hover:bg-opacity-80 transition">
+                    ${isPayer ? 'Manage' : 'Pay Now'}
+                </button>` :
+                `<span class="text-green-400 text-sm font-semibold">Settled</span>`;
+            
+            const shareDisplay = isPayer ? bill.totalAmount : bill.yourShare;
+
+            return `
+                <div class="p-4 bg-card rounded-xl border border-border shadow-lg transition duration-300 hover:border-primary/50 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
+                    <div class="flex flex-col">
+                        <h3 class="text-xl font-bold text-foreground">${bill.name}</h3>
+                        <p class="text-sm text-muted">
+                            ${isPayer ? 'You Paid' : 'Owed to'} <span class="font-mono text-xs text-primary/80">${bill.payer.substring(0, 6)}...${bill.payer.slice(-4)}</span>
+                        </p>
+                    </div>
+                    
+                    <div class="flex items-center space-x-6">
+                        <div class="flex flex-col text-right">
+                            <span class="text-2xl font-extrabold ${statusColor}">$${parseFloat(shareDisplay).toFixed(2)}</span>
+                            <span class="text-xs text-muted">${isPayer ? 'Total Bill' : 'Your Share'}</span>
+                        </div>
+                        ${actionButton}
+                    </div>
+                </div>
+            `;
+        }
+
+        window.loadDashboardContent = async function() {
+            const listContainer = document.getElementById('bill-list');
+            const userAddress = window.userAddress; 
+            
+            if (!userAddress) {
+                listContainer.innerHTML = '<p class="text-center text-secondary p-8 font-semibold">Please connect your wallet to view your bills.</p>';
+                return;
+            }
+
+            listContainer.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Fetching live bills from the contract...</div>';
+
+            try {
+                const bills = await window.fetchUserBills(userAddress); 
+                
+                let totalOwed = 0;
+                let totalDue = 0;
+
+                listContainer.innerHTML = '';
+
+                if (bills.length === 0) {
+                    listContainer.innerHTML = '<p class="text-center text-muted p-8">No bills found. Start a new split!</p>';
+                } else {
+                    bills.forEach(bill => {
+                        const userShareObj = bill.shares.find(s => s.address === userAddress);
+                        const userShare = userShareObj ? userShareObj.amount : 0;
+                        
+                        const billForRender = {
+                            ...bill,
+                            yourShare: userShare,
+                            status: bill.isSettled ? 'Settled' : 'Open'
+                        };
+                        listContainer.insertAdjacentHTML('beforeend', renderBillCard(billForRender));
+                        
+                        if (billForRender.status === 'Open') {
+                            if (bill.payer === userAddress) {
+                                totalOwed += (bill.totalAmount - userShare); 
+                            } else {
+                                totalDue += userShare; 
+                            }
+                        }
+                    });
+                }
+
+                document.getElementById('total-owed').textContent = `$${totalOwed.toFixed(2)}`;
+                document.getElementById('total-due').textContent = `$${totalDue.toFixed(2)}`;
+                
+                const netBalance = totalOwed - totalDue;
+                document.getElementById('net-balance').textContent = `$${netBalance.toFixed(2)}`;
+                
+                document.getElementById('net-balance').classList.remove('text-green-400', 'text-red-400', 'text-foreground');
+                document.getElementById('net-balance').classList.add(
+                    netBalance > 0 ? 'text-green-400' : netBalance < 0 ? 'text-red-400' : 'text-foreground'
+                );
+            } catch (error) {
+                console.error("Failed to load dashboard data:", error);
+                listContainer.innerHTML = `<div class="text-center p-8 text-red-400">Error loading data. Is the contract connected?</div>`;
+            }
+        }
+
+        window.toggleSplit = function(type) {
+            const manualContainer = document.getElementById('manual-split-container');
+            
+            document.getElementById('split-type-even').classList.remove('bg-primary/50');
+            document.getElementById('split-type-manual').classList.remove('bg-primary/50');
+            
+            if (type === 'even') {
+                document.getElementById('split-type-even').classList.add('bg-primary/50');
+                manualContainer.classList.add('hidden');
+                document.querySelectorAll('.manual-share-input').forEach(el => el.required = false);
+            } else if (type === 'manual') {
+                document.getElementById('split-type-manual').classList.add('bg-primary/50');
+                manualContainer.classList.remove('hidden');
+                document.querySelectorAll('.manual-share-input').forEach(el => el.required = true);
+            }
+            document.getElementById('split-type-input').value = type;
+        }
+
+        window.updateParticipants = function(count) {
+            const participantCount = Math.max(0, count); 
+            document.getElementById('participant-count').value = participantCount;
+            document.getElementById('participant-count-display').textContent = participantCount; // Correctly updates the span
+
+            const participantsContainer = document.getElementById('participants-list');
+            participantsContainer.innerHTML = '';
+
+            const isManual = document.getElementById('split-type-input').value === 'manual';
+
+            for (let i = 0; i < participantCount; i++) {
+                const index = i + 1;
+                const shareInputHtml = isManual ? `
+                    <input type="number" placeholder="Share ($)" 
+                           class="manual-share-input bg-input/50 border border-border text-foreground rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition duration-300 w-1/3" 
+                           name="participant-${index}-share" step="0.01" min="0" required>
+                ` : '';
+
+                const participantInput = `
+                    <div class="flex items-center space-x-2 mb-3">
+                        <input type="text" placeholder="Participant ${index} Address (0x...)" 
+                               class="bg-input/50 border border-border text-foreground rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition duration-300 w-full" 
+                               name="participant-${index}-address" required>
+                        ${shareInputHtml}
+                    </div>
+                `;
+                participantsContainer.insertAdjacentHTML('beforeend', participantInput);
+            }
+        }
+
+        window.changeParticipantCount = function(delta) {
+            let currentCount = parseInt(document.getElementById('participant-count').value) || 0;
+            currentCount += delta;
+            window.updateParticipants(currentCount);
+        }
+
+        function validateForm(formData) {
+            if (!window.userAddress) {
+                window.showMessageBox("Connection Required", "Please connect your wallet before creating a bill.");
+                return false;
+            }
+            if (!window.sendBillToContract) {
+                window.showMessageBox("Contract Not Ready", "The smart contract function failed. Cannot broadcast bill.");
+                return false;
+            }
+            if (!formData.name || !formData.amount) {
+                window.showMessageBox("Validation Error", "Please fill in Bill Name and Total Amount.");
+                return false;
+            }
+            
+            if (formData.splitType === 'manual') {
+                let totalShare = formData.shares.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+                const billAmount = parseFloat(formData.amount);
+                
+                if (Math.abs(totalShare - billAmount) > 0.02) {
+                    window.showMessageBox("Validation Error", `Manual shares ($${totalShare.toFixed(2)}) do not match the total bill amount ($${billAmount.toFixed(2)}).`);
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        window.submitBill = async function() {
+            const form = document.getElementById('bill-form');
+            const splitType = document.getElementById('split-type-input').value;
+            const participantCount = parseInt(document.getElementById('participant-count').value);
+            const billAmount = parseFloat(form.elements['bill-amount'].value);
+
+            const formData = {
+                name: form.elements['bill-name'].value,
+                amount: billAmount,
+                payer: window.userAddress, 
+                splitType: splitType,
+                shares: []
+            };
+            
+            let totalParticipants = participantCount + 1; 
+
+            for (let i = 1; i <= participantCount; i++) {
+                const address = form.elements[`participant-${i}-address`].value;
+                let shareAmount;
+
+                if (splitType === 'even') {
+                    shareAmount = parseFloat((billAmount / totalParticipants).toFixed(2));
+                } else { 
+                    shareAmount = parseFloat(form.elements[`participant-${i}-share`]?.value || 0);
+                }
+                
+                formData.shares.push({ address: address, amount: shareAmount });
+            }
+
+            const currentTotalShare = formData.shares.reduce((sum, s) => sum + parseFloat(s.amount), 0);
+            const payerShare = billAmount - currentTotalShare;
+
+            formData.shares.push({ address: window.userAddress, amount: payerShare });
+            
+            if (!validateForm(formData)) return;
+            
+            try {
+                window.showMessageBox("Broadcasting Bill...", "Sending transaction to the smart contract. Please confirm in your wallet.", null);
+
+                const tx = await window.sendBillToContract(formData, formData.shares);
+                console.log("Transaction sent:", tx);
+
+                window.showMessageBox("Bill Broadcasted!", 
+                            `Your bill "${formData.name}" has been successfully broadcasted. Transaction Hash: ${tx.transaction_hash.substring(0, 10)}... Redirecting to Dashboard...`,
+                            () => {
+                                form.reset();
+                                window.updateParticipants(0);
+                                window.toggleSplit('even');
+                                window.navigateTo('dashboard');
+                            });
+
+            } catch (error) {
+                 console.error("Bill Submission Failed:", error);
+                 window.showMessageBox("Transaction Failed", `Could not broadcast the bill. Error: ${error.message || "Unknown error"}`);
+            }
+        }
+
+        window.loadLeaderboard = async function() {
+            const container = document.getElementById('leaderboard-list');
+            if (!container || !window.fetchLeaderboard) return;
+
+            container.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Fetching live reputation scores...</div>';
+
+            try {
+                const leaderboardData = await window.fetchLeaderboard(); 
+                window.renderLeaderboardList(leaderboardData);
+
+            } catch (error) {
+                console.error("Failed to load leaderboard:", error);
+                container.innerHTML = `<div class="text-center p-8 text-red-400">Error loading data. Is the contract connected?</div>`;
+            }
+        }
+
+        window.renderLeaderboardList = function(data) {
+            const container = document.getElementById('leaderboard-list');
+            let listHtml = '';
+            const userAddress = window.userAddress || "0xUnconnectedUser";
+            
+            if (!data || data.length === 0) {
+                data = [
+                    { address: "0x05f8...1234", score: 9.8, settledRate: 0.98, totalBills: 25 },
+                    { address: userAddress, score: 9.5, settledRate: 0.95, totalBills: 12 },
+                    { address: "0x0a1c...5678", score: 9.0, settledRate: 0.90, totalBills: 40 },
+                ];
+            }
+            
+            data.forEach((player, index) => {
+                const rankColor = index === 0 ? 'text-secondary text-2xl' : index === 1 ? 'text-primary/80 text-xl' : index === 2 ? 'text-muted text-lg' : 'text-muted text-base';
+                const displayName = player.address === userAddress ? 'You' : player.address.substring(0, 8) + '...';
+
+                const playerRow = `
+                    <div class="flex items-center justify-between p-4 bg-card rounded-lg border border-border mb-3 transition hover:border-primary/50">
+                        <div class="flex items-center space-x-4 w-1/2">
+                            <span class="font-extrabold ${rankColor}">${index + 1}</span>
+                            <div class="flex flex-col">
+                                <span class="text-foreground font-semibold">${displayName}</span>
+                                <span class="text-xs text-muted">Bills: ${player.totalBills || 0}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xl font-bold text-primary">${(player.score || 0).toFixed(1)}</span>
+                            <div class="text-xs text-muted">Settled Rate: ${((player.settledRate || 0) * 100).toFixed(1)}%</div>
+                        </div>
+                    </div>
+                `;
+                listHtml += playerRow;
+            });
+            
+            container.innerHTML = listHtml;
+        }
+
+        // ====================================================================
+        // --- 6. INITIALIZATION ---
+        // ====================================================================
+
+        function setupInitialUI() {
+            window.toggleSplit('even'); 
+            window.updateParticipants(0); 
+            
+            document.getElementById('bill-form').addEventListener('submit', function(e) { 
+                e.preventDefault(); 
+                window.submitBill(); 
+            });
+
+            document.getElementById('menu-toggle').addEventListener('click', function() {
+                document.getElementById('mobile-menu').classList.toggle('hidden');
+            });
+
+            window.navigateTo('dashboard');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupInitialUI();
+            
+            // Auto-connect attempt
+            const starknet = getStarknet(); 
+            if (starknet && starknet.isConnected) {
+                window.connectWallet().catch(console.error);
+            }
+        });
+    </script>
     
 </body>
 </html>
