@@ -124,12 +124,11 @@
 
     </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/starknet@5.14.1/dist/index.min.js"></script>
 <script type="module">
-    // 1. STARKNET LIBRARY IMPORTS
-    // ONLY get-starknet remains as a module import
-    import { connect, disconnect } from 'https://cdn.jsdelivr.net/npm/@argent/get-starknet@5.3.0/dist/index.js';
-    // NOTE: starknet.js is now loaded globally via a non-module <script> tag above.
+    // 1. STARKNET LIBRARY IMPORTS (USING KNOWN STABLE BROWSER VERSIONS)
+    // We've rolled back versions to find a combination that works reliably in a browser environment.
+    import { connect, disconnect } from 'https://cdn.jsdelivr.net/npm/@argent/get-starknet@5.1.0/dist/index.js';
+    import { Account, Contract, Provider, stark, shortString } from 'https://cdn.jsdelivr.net/npm/starknet@4.15.0/dist/index.mjs'; 
 
     // 2. MAIN EXECUTION BLOCK (Runs ONLY when the entire page is loaded)
     document.addEventListener('DOMContentLoaded', () => {
@@ -141,7 +140,6 @@
         let userAccount = null;
         let splitMateContract = null;
         
-        // CRITICAL: Ensure the element exists before accessing it
         const connectButton = document.getElementById('connect-wallet-btn');
         if (!connectButton) {
             console.error("Critical Error: Connect Wallet button element not found in the DOM.");
@@ -151,6 +149,7 @@
         // 4. CORE FUNCTION: CONNECT WALLET
         const handleConnectWallet = async () => {
             try {
+                // v5.1.0 requires 'modalMode: "alwaysAsk"'
                 starknetWallet = await connect({ modalMode: "alwaysAsk", webwalletUrl: "https://web.argent.xyz" });
 
                 if (!starknetWallet) {
@@ -162,9 +161,9 @@
 
                 userAccount = starknetWallet.account;
                 
-                // Instantiate the contract - NOTE: We use the global 'starknet.Contract' here
+                // Instantiate the contract
                 const contractABI = [{ name: 'get_user_bills', type: 'function', inputs: [], outputs: [{ type: 'felt' }] }];
-                splitMateContract = new starknet.Contract(contractABI, SPLITMATE_CONTRACT_ADDRESS, userAccount);
+                splitMateContract = new Contract(contractABI, SPLITMATE_CONTRACT_ADDRESS, userAccount);
 
                 updateWalletUI(userAccount.address);
                 
@@ -189,6 +188,7 @@
 
         // 6. UI UPDATE FUNCTION
         function updateWalletUI(address) {
+            // Remove previous listeners to ensure only one action happens on click
             connectButton.removeEventListener('click', handleConnectWallet);
             connectButton.removeEventListener('click', handleDisconnectWallet);
 
