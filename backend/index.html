@@ -104,10 +104,10 @@
                             placeholder="e.g., 3 (for a total of 4 people)">
                     </div>
                     <div>
-                        <label for="recipient-address" class="block text-sm font-medium text-foreground mb-2">Contract Address (Placeholder for now)</label>
-                        <input type="text" id="recipient-address" 
+                        <label for="recipient-address" class="block text-sm font-medium text-foreground mb-2">Merchant/Bar Address (Final payment receiver)</label>
+                        <input type="text" id="recipient-address" required
                             class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
-                            value="0x0000000000000000000000000000000000000000" disabled>
+                            placeholder="0x...">
                     </div>
                     <button type="submit" id="submit-bill-btn"
                         class="w-full bg-secondary hover:bg-secondary/90 text-background font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md shadow-secondary/30 disabled:opacity-50" disabled>
@@ -135,46 +135,33 @@
     let web3 = null;
     let currentAccount = null;
     
-    // 🚨 1. PASTE YOUR ACTUAL DEPLOYED CONTRACT ADDRESS HERE 🚨
-    const SPLITMATE_CONTRACT_ADDRESS = "0x..."; 
+    // 🚨 1. PASTE YOUR ACTUAL DEPLOYED CONTRACT ADDRESS HERE (Sepolia EVM) 🚨
+    const SPLITMATE_CONTRACT_ADDRESS = "0x..."; // Your Deployed Contract Address (e.g., 0x4f...c9)
 
-    // ... (inside handleBillSubmission) ...
+    // Get elements
+    const connectButton = document.getElementById('connect-wallet-btn');
+    const submitBillButton = document.getElementById('submit-bill-btn');
+    const billStatusMessage = document.getElementById('bill-status-message');
+    const billForm = document.getElementById('create-bill-form');
 
-    // --- CORE EVM INTERACTION (REAL) ---
-    // 🚨 2. PASTE YOUR ACTUAL CONTRACT ABI JSON ARRAY HERE 🚨
-    const CONTRACT_ABI = [
-        // Example: The JSON array describing your contract's functions
-        // It looks like: { "inputs": [...], "name": "createBill", "outputs": [...], "type": "function" }, ...
-    ]; 
 
-    try {
-        submitBillButton.disabled = true;
+    // --- UTILITY AND UI FUNCTIONS ---
+    function showStatusMessage(type, message) {
+        billStatusMessage.textContent = message;
+        billStatusMessage.classList.remove('hidden', 'text-green-500', 'text-red-500', 'text-yellow-500');
         
-        // 3. This line now instantiates your REAL contract
-        const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
-
-        // 4. Convert USD amount to WEI for the contract
-        const totalAmountInWei = web3.utils.toWei(totalAmount.toString(), 'ether'); 
-        
-        showStatusMessage("loading", `Awaiting transaction confirmation for bill "${billName}"...`);
-
-        // 5. This line executes the actual transaction!
-        const result = await splitMateContract.methods.createBill(
-            billName, 
-            totalAmountInWei, 
-            totalPeople
-        ).send({ from: currentAccount }); 
-
-        showStatusMessage("success", `Bill submitted! Transaction Hash: ${result.transactionHash.slice(0, 4)}...${result.transactionHash.slice(-4)}`);
-
-        billForm.reset();
-        
-    } catch (error) {
-        // ...
-    } finally {
-         submitBillButton.disabled = false;
+        switch(type) {
+            case 'success':
+                billStatusMessage.classList.add('text-green-500');
+                break;
+            case 'error':
+                billStatusMessage.classList.add('text-red-500');
+                break;
+            case 'loading':
+                billStatusMessage.classList.add('text-yellow-500');
+                break;
+        }
     }
-    };
 
     function updateWalletUI(address) {
         // Clear listeners first
@@ -197,6 +184,34 @@
         }
     }
 
+
+    // --- WALLET FUNCTIONS ---
+    const handleConnectWallet = async () => {
+        try {
+            if (!window.ethereum) {
+                showStatusMessage("error", 'MetaMask is not installed. Please install it to use this DApp.');
+                return;
+            }
+
+            web3 = new Web3(window.ethereum);
+            
+            // Forces the MetaMask connection prompt
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            
+            if (accounts.length > 0) {
+                currentAccount = accounts[0];
+                updateWalletUI(currentAccount);
+                console.log("MetaMask connected successfully! Address:", currentAccount);
+                showStatusMessage("success", "Wallet connected successfully!");
+            } else {
+                 showStatusMessage("error", "Connection failed: No accounts returned.");
+            }
+        } catch (error) {
+            console.error("MetaMask Connection Error:", error);
+            showStatusMessage("error", `Connection failed. Error: User rejected connection or prompt was closed.`);
+        }
+    };
+    
     // Add MetaMask listeners for account changes/disconnects
     if (window.ethereum) {
         window.ethereum.on('accountsChanged', (newAccounts) => {
@@ -205,27 +220,7 @@
         });
     }
 
-    // --- UTILITY AND UI FUNCTIONS ---
-
-    function showStatusMessage(type, message) {
-        billStatusMessage.textContent = message;
-        billStatusMessage.classList.remove('hidden', 'text-green-500', 'text-red-500', 'text-yellow-500');
-        
-        switch(type) {
-            case 'success':
-                billStatusMessage.classList.add('text-green-500');
-                break;
-            case 'error':
-                billStatusMessage.classList.add('text-red-500');
-                break;
-            case 'loading':
-                billStatusMessage.classList.add('text-yellow-500');
-                break;
-        }
-    }
-
-    // --- FORM SUBMISSION LOGIC ---
-
+    // --- FORM SUBMISSION LOGIC (COLLECTIVE PAYMENT) ---
     const handleBillSubmission = async (e) => {
         e.preventDefault();
         
@@ -237,6 +232,8 @@
         const billName = document.getElementById('bill-name').value;
         const totalAmount = parseFloat(document.getElementById('total-amount').value);
         const participantCount = parseInt(document.getElementById('participant-count').value);
+        const merchantAddress = document.getElementById('recipient-address').value;
+
 
         if (isNaN(totalAmount) || totalAmount <= 0 || isNaN(participantCount) || participantCount < 1) {
             showStatusMessage("error", "Please enter valid amounts and participant count.");
@@ -245,48 +242,48 @@
         
         const totalPeople = participantCount + 1; // Including the creator
         const shareAmount = totalAmount / totalPeople;
+        const creatorShareInEth = shareAmount.toFixed(4); // Display creator share in ETH
         
-        showStatusMessage("loading", `Preparing to submit bill "${billName}" for $${totalAmount.toFixed(2)}. Each person owes $${shareAmount.toFixed(2)}.`);
-
-        // --- CORE EVM INTERACTION (REAL) ---
-        // 🚨 IMPORTANT: Replace the dummy ABI below with your contract's actual ABI
+        
+        // 🚨 2. PASTE YOUR ACTUAL CONTRACT ABI JSON ARRAY HERE 🚨
         const CONTRACT_ABI = [
-            // Example: Your contract's function signature goes here
-            // {
-            //     "inputs": [
-            //         {"internalType": "string", "name": "_billName", "type": "string"},
-            //         {"internalType": "uint256", "name": "_totalAmount", "type": "uint256"},
-            //         {"internalType": "uint256", "name": "_totalParticipants", "type": "uint256"}
-            //     ],
-            //     "name": "createBill",
-            //     "outputs": [],
-            //     "stateMutability": "nonpayable",
-            //     "type": "function"
-            // }
+            // Example ABI needed for the createBill function:
+            // { "inputs": [{"internalType": "string", "name": "_billName", "type": "string"}, ...], "name": "createBill", "outputs": [], "stateMutability": "payable", "type": "function"}
         ]; 
+
+        showStatusMessage("loading", `Initiating Collective Payment: Sending your share of ~${creatorShareInEth} ETH to the escrow...`);
 
         try {
             submitBillButton.disabled = true;
             
-            // 1. Instantiate the contract using the global web3 object
-            const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
+            // --- Fallback to MOCK if contract details are missing ---
+            if (CONTRACT_ABI.length === 0 || SPLITMATE_CONTRACT_ADDRESS === "0x...") {
+                await new Promise(resolve => setTimeout(resolve, 3000)); 
+                showStatusMessage("success", `Bill Mock Submitted! Tx Mock Hash: 0x... **ACTION REQUIRED**: Add ABI & Address for real Sepolia transaction.`);
+            } else {
+                // --- REAL EVM INTERACTION (COLLECTIVE PAYMENT) ---
+                
+                // 1. Instantiate the contract
+                const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
 
-            // 2. Convert USD amount to WEI for the contract
-            // NOTE: Assuming the contract takes the amount in WEI (or smallest unit)
-            // You may need to adjust this conversion depending on how your contract handles amounts.
-            const totalAmountInWei = web3.utils.toWei(totalAmount.toString(), 'ether'); 
-            
-            // 3. Call the send transaction method
-            showStatusMessage("loading", `Awaiting transaction confirmation for bill "${billName}"...`);
+                // 2. Convert the creator's share (shareAmount) to WEI. This is the amount the creator sends.
+                const valueToSend = web3.utils.toWei(creatorShareInEth, 'ether'); 
+                
+                // 3. Call the contract method to create the bill and send the creator's share
+                const result = await splitMateContract.methods.createBill(
+                    billName, 
+                    web3.utils.toWei(totalAmount.toString(), 'ether'), // Total amount (e.g., in ETH)
+                    totalPeople,
+                    merchantAddress
+                ).send({ 
+                    from: currentAccount,
+                    value: valueToSend // Creator pays their share here
+                });
 
-            const result = await splitMateContract.methods.createBill(
-                billName, 
-                totalAmountInWei, 
-                totalPeople
-            ).send({ from: currentAccount }); // This will trigger MetaMask for transaction approval
+                showStatusMessage("success", `Collective Bill Created! Tx Hash: ${result.transactionHash.slice(0, 4)}...${result.transactionHash.slice(-4)}. Your share is in escrow.`);
 
-            showStatusMessage("success", `Bill submitted! Transaction Hash: ${result.transactionHash.slice(0, 4)}...${result.transactionHash.slice(-4)}`);
-
+            }
+            // Optionally clear form
             billForm.reset();
             
         } catch (error) {
@@ -298,8 +295,7 @@
     };
     
     // --- INITIALIZATION ---
-
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
         // Initial setup for the wallet UI
         updateWalletUI(null);
 
@@ -344,5 +340,20 @@
 
         const initialHash = window.location.hash || '#dashboard';
         navigate(initialHash);
+        
+        // --- Passive Auto-Connect Check (for approved users) ---
+        if (window.ethereum) {
+            web3 = new Web3(window.ethereum);
+            try {
+                const accounts = await web3.eth.getAccounts();
+                if (accounts.length > 0) {
+                    currentAccount = accounts[0];
+                    updateWalletUI(currentAccount);
+                }
+            } catch (error) {
+                console.warn("Could not auto-connect, user interaction required.");
+            }
+        }
+
     });
 </script>
