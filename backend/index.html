@@ -244,20 +244,50 @@
         
         showStatusMessage("loading", `Preparing to submit bill "${billName}" for $${totalAmount.toFixed(2)}. Each person owes $${shareAmount.toFixed(2)}.`);
 
-        // --- CORE EVM INTERACTION (MOCK/PLACEHOLDER) ---
-        // REPLACE THIS BLOCK with your actual contract call once you have the ABI.
+        // --- CORE EVM INTERACTION (REAL) ---
+        // 🚨 IMPORTANT: Replace the dummy ABI below with your contract's actual ABI
+        const CONTRACT_ABI = [
+            // Example: Your contract's function signature goes here
+            // {
+            //     "inputs": [
+            //         {"internalType": "string", "name": "_billName", "type": "string"},
+            //         {"internalType": "uint256", "name": "_totalAmount", "type": "uint256"},
+            //         {"internalType": "uint256", "name": "_totalParticipants", "type": "uint256"}
+            //     ],
+            //     "name": "createBill",
+            //     "outputs": [],
+            //     "stateMutability": "nonpayable",
+            //     "type": "function"
+            // }
+        ]; 
+
         try {
             submitBillButton.disabled = true;
-            await new Promise(resolve => setTimeout(resolve, 3000)); // Mocking a 3-second transaction delay
+            
+            // 1. Instantiate the contract using the global web3 object
+            const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
 
-            showStatusMessage("success", `Bill submitted! Mock Transaction Hash: 0x... The next step is to replace this mock with your actual contract call.`);
+            // 2. Convert USD amount to WEI for the contract
+            // NOTE: Assuming the contract takes the amount in WEI (or smallest unit)
+            // You may need to adjust this conversion depending on how your contract handles amounts.
+            const totalAmountInWei = web3.utils.toWei(totalAmount.toString(), 'ether'); 
+            
+            // 3. Call the send transaction method
+            showStatusMessage("loading", `Awaiting transaction confirmation for bill "${billName}"...`);
 
-            // Optionally clear form
+            const result = await splitMateContract.methods.createBill(
+                billName, 
+                totalAmountInWei, 
+                totalPeople
+            ).send({ from: currentAccount }); // This will trigger MetaMask for transaction approval
+
+            showStatusMessage("success", `Bill submitted! Transaction Hash: ${result.transactionHash.slice(0, 4)}...${result.transactionHash.slice(-4)}`);
+
             billForm.reset();
             
         } catch (error) {
             console.error("Transaction Error:", error);
-            showStatusMessage("error", `Transaction failed. Error: ${error.message || "Check console for details."}`);
+            showStatusMessage("error", `Transaction failed. Error: ${error.message || "User rejected transaction."}`);
         } finally {
              submitBillButton.disabled = false;
         }
