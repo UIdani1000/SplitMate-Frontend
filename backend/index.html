@@ -124,93 +124,80 @@
 
     </main>
 </div>
-<script type="module">
-    // 1. STARKNET LIBRARY IMPORTS (USING KNOWN STABLE BROWSER VERSIONS)
-    // We've rolled back versions to find a combination that works reliably in a browser environment.
-    import { connect, disconnect } from 'https://cdn.jsdelivr.net/npm/@argent/get-starknet@5.1.0/dist/index.js';
-    import { Account, Contract, Provider, stark, shortString } from 'https://cdn.jsdelivr.net/npm/starknet@4.15.0/dist/index.mjs'; 
+<script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
 
-    // 2. MAIN EXECUTION BLOCK (Runs ONLY when the entire page is loaded)
+<script>
+    // Variables for EVM/MetaMask
+    let web3 = null;
+    let accounts = [];
+    
+    // Main execution block
     document.addEventListener('DOMContentLoaded', () => {
 
-        // 3. CONSTANTS AND GLOBAL VARIABLES
-        const SPLITMATE_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000000000000000000000000001"; // Placeholder
-        
-        let starknetWallet = null;
-        let userAccount = null;
-        let splitMateContract = null;
-        
         const connectButton = document.getElementById('connect-wallet-btn');
+        const SPLITMATE_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"; // Placeholder EVM Address
+
         if (!connectButton) {
             console.error("Critical Error: Connect Wallet button element not found in the DOM.");
-            return; 
+            return;
         }
-
-        // 4. CORE FUNCTION: CONNECT WALLET
+        
+        // Connect Function
         const handleConnectWallet = async () => {
             try {
-                // v5.1.0 requires 'modalMode: "alwaysAsk"'
-                starknetWallet = await connect({ modalMode: "alwaysAsk", webwalletUrl: "https://web.argent.xyz" });
-
-                if (!starknetWallet) {
-                    console.log("Connection failed or was closed by user.");
-                    return;
+                if (window.ethereum) {
+                    web3 = new Web3(window.ethereum);
+                    // Request account access
+                    accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    
+                    if (accounts.length > 0) {
+                        updateWalletUI(accounts[0]);
+                        console.log("MetaMask connected successfully! Address:", accounts[0]);
+                        // Now you have a connected account (accounts[0]) and can use web3
+                        // Example: const myContract = new web3.eth.Contract(contractABI, SPLITMATE_CONTRACT_ADDRESS);
+                    }
+                } else {
+                    alert('MetaMask is not installed. Please install it to use this DApp.');
                 }
-
-                await starknetWallet.enable();
-
-                userAccount = starknetWallet.account;
-                
-                // Instantiate the contract
-                const contractABI = [{ name: 'get_user_bills', type: 'function', inputs: [], outputs: [{ type: 'felt' }] }];
-                splitMateContract = new Contract(contractABI, SPLITMATE_CONTRACT_ADDRESS, userAccount);
-
-                updateWalletUI(userAccount.address);
-                
-                console.log("Wallet connected successfully! Address:", userAccount.address);
-
             } catch (error) {
-                console.error("Connection Error:", error);
-                alert("Could not connect Starknet wallet. Check console for details.");
-                updateWalletUI(null); 
+                console.error("MetaMask Connection Error:", error);
             }
         };
 
-        // 5. CORE FUNCTION: DISCONNECT WALLET
-        const handleDisconnectWallet = async () => {
-            await disconnect();
-            starknetWallet = null;
-            userAccount = null;
-            splitMateContract = null;
-            updateWalletUI(null);
-            console.log("Wallet disconnected.");
-        };
-
-        // 6. UI UPDATE FUNCTION
+        // UI Update Function
         function updateWalletUI(address) {
-            // Remove previous listeners to ensure only one action happens on click
             connectButton.removeEventListener('click', handleConnectWallet);
-            connectButton.removeEventListener('click', handleDisconnectWallet);
 
             if (address) {
                 const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
                 connectButton.textContent = shortAddress;
                 connectButton.classList.remove('bg-primary');
                 connectButton.classList.add('bg-green-500');
-                
-                connectButton.addEventListener('click', handleDisconnectWallet);
+                // MetaMask disconnect is handled by wallet/account switch listeners
             } else {
                 connectButton.textContent = "Connect Wallet";
                 connectButton.classList.remove('bg-green-500');
                 connectButton.classList.add('bg-primary');
-                
                 connectButton.addEventListener('click', handleConnectWallet);
             }
         }
 
-        // 7. INITIAL SETUP & NAVIGATION
+        // Initialize listeners
         updateWalletUI(null);
+        connectButton.addEventListener('click', handleConnectWallet);
+        
+        // Add MetaMask listeners for account changes/disconnects
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', (newAccounts) => {
+                if (newAccounts.length === 0) {
+                    updateWalletUI(null);
+                } else {
+                    updateWalletUI(newAccounts[0]);
+                }
+            });
+        }
 
+        // --- NAVIGATION LOGIC --- (Keep this working)
         const sections = {
             'dashboard': document.getElementById('dashboard'),
             'create-bill': document.getElementById('create-bill'),
@@ -238,7 +225,5 @@
 
         const initialHash = window.location.hash || '#dashboard';
         navigate(initialHash);
-
-
-    }); // End of DOMContentLoaded
+    });
 </script>
