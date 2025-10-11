@@ -36,3 +36,91 @@
     </style>
 </head>
 <body class="bg-background min-h-screen text-foreground antialiased overflow-x-hidden">
+<div class="container mx-auto px-4 sm:px-6 lg:px-8">
+
+    <header class="flex items-center justify-between py-6">
+        <a href="#" class="text-2xl font-bold text-primary">SplitMate</a>
+        <nav class="hidden sm:flex space-x-6 text-sm font-medium">
+            <a href="#dashboard" class="text-primary hover:text-secondary">Dashboard</a>
+            <a href="#create-bill" class="text-foreground hover:text-secondary">Create Bill</a>
+            <a href="#leaderboard" class="text-foreground hover:text-secondary">Leaderboard</a>
+        </nav>
+        <button id="connect-wallet-btn" onclick="window.connectWallet()"
+            class="bg-primary hover:bg-primary/90 text-background font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md shadow-primary/30">
+            Connect Wallet
+        </button>
+    </header>
+
+    <main class="py-10">
+
+        <section id="dashboard" class="mb-12">
+            <h1 class="text-3xl font-bold mb-6">Dashboard</h1>
+            <div id="balance-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-card p-6 rounded-xl shadow-lg border border-border">
+                    <p class="text-lg text-muted-foreground">Total Owed To You</p>
+                    <p id="total-owed" class="text-3xl font-bold text-green-500 mt-1">$0.00</p>
+                </div>
+                <div class="bg-card p-6 rounded-xl shadow-lg border border-border">
+                    <p class="text-lg text-muted-foreground">Total You Owe</p>
+                    <p id="total-you-owe" class="text-3xl font-bold text-red-500 mt-1">$0.00</p>
+                </div>
+                <div class="bg-card p-6 rounded-xl shadow-lg border border-border">
+                    <p class="text-lg text-muted-foreground">Net Balance</p>
+                    <p id="net-balance" class="text-3xl font-bold text-foreground mt-1">$0.00</p>
+                </div>
+            </div>
+
+            <h2 class="text-2xl font-semibold mb-4 text-primary">Your Recent Bills</h2>
+            <div id="bills-list" class="bg-card p-6 rounded-xl shadow-lg border border-border min-h-40 flex items-center justify-center">
+                <p class="text-muted">Please connect your wallet to view your bills.</p>
+            </div>
+        </section>
+
+        <section id="create-bill" class="mb-12 hidden">
+            <h2 class="text-3xl font-bold mb-6">Split Bills with Friends</h2>
+            <div class="max-w-xl mx-auto bg-card p-8 rounded-xl shadow-2xl border border-border">
+                <p class="text-muted-foreground mb-6">
+                    Create a shared payment request, split costs, and settle up using crypto wallets — fast, secure, and transparent.
+                </p>
+                <form id="create-bill-form" class="space-y-6">
+                    <div>
+                        <label for="bill-name" class="block text-sm font-medium text-foreground mb-2">Bill Name (e.g., Dinner, Rent)</label>
+                        <input type="text" id="bill-name" required
+                            class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
+                            placeholder="Enter Bill name">
+                    </div>
+                    <div>
+                        <label for="total-amount" class="block text-sm font-medium text-foreground mb-2">Total Amount (USD)</label>
+                        <input type="number" id="total-amount" step="0.01" required
+                            class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
+                            placeholder="Enter total amount">
+                    </div>
+                    <div>
+                        <label for="participant-count" class="block text-sm font-medium text-foreground mb-2">Number of Participants</label>
+                        <input type="number" id="participant-count" required
+                            class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
+                            placeholder="e.g., 4">
+                    </div>
+                    <div>
+                        <label for="recipient-address" class="block text-sm font-medium text-foreground mb-2">Recipient Wallet Address (Your Starknet Address)</label>
+                        <input type="text" id="recipient-address" required
+                            class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
+                            placeholder="0x...">
+                    </div>
+                    <button type="submit"
+                        class="w-full bg-secondary hover:bg-secondary/90 text-background font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md shadow-secondary/30">
+                        Create Split
+                    </button>
+                </form>
+            </div>
+        </section>
+        
+        <section id="leaderboard" class="mb-12 hidden">
+            <h2 class="text-3xl font-bold mb-6">Leaderboard</h2>
+            <div class="bg-card p-6 rounded-xl shadow-lg border border-border min-h-40 flex items-center justify-center">
+                <p class="text-muted">Leaderboard features coming soon...</p>
+            </div>
+        </section>
+
+    </main>
+</div>
