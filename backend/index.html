@@ -5,29 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SplitMate - Decentralized Bill Splitting</title>
 
+    <script src="https://cdn.tailwindcss.com"></script>
+    
     <script>
-        tailwind = {
+        tailwind.config = {
+          darkMode: 'class', // Setting up for dark mode, though we apply classes directly
           theme: {
             extend: {
               colors: {
-                // RESTORING YOUR ORIGINAL PURPLE DARK THEME
+                // Simplified core color palette
                 background: "#10002b",
-                card: { DEFAULT: "rgba(255, 255, 255, 0.05)", foreground: "hsl(210 40% 98%)" },
-                primary: { DEFAULT: "#c77dff", active: "#7400b8", foreground: "hsl(210 40% 98%)" },
-                secondary: { DEFAULT: "#ff9e00", foreground: "hsl(210 40% 98%)" },
-                border: "hsl(260 20% 25%)",
-                input: "hsl(260 20% 25%)",
-                ring: "hsl(260 20% 25%)",
+                card: "rgba(255, 255, 255, 0.05)",
+                primary: "#c77dff", 
+                secondary: "#ff9e00",
                 foreground: "hsl(210 40% 98%)",
-                muted: { DEFAULT: "hsl(215 20% 60%)", foreground: "hsl(215 20% 80%)" },
               },
               borderRadius: { xl: "1.25rem", lg: "1rem" }
             }
           }
         }
     </script>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
