@@ -45,10 +45,10 @@
             <a href="#create-bill" class="text-foreground hover:text-secondary">Create Bill</a>
             <a href="#leaderboard" class="text-foreground hover:text-secondary">Leaderboard</a>
         </nav>
-        <button id="connect-wallet-btn" onclick="window.connectWallet()"
-            class="bg-primary hover:bg-primary/90 text-background font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md shadow-primary/30">
-            Connect Wallet
-        </button>
+        <button id="connect-wallet-btn"
+    class="bg-primary hover:bg-primary/90 text-background font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md shadow-primary/30">
+    Connect Wallet
+</button>
     </header>
 
     <main class="py-10">
@@ -140,76 +140,78 @@ import { Account, Contract, Provider, RpcProvider, stark, shortString, cairo } f
     const connectButton = document.getElementById('connect-wallet-btn');
     const balanceContainer = document.getElementById('balance-container');
     
-    // 3. UTILITY FUNCTION FOR WALLET CONNECTION
-    window.connectWallet = async () => {
-        try {
-            // 1. Connect to wallet using @argent/get-starknet
-            starknetWallet = await connect({ modalMode: "alwaysAsk", webwalletUrl: "https://web.argent.xyz" });
+    // ... (Lines 1 & 2: Imports)
+// ... (Line 3: Constants and Global Variables)
 
-            if (!starknetWallet) {
-                console.log("Connection failed or was closed by user.");
-                return;
-            }
+// 3. CORE FUNCTION: CONNECT WALLET
+const handleConnectWallet = async () => {
+    try {
+        // 1. Connect to wallet using @argent/get-starknet
+        starknetWallet = await connect({ modalMode: "alwaysAsk", webwalletUrl: "https://web.argent.xyz" });
 
-            // 2. Enable (if not already enabled)
-            await starknetWallet.enable();
-
-            // 3. Get the connected account and provider
-            userAccount = starknetWallet.account;
-            const provider = starknetWallet.provider;
-            
-            // 4. Instantiate the contract (using a placeholder ABI for testing connection)
-            const contractABI = [{ name: 'get_user_bills', type: 'function', inputs: [], outputs: [{ type: 'felt' }] }];
-            splitMateContract = new Contract(contractABI, SPLITMATE_CONTRACT_ADDRESS, userAccount);
-
-            // 5. Update UI
-            updateWalletUI(userAccount.address);
-            
-            console.log("Wallet connected successfully!");
-            console.log("Account Address:", userAccount.address);
-
-        } catch (error) {
-            console.error("Connection Error:", error);
-            alert("Could not connect Starknet wallet. Check console for details.");
-            updateWalletUI(null); // Reset UI on failure
+        if (!starknetWallet) {
+            console.log("Connection failed or was closed by user.");
+            return;
         }
-    };
-    
-    // 4. UI UPDATE FUNCTION
-    function updateWalletUI(address) {
-        if (address) {
-            // Shorten address for display
-            const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
-            connectButton.textContent = shortAddress;
-            connectButton.className = connectButton.className.replace('bg-primary', 'bg-green-500');
-            connectButton.onclick = window.disconnectWallet;
-            
-            // Show main content (optional future feature)
-            // balanceContainer.classList.remove('hidden'); 
-        } else {
-            // Reset button to initial state
-            connectButton.textContent = "Connect Wallet";
-            connectButton.className = connectButton.className.replace('bg-green-500', 'bg-primary');
-            connectButton.onclick = window.connectWallet;
-            
-            // Hide main content
-            // balanceContainer.classList.add('hidden');
-        }
+
+        // 2. Enable (if not already enabled)
+        await starknetWallet.enable();
+
+        // 3. Get the connected account and provider
+        userAccount = starknetWallet.account;
+        // const provider = starknetWallet.provider; // Not strictly needed right now
+
+        // 4. Instantiate the contract (using a placeholder ABI for testing connection)
+        const contractABI = [{ name: 'get_user_bills', type: 'function', inputs: [], outputs: [{ type: 'felt' }] }];
+        splitMateContract = new Contract(contractABI, SPLITMATE_CONTRACT_ADDRESS, userAccount);
+
+        // 5. Update UI
+        updateWalletUI(userAccount.address);
+
+        console.log("Wallet connected successfully!");
+        console.log("Account Address:", userAccount.address);
+
+    } catch (error) {
+        console.error("Connection Error:", error);
+        alert("Could not connect Starknet wallet. Check console for details.");
+        updateWalletUI(null); // Reset UI on failure
     }
+};
 
-    // 5. DISCONNECT UTILITY (Optional but good practice)
-    window.disconnectWallet = async () => {
-        await disconnect();
-        starknetWallet = null;
-        userAccount = null;
-        splitMateContract = null;
-        updateWalletUI(null);
-        console.log("Wallet disconnected.");
-    };
 
-    // 6. INITIAL SETUP
+// 5. CORE FUNCTION: DISCONNECT WALLET
+const handleDisconnectWallet = async () => {
+    // NOTE: 'disconnect' from get-starknet is async
+    await disconnect();
+    starknetWallet = null;
+    userAccount = null;
+    splitMateContract = null;
     updateWalletUI(null);
-    
-    // Add logic here for the 'Create Bill' form submission (Debug Block 4 next)
+    console.log("Wallet disconnected.");
+};
+
+// 6. UI UPDATE FUNCTION (STAYS THE SAME, BUT NEEDS A SLIGHT TWEAK)
+function updateWalletUI(address) {
+    if (address) {
+        const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+        connectButton.textContent = shortAddress;
+        connectButton.className = connectButton.className.replace('bg-primary', 'bg-green-500');
+        // Change the event handler to the disconnect function
+        connectButton.removeEventListener('click', handleConnectWallet);
+        connectButton.addEventListener('click', handleDisconnectWallet);
+
+    } else {
+        connectButton.textContent = "Connect Wallet";
+        connectButton.className = connectButton.className.replace('bg-green-500', 'bg-primary');
+        // Change the event handler back to the connect function
+        connectButton.removeEventListener('click', handleDisconnectWallet);
+        connectButton.addEventListener('click', handleConnectWallet);
+    }
+}
+
+// 7. INITIAL SETUP & LISTENER ATTACHMENT (REPLACES OLD SECTION 6)
+// Add the initial event listener after the DOM has loaded.
+connectButton.addEventListener('click', handleConnectWallet);
+updateWalletUI(null); // Set initial button state
     
 </script>
