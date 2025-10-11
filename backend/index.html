@@ -125,9 +125,10 @@
     </main>
 </div>
 	<script type="module">
-    // 1. STARKNET LIBRARY IMPORTS (USING THE CORRECT CDN FOR ES MODULES)
-    import { connect, disconnect } from 'https://cdn.jsdelivr.net/npm/@argent/get-starknet@5.3.0/dist/index.js';
-    import { Account, Contract, Provider, RpcProvider } from 'https://cdn.jsdelivr.net/npm/starknet@5.23.0/dist/index.js';
+// 1. STARKNET LIBRARY IMPORTS (USING THE STABLE CDN PATHS)
+import { connect, disconnect } from 'https://cdn.jsdelivr.net/npm/@argent/get-starknet@5.3.0/dist/index.js';
+import { Account, Contract, Provider, RpcProvider, stark, shortString, cairo } from 'https://cdn.jsdelivr.net/npm/starknet@5.23.0/dist/esm.js'; 
+// NOTE: We changed the path from /dist/index.js to /dist/esm.js and added helper imports
     
     // 2. CONSTANTS AND GLOBAL VARIABLES
     const SPLITMATE_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000000000000000000000000001"; // Placeholder Address
