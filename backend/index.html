@@ -222,7 +222,7 @@
         
         // ====================================================================
         // --- 0. ES MODULE IMPORTS (Starknet Modules) ---
-        // FIX: Replaced unstable @latest with stable version links to fix 404 error
+        // FIX: Replaced unstable @latest with stable version links to fix 404 error and connectWallet is not a function
         // ====================================================================
         
         import { Contract, cairo, shortString } from 'https://cdn.jsdelivr.net/npm/starknet@6.2.1/dist/index.js';
@@ -266,7 +266,6 @@
 
         // ====================================================================
         // --- 2. WALLET CONNECTION LOGIC (EXPOSED TO WINDOW) ---
-        // FIX: The functions are now correctly defined in the global window object.
         // ====================================================================
 
         window.connectWallet = async function() {
