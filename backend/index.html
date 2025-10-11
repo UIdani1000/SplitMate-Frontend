@@ -124,15 +124,17 @@
 
     </main>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/starknet@5.14.1/dist/index.min.js"></script>
 <script type="module">
-    // 1. STARKNET LIBRARY IMPORTS (STABLE CDNS)
+    // 1. STARKNET LIBRARY IMPORTS
+    // ONLY get-starknet remains as a module import
     import { connect, disconnect } from 'https://cdn.jsdelivr.net/npm/@argent/get-starknet@5.3.0/dist/index.js';
-    import { Account, Contract, Provider, stark, shortString, cairo } from 'https://unpkg.com/starknet@5.14.1/dist/index.mjs'; 
+    // NOTE: starknet.js is now loaded globally via a non-module <script> tag above.
 
     // 2. MAIN EXECUTION BLOCK (Runs ONLY when the entire page is loaded)
-    document.addEventListener('DOMContentLoaded', () => { // <--- START OF WRAPPER
+    document.addEventListener('DOMContentLoaded', () => {
 
-        // 3. CONSTANTS AND GLOBAL VARIABLES (Declared here for proper scope)
+        // 3. CONSTANTS AND GLOBAL VARIABLES
         const SPLITMATE_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000000000000000000000000001"; // Placeholder
         
         let starknetWallet = null;
@@ -160,9 +162,9 @@
 
                 userAccount = starknetWallet.account;
                 
-                // Instantiate the contract
+                // Instantiate the contract - NOTE: We use the global 'starknet.Contract' here
                 const contractABI = [{ name: 'get_user_bills', type: 'function', inputs: [], outputs: [{ type: 'felt' }] }];
-                splitMateContract = new Contract(contractABI, SPLITMATE_CONTRACT_ADDRESS, userAccount);
+                splitMateContract = new starknet.Contract(contractABI, SPLITMATE_CONTRACT_ADDRESS, userAccount);
 
                 updateWalletUI(userAccount.address);
                 
@@ -187,21 +189,18 @@
 
         // 6. UI UPDATE FUNCTION
         function updateWalletUI(address) {
-            // Remove all listeners first to prevent duplicates
             connectButton.removeEventListener('click', handleConnectWallet);
             connectButton.removeEventListener('click', handleDisconnectWallet);
 
             if (address) {
                 const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
                 connectButton.textContent = shortAddress;
-                // Use a proper class list management to ensure only one state is active
                 connectButton.classList.remove('bg-primary');
                 connectButton.classList.add('bg-green-500');
                 
                 connectButton.addEventListener('click', handleDisconnectWallet);
             } else {
                 connectButton.textContent = "Connect Wallet";
-                
                 connectButton.classList.remove('bg-green-500');
                 connectButton.classList.add('bg-primary');
                 
@@ -209,11 +208,9 @@
             }
         }
 
-        // 7. INITIAL SETUP
-        // Add the initial event listener and set the button state
+        // 7. INITIAL SETUP & NAVIGATION
         updateWalletUI(null);
 
-        // --- NAVIGATION LOGIC ---
         const sections = {
             'dashboard': document.getElementById('dashboard'),
             'create-bill': document.getElementById('create-bill'),
@@ -225,7 +222,6 @@
             Object.values(sections).forEach(section => {
                 if(section) section.classList.add('hidden');
             });
-
             const target = sections[hash.replace('#', '')];
             if (target) {
                 target.classList.remove('hidden');
@@ -244,5 +240,5 @@
         navigate(initialHash);
 
 
-    }); // <--- END OF WRAPPER
+    }); // End of DOMContentLoaded
 </script>
