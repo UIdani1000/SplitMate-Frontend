@@ -124,3 +124,91 @@
 
     </main>
 </div>
+	<script type="module">
+    // 1. STARKNET LIBRARY IMPORTS (USING THE CORRECT CDN FOR ES MODULES)
+    import { connect, disconnect } from 'https://cdn.jsdelivr.net/npm/@argent/get-starknet@5.3.0/dist/index.js';
+    import { Account, Contract, Provider, RpcProvider } from 'https://cdn.jsdelivr.net/npm/starknet@5.23.0/dist/index.js';
+    
+    // 2. CONSTANTS AND GLOBAL VARIABLES
+    const SPLITMATE_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000000000000000000000000001"; // Placeholder Address
+    
+    let starknetWallet = null;
+    let userAccount = null;
+    let splitMateContract = null;
+    
+    const connectButton = document.getElementById('connect-wallet-btn');
+    const balanceContainer = document.getElementById('balance-container');
+    
+    // 3. UTILITY FUNCTION FOR WALLET CONNECTION
+    window.connectWallet = async () => {
+        try {
+            // 1. Connect to wallet using @argent/get-starknet
+            starknetWallet = await connect({ modalMode: "alwaysAsk", webwalletUrl: "https://web.argent.xyz" });
+
+            if (!starknetWallet) {
+                console.log("Connection failed or was closed by user.");
+                return;
+            }
+
+            // 2. Enable (if not already enabled)
+            await starknetWallet.enable();
+
+            // 3. Get the connected account and provider
+            userAccount = starknetWallet.account;
+            const provider = starknetWallet.provider;
+            
+            // 4. Instantiate the contract (using a placeholder ABI for testing connection)
+            const contractABI = [{ name: 'get_user_bills', type: 'function', inputs: [], outputs: [{ type: 'felt' }] }];
+            splitMateContract = new Contract(contractABI, SPLITMATE_CONTRACT_ADDRESS, userAccount);
+
+            // 5. Update UI
+            updateWalletUI(userAccount.address);
+            
+            console.log("Wallet connected successfully!");
+            console.log("Account Address:", userAccount.address);
+
+        } catch (error) {
+            console.error("Connection Error:", error);
+            alert("Could not connect Starknet wallet. Check console for details.");
+            updateWalletUI(null); // Reset UI on failure
+        }
+    };
+    
+    // 4. UI UPDATE FUNCTION
+    function updateWalletUI(address) {
+        if (address) {
+            // Shorten address for display
+            const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+            connectButton.textContent = shortAddress;
+            connectButton.className = connectButton.className.replace('bg-primary', 'bg-green-500');
+            connectButton.onclick = window.disconnectWallet;
+            
+            // Show main content (optional future feature)
+            // balanceContainer.classList.remove('hidden'); 
+        } else {
+            // Reset button to initial state
+            connectButton.textContent = "Connect Wallet";
+            connectButton.className = connectButton.className.replace('bg-green-500', 'bg-primary');
+            connectButton.onclick = window.connectWallet;
+            
+            // Hide main content
+            // balanceContainer.classList.add('hidden');
+        }
+    }
+
+    // 5. DISCONNECT UTILITY (Optional but good practice)
+    window.disconnectWallet = async () => {
+        await disconnect();
+        starknetWallet = null;
+        userAccount = null;
+        splitMateContract = null;
+        updateWalletUI(null);
+        console.log("Wallet disconnected.");
+    };
+
+    // 6. INITIAL SETUP
+    updateWalletUI(null);
+    
+    // Add logic here for the 'Create Bill' form submission (Debug Block 4 next)
+    
+</script>
