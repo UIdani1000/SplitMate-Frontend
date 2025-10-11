@@ -1,748 +1,219 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SplitMate - Decentralized Bill Splitting</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SplitMate – Decentralized Bill Splitting</title>
 
+    <!-- 🧩 Tailwind Config -->
     <script>
-        // Define the global 'tailwind' object with custom theme BEFORE loading the CDN
-        tailwind = {
-          theme: {
-            extend: {
-              colors: {
-                background: "#10002b",
-                card: { DEFAULT: "rgba(255, 255, 255, 0.05)", foreground: "hsl(210 40% 98%)" },
-                primary: { DEFAULT: "#c77dff", active: "#7400b8", foreground: "hsl(210 40% 98%)" },
-                secondary: { DEFAULT: "#ff9e00", foreground: "hsl(210 40% 98%)" },
-                border: "hsl(260 20% 25%)",
-                input: "hsl(260 20% 25%)",
-                ring: "hsl(260 20% 25%)",
-                foreground: "hsl(210 40% 98%)",
-                muted: { DEFAULT: "hsl(215 20% 60%)", foreground: "hsl(215 20% 80%)" },
-              },
-              borderRadius: { xl: "1.25rem", lg: "1rem" }
-            }
-          }
-        }
+      tailwind = {
+        theme: {
+          extend: {
+            colors: {
+              background: "#0a0e14",
+              foreground: "#e5e7eb",
+              card: "#141920",
+              primary: "#22c55e",
+              "primary-foreground": "#ffffff",
+              secondary: "#14b8a6",
+              muted: "#1a1f2a",
+              "muted-foreground": "#9ca3af",
+              border: "#1e2530",
+              input: "#141920",
+              ring: "#22c55e",
+            },
+            borderRadius: {
+              xl: "1.25rem",
+              lg: "1rem",
+              md: "0.75rem",
+              sm: "0.5rem",
+            },
+            fontFamily: {
+              inter: ["Inter", "sans-serif"],
+            },
+          },
+        },
+      };
     </script>
-    
+
+    <!-- 🚀 Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
+    <!-- 🖋️ Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap"
+      rel="stylesheet"
+    />
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #10002b; }
-        ::-webkit-scrollbar-thumb { background: #7400b8; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #c77dff; }
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #0a0e14;
+        color: #e5e7eb;
+      }
+
+      * {
+        transition: background-color 0.25s, color 0.25s, border-color 0.25s;
+      }
+
+      .glass {
+        background: rgba(20, 25, 32, 0.7);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(34, 197, 94, 0.15);
+      }
     </style>
-</head>
-<body class="bg-background min-h-screen text-foreground antialiased overflow-x-hidden">
+  </head>
 
-    <div id="message-box" class="hidden fixed inset-0 z-50 bg-background/80 backdrop-blur-sm items-center justify-center p-4">
-        <div class="bg-[#1a0035] border border-primary/50 rounded-xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 id="message-title" class="text-xl font-bold mb-2 text-primary">Notification</h3>
-            <p id="message-content" class="text-muted mb-6"></p>
-            <div class="flex justify-end">
-                <button onclick="closeMessageBox()" class="px-6 py-2 bg-primary/70 rounded-lg text-white font-semibold hover:bg-primary transition duration-200 shadow-lg">
-                    OK
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <nav class="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex-shrink-0">
-                    <span class="text-3xl font-extrabold text-primary tracking-wider">Split<span class="text-secondary">Mate</span></span>
-                </div>
-                
-                <div class="hidden sm:ml-6 sm:flex sm:space-x-4">
-                    <a href="#" onclick="navigateTo('dashboard')" class="text-muted hover:text-primary px-3 py-2 rounded-lg text-sm font-medium transition duration-200">Dashboard</a>
-                    <a href="#" onclick="navigateTo('create')" class="text-muted hover:text-primary px-3 py-2 rounded-lg text-sm font-medium transition duration-200">Create Bill</a>
-                    <a href="#" onclick="navigateTo('leaderboard')" class="text-muted hover:text-primary px-3 py-2 rounded-lg text-sm font-medium transition duration-200">Leaderboard</a>
-                </div>
-                
-                <div class="hidden sm:block">
-                    <button id="connect-wallet-btn" onclick="window.connectWallet()" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded-xl transition duration-300 shadow-md shadow-primary/30">
-    Connect Wallet
-</button>
-                </div>
-
-                <div class="sm:hidden flex items-center">
-                    <button id="menu-toggle" type="button" class="inline-flex items-center justify-center p-2 rounded-lg text-primary hover:text-white hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary/50" aria-controls="mobile-menu" aria-expanded="false">
-                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div class="sm:hidden hidden" id="mobile-menu">
-            <div class="px-2 pt-2 pb-3 space-y-1">
-                <a href="#" onclick="navigateTo('dashboard')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Dashboard</a>
-                <a href="#" onclick="navigateTo('create')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Create Bill</a>
-                <a href="#" onclick="navigateTo('leaderboard')" class="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-primary/20 transition">Leaderboard</a>
-                <button id="mobile-connect-btn" onclick="window.connectWallet()" class="w-full text-left px-3 py-2 bg-primary/20 rounded-lg text-base font-medium text-primary hover:bg-primary/40 transition">
-    Connect Wallet
-</button>
-            </div>
-        </div>
+  <body
+    class="bg-background text-foreground min-h-screen flex flex-col items-center justify-center p-6"
+  >
+    <!-- 🧭 Navbar -->
+    <nav
+      class="w-full max-w-5xl flex justify-between items-center mb-10 px-6 py-4 bg-card rounded-xl border border-border"
+    >
+      <h1 class="text-2xl font-bold text-primary">SplitMate</h1>
+      <button
+        id="connectWalletBtn"
+        class="bg-primary hover:bg-green-500 text-white font-semibold py-2 px-4 rounded-lg transition"
+      >
+        Connect Wallet
+      </button>
     </nav>
 
-    <main class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <h1 id="main-header-title" class="text-3xl sm:text-4xl font-extrabold text-foreground mb-8 border-b-2 border-primary/20 pb-2">Dashboard</h1>
+    <!-- 🪄 Main Card -->
+    <div
+      class="glass w-full max-w-2xl rounded-2xl p-8 shadow-xl border border-border"
+    >
+      <h2 class="text-3xl font-bold text-center text-primary mb-4">
+        Split Bills with Friends
+      </h2>
+      <p class="text-center text-muted-foreground mb-6">
+        Create a shared payment request, split costs, and settle up using crypto
+        wallets — fast, secure, and transparent.
+      </p>
 
-        <section id="dashboard-view" class="space-y-8">
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                <div class="bg-card rounded-xl p-6 border border-border shadow-2xl">
-                    <h2 class="text-muted text-lg font-medium mb-1">Total Owed To You</h2>
-                    <p id="total-owed" class="text-4xl font-extrabold text-green-400">$0.00</p>
-                </div>
-                
-                <div class="bg-card rounded-xl p-6 border border-border shadow-2xl">
-                    <h2 class="text-muted text-lg font-medium mb-1">Total You Owe</h2>
-                    <p id="total-due" class="text-4xl font-extrabold text-red-400">$0.00</p>
-                </div>
+      <!-- 💰 Form -->
+      <form id="splitForm" class="space-y-4">
+        <div>
+          <label class="block text-sm text-muted-foreground mb-1"
+            >Total Amount (USD)</label
+          >
+          <input
+            id="totalAmount"
+            type="number"
+            placeholder="Enter total amount"
+            class="w-full bg-input border border-border text-foreground rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
 
-                <div class="bg-card rounded-xl p-6 border border-border shadow-2xl">
-                    <h2 class="text-muted text-lg font-medium mb-1">Net Balance</h2>
-                    <p id="net-balance" class="text-4xl font-extrabold text-foreground">$0.00</p>
-                </div>
-            </div>
+        <div>
+          <label class="block text-sm text-muted-foreground mb-1"
+            >Number of Participants</label
+          >
+          <input
+            id="numParticipants"
+            type="number"
+            placeholder="e.g. 4"
+            class="w-full bg-input border border-border text-foreground rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
 
-            <div>
-                <h2 class="text-2xl font-bold text-primary mb-4">Your Recent Bills</h2>
-                <div id="bill-list" class="space-y-4">
-                    <div class="text-center p-8 text-muted">Please connect your wallet...</div>
-                </div>
-            </div>
+        <div>
+          <label class="block text-sm text-muted-foreground mb-1"
+            >Recipient Wallet Address</label
+          >
+          <input
+            id="recipientAddress"
+            type="text"
+            placeholder="0x..."
+            class="w-full bg-input border border-border text-foreground rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
 
-            <div class="pt-4 text-center">
-                <button onclick="navigateTo('create')" class="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-xl transition duration-300 text-lg shadow-lg shadow-primary/30">
-                    Split a New Bill
-                </button>
-            </div>
+        <button
+          type="button"
+          id="createSplitBtn"
+          class="w-full bg-primary hover:bg-green-500 text-white font-semibold py-2 px-4 rounded-lg transition"
+        >
+          Create Split
+        </button>
+      </form>
 
-        </section>
+      <!-- 📊 Output -->
+      <div id="splitResult" class="mt-6 text-center hidden">
+        <p class="text-muted-foreground mb-2">Each person pays:</p>
+        <p id="splitAmount" class="text-2xl font-bold text-primary"></p>
+      </div>
+    </div>
 
-        <section id="create-view" class="hidden">
-            <div class="max-w-2xl mx-auto bg-card p-6 sm:p-8 rounded-xl border border-border shadow-2xl">
-                <form id="bill-form" class="space-y-6">
+    <!-- ⚙️ Wallet / Blockchain Actions -->
+    <section
+      class="w-full max-w-2xl mt-10 flex flex-col gap-4 bg-card p-6 border border-border rounded-xl text-center"
+    >
+      <h3 class="text-xl font-semibold text-primary mb-2">Blockchain Actions</h3>
+      <p class="text-muted-foreground text-sm">
+        (Placeholder functions for Starknet / Xverse / Chipi Pay integration)
+      </p>
+      <div class="flex flex-wrap gap-3 justify-center">
+        <button
+          id="sendTxBtn"
+          class="bg-secondary hover:bg-teal-500 text-white py-2 px-4 rounded-lg"
+        >
+          Send Payment
+        </button>
+        <button
+          id="viewHistoryBtn"
+          class="bg-muted hover:bg-gray-700 text-white py-2 px-4 rounded-lg"
+        >
+          View Split History
+        </button>
+      </div>
+    </section>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label for="bill-name" class="block text-sm font-medium text-muted mb-2">Bill Name (e.g., Dinner, Rent)</label>
-                            <input type="text" id="bill-name" name="bill-name" required placeholder="Enter bill name"
-                                   class="bg-input/50 border border-border text-foreground rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition duration-300 w-full"
-                            >
-                        </div>
-                        <div>
-                            <label for="bill-amount" class="block text-sm font-medium text-muted mb-2">Total Amount (USDC/ETH)</label>
-                            <input type="number" id="bill-amount" name="bill-amount" required step="0.01" min="0.01" placeholder="100.00"
-                                   class="bg-input/50 border border-border text-foreground rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary transition duration-300 w-full"
-                            >
-                        </div>
-                    </div>
+    <!-- 👣 Footer -->
+    <footer class="mt-10 text-center text-muted-foreground text-sm">
+      Built with 💚 on Starknet | Powered by Web3 | SplitMate 2025
+    </footer>
 
-                    <div>
-                        <label class="block text-sm font-medium text-muted mb-3">Split Type</label>
-                        <input type="hidden" id="split-type-input" value="even">
-                        <div class="flex space-x-4">
-                            <button type="button" id="split-type-even" onclick="window.toggleSplit('even')"
-                                    class="flex-1 px-4 py-3 rounded-xl border border-primary/50 text-foreground font-semibold transition duration-200 bg-primary/50 hover:bg-primary/20">
-                                Evenly
-                            </button>
-                            <button type="button" id="split-type-manual" onclick="window.toggleSplit('manual')"
-                                    class="flex-1 px-4 py-3 rounded-xl border border-primary/50 text-foreground font-semibold transition duration-200 hover:bg-primary/20">
-                                Manual Shares
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-muted mb-3">Number of Participants (excluding Payer)</label>
-                        
-                        <div class="flex items-center space-x-4 bg-input/50 p-3 rounded-xl border border-border">
-                            <button type="button" onclick="window.changeParticipantCount(-1)" 
-                                    class="w-10 h-10 bg-primary/20 text-primary rounded-lg text-2xl font-bold hover:bg-primary/40 transition duration-200">
-                                &minus;
-                            </button>
-                            <span id="participant-count-display" class="w-16 text-center text-foreground bg-transparent text-xl font-bold border-none">0</span>
-                            <input type="hidden" id="participant-count" name="participant-count" value="0" min="0" readonly>
-                            <button type="button" onclick="window.changeParticipantCount(1)" 
-                                    class="w-10 h-10 bg-primary/20 text-primary rounded-lg text-2xl font-bold hover:bg-primary/40 transition duration-200">
-                                &plus;
-                            </button>
-                        </div>
-                    </div>
+    <!-- 🧠 Core Logic -->
+    <script>
+      const connectBtn = document.getElementById("connectWalletBtn");
+      const createBtn = document.getElementById("createSplitBtn");
+      const sendTxBtn = document.getElementById("sendTxBtn");
+      const viewHistoryBtn = document.getElementById("viewHistoryBtn");
 
-                    <div id="manual-split-container" class="space-y-4 hidden pt-4 border-t border-border mt-6">
-                        <h3 class="text-xl font-bold text-primary">Participant Details</h3>
-                        <div id="participants-list">
-                            </div>
-                        <p class="text-xs text-muted">For Manual Split, ensure the sum of all shares (including the Payer's calculated share) equals the 'Total Amount'.</p>
-                    </div>
-                    
-                    <button type="submit" 
-                            class="w-full bg-secondary hover:bg-secondary/90 text-white font-bold py-3 rounded-xl transition duration-300 text-lg shadow-lg shadow-secondary/30">
-                        Broadcast Bill to SplitMate
-                    </button>
-                </form>
-            </div>
-        </section>
+      // ⚡ Placeholder: Wallet connect (Starknet / Xverse / Chipi Pay)
+      connectBtn.addEventListener("click", () => {
+        alert("🔗 Wallet connection initiated (Starknet / Xverse)");
+      });
 
-        <section id="leaderboard-view" class="hidden">
-            <div class="max-w-3xl mx-auto">
-                <div class="bg-card p-6 rounded-xl border border-border shadow-2xl mb-6">
-                    <p class="text-muted text-center">
-                        The SplitMate Leaderboard ranks users based on their on-chain bill settlement history. Higher reputation scores indicate a greater commitment to prompt payments.
-                    </p>
-                </div>
-                
-                <div class="mb-4 flex justify-between items-center text-sm font-semibold text-muted border-b border-border pb-2">
-                    <span class="w-1/2">Rank / Address</span>
-                    <span class="text-right">Reputation Score / Settled Rate</span>
-                </div>
-
-                <div id="leaderboard-list" class="space-y-3">
-                    <div class="text-center p-8 text-muted">Loading leaderboard...</div>
-                </div>
-            </div>
-        </section>
-        
-    </main>
-    
-    <script type="module">
-        
-        // ====================================================================
-        // --- 0. ES MODULE IMPORTS (Starknet Modules) ---
-        // ====================================================================
-        
-        import { Contract, cairo, shortString } from 'https://cdn.jsdelivr.net/npm/starknet@latest/dist/starknet.js';
-        import { getStarknet } from 'https://cdn.jsdelivr.net/npm/@starknet-io/get-starknet@latest/dist/index.js';
-
-        // ====================================================================
-        // --- 1. STARKNET CONFIGURATION & GLOBAL STATE ---
-        // ====================================================================
-
-        const SPLITMATE_CONTRACT_ADDRESS = "0xYOUR_SPLITMATE_CONTRACT_ADDRESS_HERE";
-        const ETH_ERC20_ADDRESS = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"; 
-        const ETH_DECIMALS = 18;
-        
-        const SPLITMATE_ABI = [
-            { type: "function", name: "create_bill", inputs: [{ name: "bill_id", type: "felt" }, { name: "name", type: "felt" }, { name: "total_amount", type: "u256" }, { name: "payer", type: "ContractAddress" }, { name: "participants", type: "ContractAddress*" }, { name: "shares", type: "u256*" }], outputs: [], state_mutability: "external" },
-            { type: "function", name: "settle_share", inputs: [{ name: "bill_id", type: "felt" }], outputs: [], state_mutability: "external" },
-            { type: "function", name: "get_user_bills", inputs: [{ name: "user_address", type: "ContractAddress" }], outputs: [{ name: "bills", type: "BillStruct*" }], state_mutability: "view" },
-            { type: "function", name: "approve", inputs: [{ name: "spender", type: "ContractAddress" }, { name: "amount", type: "u256" }], outputs: [{ name: "success", type: "bool" }], state_mutability: "external" }
-        ];
-
-        // Global State (exposed to window for UI functions)
-        window.starknetAccount = null; 
-        window.starknetProvider = null; 
-        window.splitMateContract = null; 
-        window.userAddress = null; 
-        window.cairo = cairo;         
-        window.shortString = shortString; 
-
-        // Utility functions (for starknet conversion)
-        function toStarknetU256(amount, decimals = ETH_DECIMALS) {
-            const multiplier = 10n ** BigInt(decimals);
-            const value = BigInt(Math.floor(amount * (Number(multiplier))))
-            return cairo.uint256(value.toString());
+      // 🧮 Split calculation
+      createBtn.addEventListener("click", () => {
+        const total = parseFloat(
+          document.getElementById("totalAmount").value
+        );
+        const participants = parseInt(
+          document.getElementById("numParticipants").value
+        );
+        if (!total || !participants || participants <= 0) {
+          alert("Please enter valid values.");
+          return;
         }
-        function fromStarknetU256(u256, decimals = ETH_DECIMALS) {
-            const value = BigInt(u256.low) + (BigInt(u256.high) << 128n);
-            const divisor = 10 ** decimals;
-            return Number(value) / divisor;
-        }
+        const each = (total / participants).toFixed(2);
+        document.getElementById("splitAmount").textContent = `$${each}`;
+        document.getElementById("splitResult").classList.remove("hidden");
+      });
 
+      // ⚙️ Placeholder: Send transaction
+      sendTxBtn.addEventListener("click", () => {
+        alert("💸 Simulated payment sent to blockchain.");
+      });
 
-        // ====================================================================
-        // --- 2. WALLET CONNECTION LOGIC (EXPOSED TO WINDOW) ---
-        // ====================================================================
-
-        window.connectWallet = async function() {
-            try {
-                const starknet = getStarknet(); 
-                if (!starknet) {
-                    window.showMessageBox("Wallet Required", "Please install ArgentX or Braavos.", () => {
-                        window.open("https://www.starknet.io/en/ecosystem/wallets", "_blank");
-                    });
-                    return false;
-                }
-
-                const enabled = await starknet.enable({ starknetVersion: "v5" });
-                
-                if (enabled && enabled.account) {
-                    window.starknetAccount = enabled.account;
-                    window.userAddress = window.starknetAccount.address;
-                    window.starknetProvider = window.starknetAccount.provider;
-                    
-                    window.splitMateContract = new Contract( 
-                        SPLITMATE_ABI, 
-                        SPLITMATE_CONTRACT_ADDRESS, 
-                        window.starknetAccount 
-                    );
-
-                    window.updateWalletUI(); 
-                    return true;
-                }
-            } catch (error) {
-                console.error("Starknet wallet connection failed:", error);
-                window.showMessageBox("Connection Error", `Failed to connect: ${error.message || "User rejected connection."}`);
-            }
-            return false;
-        }
-
-        window.disconnectWallet = function() {
-            window.starknetAccount = null;
-            window.userAddress = null;
-            window.starknetProvider = null;
-            window.splitMateContract = null;
-            window.updateWalletUI(); 
-            window.navigateTo('dashboard');
-        }
-        
-        window.connectMetamaskWallet = function() { 
-            window.showMessageBox("Connect Wallet", "Metamask is for Ethereum/EVM. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet); 
-        }
-        window.connectXverseWallet = function() { 
-            window.showMessageBox("Connect Wallet", "Xverse is for Bitcoin/Stacks. SplitMate uses Starknet. Please use ArgentX or Braavos.", window.connectWallet); 
-        }
-
-
-        // ====================================================================
-        // --- 3. CONTRACT INTERACTION STUBS (MOCK DATA) ---
-        // ====================================================================
-        
-        window.sendBillToContract = async function(formData, shares) {
-            if (!window.starknetAccount) throw new Error("Wallet not connected.");
-            return { transaction_hash: "0xMOCK_TX_HASH_CREATE_BILL" }; 
-        }
-
-        window.payBill = async function(billId, amountToPay) {
-            if (!window.starknetAccount) throw new Error("Wallet not connected.");
-            return { transaction_hash: "0xMOCK_TX_HASH_PAY_BILL" };
-        }
-
-        window.fetchUserBills = async function(userAddress) {
-            if (!window.splitMateContract) return []; 
-            try {
-                // MOCK DATA 
-                return [
-                    { id: 1, name: "Mock Dinner", totalAmount: 50.00, payer: "0x123...456", isSettled: false, 
-                    shares: [{address: userAddress, amount: 25.00}, {address: "0x123...456", amount: 25.00}] },
-                    { id: 2, name: "Mock Rent", totalAmount: 1200.00, payer: userAddress, isSettled: true, 
-                    shares: [{address: "0x999...999", amount: 600.00}, {address: userAddress, amount: 600.00}] }
-                ];
-
-            } catch (error) {
-                console.error("Error fetching bills. Returning mock data.", error);
-                return [];
-            }
-        }
-
-        window.fetchLeaderboard = async function() {
-            // MOCK DATA
-            const userAddress = window.userAddress || "0xUnconnectedUser";
-            return [
-                { address: "0x05f8...1234", score: 9.8, settledRate: 0.98, totalBills: 25 },
-                { address: userAddress, score: 9.5, settledRate: 0.95, totalBills: 12 },
-                { address: "0x0a1c...5678", score: 9.0, settledRate: 0.90, totalBills: 40 },
-            ];
-        }
-
-
-        // ====================================================================
-        // --- 4. UI LOGIC (MUST RUN AFTER HTML IS LOADED) ---
-        // ====================================================================
-        
-        window.showMessageBox = function(title, content, onOk = null) {
-            document.getElementById('message-title').textContent = title;
-            document.getElementById('message-content').textContent = content;
-            const okButton = document.querySelector('#message-box button');
-            
-            okButton.onclick = null; 
-            okButton.onclick = () => {
-                window.closeMessageBox();
-                if (typeof onOk === 'function') {
-                    onOk();
-                }
-            };
-            document.getElementById('message-box').classList.remove('hidden');
-            document.getElementById('message-box').classList.add('flex');
-        }
-
-        window.closeMessageBox = function() {
-            document.getElementById('message-box').classList.add('hidden');
-            document.getElementById('message-box').classList.remove('flex');
-        }
-
-        window.updateWalletUI = function() {
-            const btn = document.getElementById('connect-wallet-btn');
-            const mobileBtn = document.getElementById('mobile-connect-btn');
-            
-            if (window.userAddress && typeof window.userAddress === 'string') {
-                const shortAddress = window.userAddress.substring(0, 6) + '...' + window.userAddress.slice(-4);
-                
-                btn.textContent = shortAddress;
-                btn.classList.remove('bg-primary', 'hover:bg-primary/90');
-                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'text-white', 'font-mono'); 
-                
-                mobileBtn.textContent = shortAddress;
-                mobileBtn.classList.remove('text-primary', 'bg-primary/20');
-                mobileBtn.classList.add('bg-green-600/20', 'text-green-400');
-            } else {
-                btn.textContent = "Connect Wallet";
-                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'text-white', 'font-mono');
-                btn.classList.add('bg-primary', 'hover:bg-primary/90');
-
-                mobileBtn.textContent = "Connect Wallet";
-                mobileBtn.classList.remove('bg-green-600/20', 'text-green-400');
-                mobileBtn.classList.add('text-primary', 'bg-primary/20');
-            }
-            window.loadDashboardContent();
-            window.loadLeaderboard(); 
-        }
-        
-        const VIEWS = ['dashboard', 'create', 'leaderboard'];
-        
-	    window.navigateTo = function(viewId) {
-            if (!VIEWS.includes(viewId)) return;
-
-            VIEWS.forEach(id => { document.getElementById(id + '-view')?.classList.add('hidden'); });
-            document.getElementById(viewId + '-view')?.classList.remove('hidden');
-
-            const titleMap = { 'dashboard': 'Dashboard', 'create': 'Create Bill', 'leaderboard': 'Reputation Leaderboard' };
-            document.getElementById('main-header-title').textContent = titleMap[viewId] || 'SplitMate';
-
-            if (viewId === 'dashboard') window.loadDashboardContent(); 
-            else if (viewId === 'leaderboard') window.loadLeaderboard();
-
-            document.getElementById('mobile-menu').classList.add('hidden');
-            
-            // This is the correct location for updateWalletUI to run
-            window.updateWalletUI(); 
-        }
-
-        function renderBillCard(bill) {
-            const userAddress = window.userAddress || "0xUnconnectedUser";
-            const isPayer = bill.payer === userAddress;
-            const statusColor = bill.status === 'Open' ? 'text-primary' : 'text-green-400';
-            const actionButton = bill.status === 'Open' ? 
-                `<button class="bg-secondary text-white px-3 py-1 rounded-full text-sm font-semibold hover:bg-opacity-80 transition">
-                    ${isPayer ? 'Manage' : 'Pay Now'}
-                </button>` :
-                `<span class="text-green-400 text-sm font-semibold">Settled</span>`;
-            
-            const shareDisplay = isPayer ? bill.totalAmount : bill.yourShare;
-
-            return `
-                <div class="p-4 bg-card rounded-xl border border-border shadow-lg transition duration-300 hover:border-primary/50 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
-                    <div class="flex flex-col">
-                        <h3 class="text-xl font-bold text-foreground">${bill.name}</h3>
-                        <p class="text-sm text-muted">
-                            ${isPayer ? 'You Paid' : 'Owed to'} <span class="font-mono text-xs text-primary/80">${bill.payer.substring(0, 6)}...${bill.payer.slice(-4)}</span>
-                        </p>
-                    </div>
-                    
-                    <div class="flex items-center space-x-6">
-                        <div class="flex flex-col text-right">
-                            <span class="text-2xl font-extrabold ${statusColor}">$${parseFloat(shareDisplay).toFixed(2)}</span>
-                            <span class="text-xs text-muted">${isPayer ? 'Total Bill' : 'Your Share'}</span>
-                        </div>
-                        ${actionButton}
-                    </div>
-                </div>
-            `;
-        }
-
-        window.loadDashboardContent = async function() {
-            const listContainer = document.getElementById('bill-list');
-            const userAddress = window.userAddress; 
-            
-            if (!userAddress) {
-                listContainer.innerHTML = '<p class="text-center text-secondary p-8 font-semibold">Please connect your wallet to view your bills.</p>';
-                return;
-            }
-
-            listContainer.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Fetching live bills from the contract...</div>';
-
-            try {
-                const bills = await window.fetchUserBills(userAddress); 
-                
-                let totalOwed = 0;
-                let totalDue = 0;
-
-                listContainer.innerHTML = '';
-
-                if (bills.length === 0) {
-                    listContainer.innerHTML = '<p class="text-center text-muted p-8">No bills found. Start a new split!</p>';
-                } else {
-                    bills.forEach(bill => {
-                        const userShareObj = bill.shares.find(s => s.address === userAddress);
-                        const userShare = userShareObj ? userShareObj.amount : 0;
-                        
-                        const billForRender = {
-                            ...bill,
-                            yourShare: userShare,
-                            status: bill.isSettled ? 'Settled' : 'Open'
-                        };
-                        listContainer.insertAdjacentHTML('beforeend', renderBillCard(billForRender));
-                        
-                        if (billForRender.status === 'Open') {
-                            if (bill.payer === userAddress) {
-                                totalOwed += (bill.totalAmount - userShare); 
-                            } else {
-                                totalDue += userShare; 
-                            }
-                        }
-                    });
-                }
-
-                document.getElementById('total-owed').textContent = `$${totalOwed.toFixed(2)}`;
-                document.getElementById('total-due').textContent = `$${totalDue.toFixed(2)}`;
-                
-                const netBalance = totalOwed - totalDue;
-                document.getElementById('net-balance').textContent = `$${netBalance.toFixed(2)}`;
-                
-                document.getElementById('net-balance').classList.remove('text-green-400', 'text-red-400', 'text-foreground');
-                document.getElementById('net-balance').classList.add(
-                    netBalance > 0 ? 'text-green-400' : netBalance < 0 ? 'text-red-400' : 'text-foreground'
-                );
-            } catch (error) {
-                console.error("Failed to load dashboard data:", error);
-                listContainer.innerHTML = `<div class="text-center p-8 text-red-400">Error loading data. Is the contract connected?</div>`;
-            }
-        }
-
-        window.toggleSplit = function(type) {
-            const manualContainer = document.getElementById('manual-split-container');
-            
-            document.getElementById('split-type-even').classList.remove('bg-primary/50');
-            document.getElementById('split-type-manual').classList.remove('bg-primary/50');
-            
-            if (type === 'even') {
-                document.getElementById('split-type-even').classList.add('bg-primary/50');
-                manualContainer.classList.add('hidden');
-            } else if (type === 'manual') {
-                document.getElementById('split-type-manual').classList.add('bg-primary/50');
-                manualContainer.classList.remove('hidden');
-            }
-            document.getElementById('split-type-input').value = type;
-            const currentCount = parseInt(document.getElementById('participant-count').value) || 0;
-            window.updateParticipants(currentCount);
-        }
-
-        window.updateParticipants = function(count) {
-            const participantCount = Math.max(0, count); 
-            document.getElementById('participant-count').value = participantCount;
-            document.getElementById('participant-count-display').textContent = participantCount; 
-
-            const participantsContainer = document.getElementById('participants-list');
-            participantsContainer.innerHTML = '';
-
-            const isManual = document.getElementById('split-type-input').value === 'manual';
-
-            for (let i = 0; i < participantCount; i++) {
-                const index = i + 1;
-                const shareInputHtml = isManual ? `
-                    <input type="number" placeholder="Share ($)" 
-                           class="manual-share-input bg-input/50 border border-border text-foreground rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition duration-300 w-1/3" 
-                           name="participant-${index}-share" step="0.01" min="0" required>
-                ` : '';
-
-                const participantInput = `
-                    <div class="flex items-center space-x-2 mb-3">
-                        <input type="text" placeholder="Participant ${index} Address (0x...)" 
-                               class="bg-input/50 border border-border text-foreground rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary transition duration-300 w-full" 
-                               name="participant-${index}-address" required>
-                        ${shareInputHtml}
-                    </div>
-                `;
-                participantsContainer.insertAdjacentHTML('beforeend', participantInput);
-            }
-        }
-
-        window.changeParticipantCount = function(delta) {
-            let currentCount = parseInt(document.getElementById('participant-count').value) || 0;
-            currentCount += delta;
-            window.updateParticipants(currentCount);
-        }
-
-        function validateForm(formData) {
-            if (!window.userAddress) {
-                window.showMessageBox("Connection Required", "Please connect your wallet before creating a bill.");
-                return false;
-            }
-            if (!window.sendBillToContract) {
-                window.showMessageBox("Contract Not Ready", "The smart contract function failed. Cannot broadcast bill.");
-                return false;
-            }
-            if (!formData.name || !formData.amount) {
-                window.showMessageBox("Validation Error", "Please fill in Bill Name and Total Amount.");
-                return false;
-            }
-            
-            if (formData.splitType === 'manual') {
-                let totalShare = formData.shares.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-                const billAmount = parseFloat(formData.amount);
-                
-                if (Math.abs(totalShare - billAmount) > 0.02) {
-                    window.showMessageBox("Validation Error", `Manual shares ($${totalShare.toFixed(2)}) do not match the total bill amount ($${billAmount.toFixed(2)}).`);
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        window.submitBill = async function() {
-            const form = document.getElementById('bill-form');
-            const splitType = document.getElementById('split-type-input').value;
-            const participantCount = parseInt(document.getElementById('participant-count').value);
-            const billAmount = parseFloat(form.elements['bill-amount'].value);
-
-            const formData = {
-                name: form.elements['bill-name'].value,
-                amount: billAmount,
-                payer: window.userAddress, 
-                splitType: splitType,
-                shares: []
-            };
-            
-            let totalParticipants = participantCount + 1; 
-
-            for (let i = 1; i <= participantCount; i++) {
-                const address = form.elements[`participant-${i}-address`].value;
-                let shareAmount;
-
-                if (splitType === 'even') {
-                    shareAmount = parseFloat((billAmount / totalParticipants).toFixed(2));
-                } else { 
-                    shareAmount = parseFloat(form.elements[`participant-${i}-share`]?.value || 0);
-                }
-                
-                formData.shares.push({ address: address, amount: shareAmount });
-            }
-
-            const currentTotalShare = formData.shares.reduce((sum, s) => sum + parseFloat(s.amount), 0);
-            const payerShare = billAmount - currentTotalShare;
-
-            formData.shares.push({ address: window.userAddress, amount: payerShare });
-            
-            if (!validateForm(formData)) return;
-            
-            try {
-                window.showMessageBox("Broadcasting Bill...", "Sending transaction to the smart contract. Please confirm in your wallet.", null);
-
-                const tx = await window.sendBillToContract(formData, formData.shares);
-                console.log("Transaction sent:", tx);
-
-                window.showMessageBox("Bill Broadcasted!", 
-                            `Your bill "${formData.name}" has been successfully broadcasted. Transaction Hash: ${tx.transaction_hash.substring(0, 10)}... Redirecting to Dashboard...`,
-                            () => {
-                                form.reset();
-                                window.updateParticipants(0);
-                                window.toggleSplit('even');
-                                window.navigateTo('dashboard');
-                            });
-
-            } catch (error) {
-                 console.error("Bill Submission Failed:", error);
-                 window.showMessageBox("Transaction Failed", `Could not broadcast the bill. Error: ${error.message || "Unknown error"}`);
-            }
-        }
-
-        window.loadLeaderboard = async function() {
-            const container = document.getElementById('leaderboard-list');
-            if (!container || !window.fetchLeaderboard) return;
-
-            container.innerHTML = '<div class="text-center p-8 text-primary font-semibold">Fetching live reputation scores...</div>';
-
-            try {
-                const leaderboardData = await window.fetchLeaderboard(); 
-                window.renderLeaderboardList(leaderboardData);
-
-            } catch (error) {
-                console.error("Failed to load leaderboard:", error);
-                container.innerHTML = `<div class="text-center p-8 text-red-400">Error loading data. Is the contract connected?</div>`;
-            }
-        }
-
-        window.renderLeaderboardList = function(data) {
-            const container = document.getElementById('leaderboard-list');
-            let listHtml = '';
-            const userAddress = window.userAddress || "0xUnconnectedUser";
-            
-            if (!data || data.length === 0) {
-                data = [
-                    { address: "0x05f8...1234", score: 9.8, settledRate: 0.98, totalBills: 25 },
-                    { address: userAddress, score: 9.5, settledRate: 0.95, totalBills: 12 },
-                    { address: "0x0a1c...5678", score: 9.0, settledRate: 0.90, totalBills: 40 },
-                ];
-            }
-            
-            data.forEach((player, index) => {
-                const rankColor = index === 0 ? 'text-secondary text-2xl' : index === 1 ? 'text-primary/80 text-xl' : index === 2 ? 'text-muted text-lg' : 'text-muted text-base';
-                const displayName = player.address === userAddress ? 'You' : player.address.substring(0, 8) + '...';
-
-                const playerRow = `
-                    <div class="flex items-center justify-between p-4 bg-card rounded-lg border border-border mb-3 transition hover:border-primary/50">
-                        <div class="flex items-center space-x-4 w-1/2">
-                            <span class="font-extrabold ${rankColor}">${index + 1}</span>
-                            <div class="flex flex-col">
-                                <span class="text-foreground font-semibold">${displayName}</span>
-                                <span class="text-xs text-muted">Bills: ${player.totalBills || 0}</span>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-xl font-bold text-primary">${(player.score || 0).toFixed(1)}</span>
-                            <div class="text-xs text-muted">Settled Rate: ${((player.settledRate || 0) * 100).toFixed(1)}%</div>
-                        </div>
-                    </div>
-                `;
-                listHtml += playerRow;
-            });
-            
-            container.innerHTML = listHtml;
-        }
-
-        // ====================================================================
-        // --- 5. INITIALIZATION ---
-        // ====================================================================
-
-        function setupInitialUI() {
-            window.toggleSplit('even'); 
-            window.updateParticipants(0); 
-            
-            document.getElementById('bill-form').addEventListener('submit', function(e) { 
-                e.preventDefault(); 
-                window.submitBill(); 
-            });
-
-            document.getElementById('menu-toggle').addEventListener('click', function() {
-                document.getElementById('mobile-menu').classList.toggle('hidden');
-            });
-
-            window.navigateTo('dashboard');
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            setupInitialUI();
-            
-            // Auto-connect attempt
-            const starknet = getStarknet(); 
-            if (starknet && starknet.isConnected) {
-                window.connectWallet().catch(console.error);
-            }
-        });
+      // 📜 Placeholder: View history
+      viewHistoryBtn.addEventListener("click", () => {
+        alert("📊 Viewing past split transactions...");
+      });
     </script>
-    
-</body>
+  </body>
 </html>
