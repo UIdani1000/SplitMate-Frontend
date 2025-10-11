@@ -9,7 +9,7 @@
     
     <script>
         tailwind.config = {
-          darkMode: 'class', // Setting up for dark mode, though we apply classes directly
+          darkMode: 'class', 
           theme: {
             extend: {
               colors: {
@@ -19,6 +19,8 @@
                 primary: "#c77dff", 
                 secondary: "#ff9e00",
                 foreground: "hsl(210 40% 98%)",
+                input: "#21004e",
+                border: "rgba(255, 255, 255, 0.1)"
               },
               borderRadius: { xl: "1.25rem", lg: "1rem" }
             }
@@ -72,7 +74,7 @@
 
             <h2 class="text-2xl font-semibold mb-4 text-primary">Your Recent Bills</h2>
             <div id="bills-list" class="bg-card p-6 rounded-xl shadow-lg border border-border min-h-40 flex items-center justify-center">
-                <p class="text-muted">Please connect your wallet to view your bills.</p>
+                <p class="text-muted-foreground text-center">Please connect your wallet to view your bills.</p>
             </div>
         </section>
 
@@ -96,21 +98,22 @@
                             placeholder="Enter total amount">
                     </div>
                     <div>
-                        <label for="participant-count" class="block text-sm font-medium text-foreground mb-2">Number of Participants</label>
+                        <label for="participant-count" class="block text-sm font-medium text-foreground mb-2">Number of Participants (excluding you)</label>
                         <input type="number" id="participant-count" required
                             class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
-                            placeholder="e.g., 4">
+                            placeholder="e.g., 3 (for a total of 4 people)">
                     </div>
                     <div>
-                        <label for="recipient-address" class="block text-sm font-medium text-foreground mb-2">Recipient Wallet Address (Your Starknet Address)</label>
-                        <input type="text" id="recipient-address" required
+                        <label for="recipient-address" class="block text-sm font-medium text-foreground mb-2">Contract Address (Placeholder for now)</label>
+                        <input type="text" id="recipient-address" 
                             class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
-                            placeholder="0x...">
+                            value="0x0000000000000000000000000000000000000000" disabled>
                     </div>
-                    <button type="submit"
-                        class="w-full bg-secondary hover:bg-secondary/90 text-background font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md shadow-secondary/30">
-                        Create Split
+                    <button type="submit" id="submit-bill-btn"
+                        class="w-full bg-secondary hover:bg-secondary/90 text-background font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md shadow-secondary/30 disabled:opacity-50" disabled>
+                        Submit Bill to Contract
                     </button>
+                    <div id="bill-status-message" class="text-center text-sm mt-4 hidden"></div>
                 </form>
             </div>
         </section>
@@ -118,86 +121,161 @@
         <section id="leaderboard" class="mb-12 hidden">
             <h2 class="text-3xl font-bold mb-6">Leaderboard</h2>
             <div class="bg-card p-6 rounded-xl shadow-lg border border-border min-h-40 flex items-center justify-center">
-                <p class="text-muted">Leaderboard features coming soon...</p>
+                <p class="text-muted-foreground text-center">Leaderboard features coming soon...</p>
             </div>
         </section>
 
     </main>
 </div>
+
+<!-- 1. ADD THIS SCRIPT TO LOAD THE ETHEREUM LIBRARY GLOBALLY (Web3.js) -->
 <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
 
+<!-- 2. MAIN APP LOGIC FOR METAMASK/EVM CONNECTION AND FORM HANDLING -->
 <script>
-    // Variables for EVM/MetaMask
+    // Global state variables
     let web3 = null;
-    let accounts = [];
+    let currentAccount = null;
     
-    // Main execution block
-    document.addEventListener('DOMContentLoaded', () => {
+    // Constants
+    const SPLITMATE_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"; // Placeholder EVM Address
 
-        const connectButton = document.getElementById('connect-wallet-btn');
-        const SPLITMATE_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"; // Placeholder EVM Address
+    // Get elements
+    const connectButton = document.getElementById('connect-wallet-btn');
+    const submitBillButton = document.getElementById('submit-bill-btn');
+    const billStatusMessage = document.getElementById('bill-status-message');
+    const billForm = document.getElementById('create-bill-form');
 
-        if (!connectButton) {
-            console.error("Critical Error: Connect Wallet button element not found in the DOM.");
+    // --- WALLET FUNCTIONS ---
+
+    const handleConnectWallet = async () => {
+        try {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                // Request account access
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
+                if (accounts.length > 0) {
+                    currentAccount = accounts[0];
+                    updateWalletUI(currentAccount);
+                }
+            } else {
+                // We are using a custom message box instead of alert()
+                showStatusMessage("error", 'MetaMask is not installed. Please install it to use this DApp.');
+            }
+        } catch (error) {
+            console.error("MetaMask Connection Error:", error);
+            showStatusMessage("error", `Connection failed. Error: ${error.message || "User rejected."}`);
+        }
+    };
+
+    function updateWalletUI(address) {
+        // Clear listeners first
+        connectButton.removeEventListener('click', handleConnectWallet);
+
+        if (address) {
+            const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+            connectButton.textContent = shortAddress;
+            connectButton.classList.remove('bg-primary');
+            connectButton.classList.add('bg-green-500');
+            // Enable form submission
+            submitBillButton.disabled = false;
+        } else {
+            connectButton.textContent = "Connect Wallet";
+            connectButton.classList.remove('bg-green-500');
+            connectButton.classList.add('bg-primary');
+            connectButton.addEventListener('click', handleConnectWallet);
+            // Disable form submission
+            submitBillButton.disabled = true;
+        }
+    }
+
+    // Add MetaMask listeners for account changes/disconnects
+    if (window.ethereum) {
+        window.ethereum.on('accountsChanged', (newAccounts) => {
+            currentAccount = newAccounts.length > 0 ? newAccounts[0] : null;
+            updateWalletUI(currentAccount);
+        });
+    }
+
+    // --- UTILITY AND UI FUNCTIONS ---
+
+    function showStatusMessage(type, message) {
+        billStatusMessage.textContent = message;
+        billStatusMessage.classList.remove('hidden', 'text-green-500', 'text-red-500', 'text-yellow-500');
+        
+        switch(type) {
+            case 'success':
+                billStatusMessage.classList.add('text-green-500');
+                break;
+            case 'error':
+                billStatusMessage.classList.add('text-red-500');
+                break;
+            case 'loading':
+                billStatusMessage.classList.add('text-yellow-500');
+                break;
+        }
+    }
+
+    // --- FORM SUBMISSION LOGIC ---
+
+    const handleBillSubmission = async (e) => {
+        e.preventDefault();
+        
+        if (!currentAccount) {
+            showStatusMessage("error", "Please connect your wallet first.");
+            return;
+        }
+
+        const billName = document.getElementById('bill-name').value;
+        const totalAmount = parseFloat(document.getElementById('total-amount').value);
+        const participantCount = parseInt(document.getElementById('participant-count').value);
+
+        if (isNaN(totalAmount) || totalAmount <= 0 || isNaN(participantCount) || participantCount < 1) {
+            showStatusMessage("error", "Please enter valid amounts and participant count.");
             return;
         }
         
-        // Connect Function
-        const handleConnectWallet = async () => {
-            try {
-                if (window.ethereum) {
-                    web3 = new Web3(window.ethereum);
-                    // Request account access
-                    accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    
-                    if (accounts.length > 0) {
-                        updateWalletUI(accounts[0]);
-                        console.log("MetaMask connected successfully! Address:", accounts[0]);
-                        // Now you have a connected account (accounts[0]) and can use web3
-                        // Example: const myContract = new web3.eth.Contract(contractABI, SPLITMATE_CONTRACT_ADDRESS);
-                    }
-                } else {
-                    alert('MetaMask is not installed. Please install it to use this DApp.');
-                }
-            } catch (error) {
-                console.error("MetaMask Connection Error:", error);
-            }
-        };
-
-        // UI Update Function
-        function updateWalletUI(address) {
-            connectButton.removeEventListener('click', handleConnectWallet);
-
-            if (address) {
-                const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
-                connectButton.textContent = shortAddress;
-                connectButton.classList.remove('bg-primary');
-                connectButton.classList.add('bg-green-500');
-                // MetaMask disconnect is handled by wallet/account switch listeners
-            } else {
-                connectButton.textContent = "Connect Wallet";
-                connectButton.classList.remove('bg-green-500');
-                connectButton.classList.add('bg-primary');
-                connectButton.addEventListener('click', handleConnectWallet);
-            }
-        }
-
-        // Initialize listeners
-        updateWalletUI(null);
-        connectButton.addEventListener('click', handleConnectWallet);
+        const totalPeople = participantCount + 1; // Including the creator
+        const shareAmount = totalAmount / totalPeople;
         
-        // Add MetaMask listeners for account changes/disconnects
-        if (window.ethereum) {
-            window.ethereum.on('accountsChanged', (newAccounts) => {
-                if (newAccounts.length === 0) {
-                    updateWalletUI(null);
-                } else {
-                    updateWalletUI(newAccounts[0]);
-                }
-            });
-        }
+        showStatusMessage("loading", `Preparing to submit bill "${billName}" for $${totalAmount.toFixed(2)}. Each person owes $${shareAmount.toFixed(2)}.`);
 
-        // --- NAVIGATION LOGIC --- (Keep this working)
+        // --- CORE EVM INTERACTION (MOCK) ---
+        // 
+        // 1. Get Contract ABI and address (We'd need your actual ABI here!)
+        // 2. Instantiate Contract: const splitMateContract = new web3.eth.Contract(ABI, SPLITMATE_CONTRACT_ADDRESS);
+        // 3. Call the send transaction method (e.g., contract.methods.createBill(billName, totalAmount, totalPeople).send({ from: currentAccount }))
+        //
+        // --- MOCK API CALL FOR DEMONSTRATION ---
+        try {
+            // Replace this setTimeout with your actual contract call!
+            submitBillButton.disabled = true;
+            await new Promise(resolve => setTimeout(resolve, 2000)); 
+
+            showStatusMessage("success", `Bill submitted! Transaction Mock Hash: 0x... Successfully split among ${totalPeople} people.`);
+
+            // Optionally clear form
+            billForm.reset();
+            
+        } catch (error) {
+            console.error("Transaction Error:", error);
+            showStatusMessage("error", `Transaction failed. Error: ${error.message || "Check console for details."}`);
+        } finally {
+             submitBillButton.disabled = false;
+        }
+    };
+    
+    // --- INITIALIZATION ---
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initial setup for the wallet UI
+        updateWalletUI(null);
+
+        // Add event listener for the form
+        billForm.addEventListener('submit', handleBillSubmission);
+
+        // --- NAVIGATION LOGIC ---
         const sections = {
             'dashboard': document.getElementById('dashboard'),
             'create-bill': document.getElementById('create-bill'),
@@ -212,6 +290,16 @@
             const target = sections[hash.replace('#', '')];
             if (target) {
                 target.classList.remove('hidden');
+                // Update nav link active state
+                navLinks.forEach(link => {
+                    if (link.getAttribute('href') === hash) {
+                        link.classList.remove('text-foreground');
+                        link.classList.add('text-primary');
+                    } else {
+                        link.classList.remove('text-primary');
+                        link.classList.add('text-foreground');
+                    }
+                });
             }
         }
 
