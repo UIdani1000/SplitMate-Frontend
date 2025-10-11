@@ -126,10 +126,11 @@
 </div>
 <script type="module">
     // 1. STARKNET LIBRARY IMPORTS (STABLE CDNS)
-// Keep get-starknet CDN
-import { connect, disconnect } from 'https://cdn.jsdelivr.net/npm/@argent/get-starknet@5.3.0/dist/index.js';
-// NEW: Switch Starknet.js to unpkg for stable browser module support
-import { Account, Contract, Provider, stark, shortString, cairo } from 'https://unpkg.com/starknet@5.23.0/dist/index.mjs';
+    import { connect, disconnect } from 'https://cdn.jsdelivr.net/npm/@argent/get-starknet@5.3.0/dist/index.js';
+    import { Account, Contract, Provider, stark, shortString, cairo } from 'https://unpkg.com/starknet@5.14.1/dist/index.mjs'; 
+
+    // 2. MAIN EXECUTION BLOCK (Runs ONLY when the entire page is loaded)
+    document.addEventListener('DOMContentLoaded', () => { // <--- START OF WRAPPER
 
         // 3. CONSTANTS AND GLOBAL VARIABLES (Declared here for proper scope)
         const SPLITMATE_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000000000000000000000000001"; // Placeholder
@@ -213,7 +214,6 @@ import { Account, Contract, Provider, stark, shortString, cairo } from 'https://
         updateWalletUI(null);
 
         // --- NAVIGATION LOGIC ---
-        // We'll add this back to ensure navigation works, as it was also JS dependent.
         const sections = {
             'dashboard': document.getElementById('dashboard'),
             'create-bill': document.getElementById('create-bill'),
@@ -222,12 +222,10 @@ import { Account, Contract, Provider, stark, shortString, cairo } from 'https://
         const navLinks = document.querySelectorAll('nav a');
         
         function navigate(hash) {
-            // Hide all sections
             Object.values(sections).forEach(section => {
                 if(section) section.classList.add('hidden');
             });
 
-            // Show target section
             const target = sections[hash.replace('#', '')];
             if (target) {
                 target.classList.remove('hidden');
@@ -242,10 +240,9 @@ import { Account, Contract, Provider, stark, shortString, cairo } from 'https://
             });
         });
 
-        // Initial navigation based on URL hash or default to dashboard
         const initialHash = window.location.hash || '#dashboard';
         navigate(initialHash);
 
 
-    }); // End of DOMContentLoaded
+    }); // <--- END OF WRAPPER
 </script>
