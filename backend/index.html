@@ -825,17 +825,26 @@
         const totalParticipantShares = participantSharesUSD.reduce((sum, amount) => sum + amount, 0);
         const creatorShareUSD = totalAmountUSD - totalParticipantShares;
         
+        // --- FINAL VALIDATION CHECKS (CRITICAL for EVM Revert) ---
         if (creatorShareUSD < 0) {
             showStatusMessage("error", `Total participant shares ($${totalParticipantShares.toFixed(2)}) exceed the total bill amount ($${totalAmountUSD.toFixed(2)}).`);
             return;
         }
-        
-        // --- CRITICAL FIXES FOR REVERT ---
+
         // 1. ADD CREATOR AS LAST PARTICIPANT AND THEIR SHARE
         participantAddresses.push(currentAccount);
         participantSharesUSD.push(creatorShareUSD); 
         
-        // 2. VALUE SENT WITH TRANSACTION IS NOW 0 (Contract requires creator to pay their share later via payShare)
+        // 2. CHECK FOR DUPLICATE ADDRESSES 
+        // This is the most likely cause of the current revert if all other fixes are in place.
+        const allAddresses = [merchantAddress.toLowerCase(), ...participantAddresses.map(addr => addr.toLowerCase())];
+        const uniqueAddresses = new Set(allAddresses);
+        if (uniqueAddresses.size !== allAddresses.length) {
+            showStatusMessage("error", "Transaction failed: Duplicate addresses found among the Merchant, Creator, and Participants. Please ensure all addresses are unique.");
+            return;
+        }
+        
+        // 3. VALUE SENT WITH TRANSACTION IS NOW 0 
         const valueToSend = web3.utils.toWei('0', 'ether'); 
 
         showStatusMessage("loading", `Initiating Collective Payment: Sending 0 ETH to create bill escrow... Awaiting MetaMask approval...`);
@@ -859,7 +868,7 @@
                 participantSharesWEI
             ).send({ 
                 from: currentAccount,
-                value: valueToSend // Now 0 Wei is sent
+                value: valueToSend // 0 Wei is sent
             });
 
             // 1. Show Success Message
