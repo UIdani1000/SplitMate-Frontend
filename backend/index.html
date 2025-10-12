@@ -166,9 +166,10 @@
     let participantCount = 0; // Tracks participants added (excluding creator)
     
     // <<< CONTRACT DETAILS >>>: Updated to SplitMateV2 contract address
-    const SPLITMATE_CONTRACT_ADDRESS = "0xF13462054C7670C59009E9721616C78cFE86ec4E"; 
+    // ⚠️ CRITICAL FIX: The contract address must be updated to your latest deployment.
+    const SPLITMATE_CONTRACT_ADDRESS = "0x8679D4254160B3f17E41533783AF582d8771D311"; 
 
-    // <<< CONTRACT ABI >>>: Updated to the correct ABI for SplitMateV2
+    // <<< CONTRACT ABI >>>: Correct ABI JSON for SplitMateV2
     const CONTRACT_ABI = [
 	{
 		"anonymous": false,
@@ -489,11 +490,6 @@
                     const requiredShareWei = await splitMateContract.methods.getParticipantShare(bill.id, currentAccount).call();
                     
                     if (Number(requiredShareWei) > 0) {
-                        // We need to check if they've paid. We can fetch the full Bill struct 
-                        // again using the public getter and check the paidStatus mapping
-                        // This is a limitation because the public 'bills' getter doesn't expose the 'paidStatus' mapping.
-                        // A simple fix for this DApp is to assume if they are a participant and the bill is OPEN, they might still owe.
-                        
                         // *** HACKATHON ASSUMPTION: If bill is open AND they are a participant, they owe their share. ***
                         const shareUSD = weiToUsd(requiredShareWei);
                         totalYouOwe += shareUSD;
@@ -529,7 +525,7 @@
         const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
         
         // Use the new view function to get the EXACT required WEI amount
-        let requiredShareWei = 0;
+        let requiredShareWei = '0';
         try {
             requiredShareWei = await splitMateContract.methods.getParticipantShare(billId, currentAccount).call();
             if (Number(requiredShareWei) === 0) {
@@ -580,7 +576,7 @@
             return;
         }
 
-        // ✨ FIX: Ensure web3 provider is active
+        // ✨ FIX: Ensure web3 provider is active (safety check from previous step)
         if (!web3) {
             if (window.ethereum) {
                 web3 = new Web3(window.ethereum);
@@ -692,111 +688,8 @@
         }
     }
 
-        const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
-        billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-yellow-500">Fetching the last ${BILLS_TO_FETCH} bills from Sepolia...</p></div>`;
 
-        try {
-            const nextId = await splitMateContract.methods.nextBillId().call();
-            const lastBillId = Number(nextId) - 1;
-            const bills = [];
-
-            if (lastBillId < 1) {
-                billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-muted-foreground">No bills found on the contract.</p></div>`;
-                updateDashboardStats(bills);
-                return;
-            }
-            
-            // Fetch multiple bills by iterating backward
-            for (let i = lastBillId; i > 0 && i > lastBillId - BILLS_TO_FETCH; i--) {
-                // The 'bills' getter now includes the name!
-                const billDetails = await splitMateContract.methods.bills(i).call();
-                bills.push({...billDetails, id: i}); 
-            }
-            
-            // Update Dashboard Stats (async logic inside)
-            await updateDashboardStats(bills);
-
-            // Render the bill cards
-            billsListContainer.innerHTML = '';
-            
-            if (bills.length === 0) {
-                 billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-muted-foreground">No recent bills found on the contract.</p></div>`;
-                 return;
-            }
-            
-            for (const bill of bills) {
-                const totalAmountUSD = weiToUsd(bill.totalAmount);
-                const collectedAmountUSD = weiToUsd(bill.collectedAmount);
-                const creatorShareUSD = weiToUsd(bill.creatorShare);
-                
-                const statusText = bill.status == 0 ? 
-                    '<span class="text-red-500 font-bold">OPEN</span>' : 
-                    '<span class="text-green-500 font-bold">COMPLETE</span>';
-
-                const isCreator = bill.creator.toLowerCase() === currentAccount.toLowerCase();
-                const roleText = isCreator ? 'CREATOR' : 'PARTICIPANT';
-                
-                let actionButton = '';
-                let participantShareDisplay = '';
-                let requiredShareWei = '0';
-                let isPaid = false; // A necessary piece of data we can't reliably get without a mapping getter
-                
-                if (bill.status == 0) { // Bill is OPEN
-                    if (isCreator) {
-                        actionButton = `<p class="text-yellow-500 font-semibold mt-4">Awaiting payment from participants...</p>`;
-                    } else {
-                         // Participant. Use the new getter to find the share.
-                        requiredShareWei = await splitMateContract.methods.getParticipantShare(bill.id, currentAccount).call();
-                        const requiredShareUSD = weiToUsd(requiredShareWei);
-                        
-                        // Check if the user is a registered participant
-                        if (Number(requiredShareWei) > 0) {
-                            // Note: We still can't check 'isPaid' reliably here, so we offer the button and let the contract handle the revert.
-                            participantShareDisplay = `<p><strong>Your Share:</strong> <span class="text-green-500 font-bold">${formatUsd(requiredShareUSD)}</span></p>`;
-                            
-                            // Participant action button
-                            actionButton = `
-                                <button onclick="handlePayShare(${bill.id}, '${bill.name}')" 
-                                    class="w-full bg-secondary hover:bg-secondary/90 text-background font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md shadow-secondary/30 mt-4">
-                                    Pay Your Share (${formatUsd(requiredShareUSD)})
-                                </button>
-                            `;
-                        } else {
-                             // Not a participant (or already paid and the share is cleared - unlikely in this design)
-                            actionButton = `<p class="text-muted-foreground font-semibold mt-4">Not a participant in this bill.</p>`;
-                        }
-                    }
-                } else { // Bill is COMPLETE
-                    actionButton = `<p class="text-green-500 font-semibold mt-4">Bill is COMPLETE. Funds settled.</p>`;
-                }
-
-                // Render the bill card
-                const billCard = `
-                    <div class="bg-card p-6 rounded-xl shadow-lg border border-border space-y-3">
-                        <div class="flex justify-between items-center pb-2 border-b border-border">
-                            <h3 class="text-xl font-semibold text-primary">${bill.name}</h3>
-                            ${statusText}
-                        </div>
-                        
-                        <p><strong>Your Role:</strong> <span class="text-primary">${roleText}</span></p>
-                        <p><strong>Total Bill:</strong> <span class="text-secondary">${formatUsd(totalAmountUSD)}</span></p>
-                        <p><strong>Collected:</strong> <span class="text-yellow-500">${formatUsd(collectedAmountUSD)}</span></p>
-                        ${participantShareDisplay}
-                        
-                        ${actionButton}
-                    </div>
-                `;
-                billsListContainer.innerHTML += billCard;
-            }
-
-        } catch (error) {
-            console.error("Error loading bills:", error);
-            billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-red-500">Error fetching bill data from blockchain.</p></div>`;
-        }
-    }
-
-
-    // --- WALLET FUNCTIONS (Kept from previous version) ---
+    // --- WALLET FUNCTIONS ---
     const handleConnectWallet = async () => {
         try {
             if (!window.ethereum) {
@@ -826,19 +719,39 @@
         });
     }
 
-    // --- FORM LOGIC (Kept from previous version) ---
+    // --- FORM LOGIC (Placeholder: Needs dynamic logic) ---
     
     function updateSplitSummary() {
-        // --- NOTE: Manual Split logic is required here for accurate summary ---
-        // Placeholder for participant amount inputs (which are dynamic)
+        // NOTE: Dynamic split summary logic for 'Even Split' and 'Manual Split' should go here.
+        // For now, this function is a no-op but it's called on input changes.
+        // It's safe to keep the function empty for now if your current focus is the dashboard.
+        splitSummary.classList.add('hidden');
+        manualSummary.classList.add('hidden');
     }
 
     function toggleSplitTypeFields() {
-        // --- NOTE: Logic for split type toggling required here ---
+        // NOTE: Dynamic UI toggling logic for participant inputs should go here.
+        // It's safe to keep the function empty for now if your current focus is the dashboard.
     }
 
     function addParticipantField() {
-        // --- NOTE: Logic for adding fields required here ---
+        // NOTE: Dynamic participant field addition logic should go here.
+        // For testing, you can manually add the HTML inputs into the participant-fields-container
+        // or ensure this function creates them.
+        participantCount++;
+        const participantGroup = document.createElement('div');
+        participantGroup.className = 'participant-group';
+        participantGroup.innerHTML = `
+            <input type="text" name="participant-address" placeholder="Participant ${participantCount} Address" required
+                class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50" />
+            <input type="number" name="participant-amount" step="0.01" placeholder="Share (USD, if Manual)" 
+                class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50 split-manual-input" style="display:none; flex-grow: 0.5;"/>
+            <button type="button" onclick="this.parentElement.remove(); participantCount--;" 
+                class="bg-red-500/20 text-red-500 hover:bg-red-500/30 text-sm font-semibold py-1 px-3 rounded-lg transition duration-300 ml-2">Remove</button>
+        `;
+        participantContainer.appendChild(participantGroup);
+        toggleSplitTypeFields(); // Update visibility based on split type
+        updateSplitSummary(); // Recalculate summary
     }
 
 
@@ -850,10 +763,6 @@
             showStatusMessage("error", "Please connect your wallet first.");
             return;
         }
-        if (CONTRACT_ABI.length === 0 || SPLITMATE_CONTRACT_ADDRESS === "0x...") {
-            showStatusMessage("error", "Error: Contract details are missing. Please update ABI and Address in the code.");
-            return; 
-        }
 
         // --- FORM DATA GATHERING AND VALIDATION ---
         const billName = document.getElementById('bill-name').value;
@@ -862,7 +771,6 @@
         const merchantAddress = document.getElementById('merchant-address').value;
         const splitType = splitTypeSelect.value;
         
-        // This is a placeholder for the real participant count (which relies on the DApp's dynamic input creation)
         const currentParticipantInputs = participantContainer.querySelectorAll('.participant-group');
         const calculatedParticipantCount = currentParticipantInputs.length; 
         
@@ -949,7 +857,7 @@
         }
     };
     
-    // --- NAVIGATION LOGIC (Kept from previous version) ---
+    // --- NAVIGATION LOGIC ---
     function navigate(hash) {
         Object.values(sections).forEach(section => {
             if(section) section.classList.add('hidden');
@@ -971,13 +879,9 @@
     }
 
 
-    // --- INITIALIZATION (Updated to load bills on connect) ---
+    // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', async () => {
         updateWalletUI(null);
-
-        // NOTE: The logic for addParticipantField, updateSplitSummary, and toggleSplitTypeFields 
-        // still needs to be fully implemented for the form to be 100% dynamic and functional.
-        // For a basic test, manually add participants to the container or hardcode them in the form.
 
         addParticipantBtn.addEventListener('click', addParticipantField);
         splitTypeSelect.addEventListener('change', toggleSplitTypeFields);
