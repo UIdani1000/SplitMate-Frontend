@@ -18,11 +18,11 @@
                 card: "rgba(255, 255, 255, 0.05)",
                 primary: "#c77dff", 
                 secondary: "#ff9e00",
-                foreground: "hsl(210 40% 98%)",
-                input: "#21004e",
-                border: "rgba(255, 255, 255, 0.1)"
+                foreground: "hsl(210 40% 98%)\",
+                input: \"#21004e\",
+                border: \"rgba(255, 255, 255, 0.1)\"
               },
-              borderRadius: { xl: "1.25rem", lg: "1rem" }
+              borderRadius: { xl: \"1.25rem\", lg: \"1rem\" }
             }
           }
         }
@@ -234,21 +234,26 @@
         const addressBookList = document.getElementById('addressBookList');
         
         // --- LOCAL STORAGE / ADDRESS BOOK LOGIC ---
-        // FIX: Hardcode common test IDs so the resolution works immediately without the user having to save them first.
-        let addressBook = {
+        // FIX: Added 'nssien.mate' to the hardcoded list for immediate testing.
+        let hardcodedTestIDs = {
             'alice.mate': '0x5B38Da6a701c568545dCfcB03FcB875f56beddC4', 
             'bob': '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B',
-            'udia.mate': '0xd20c5f9fe8270a738ed3e541521f396b386ea369' // Address for testing the user's input
+            'udia.mate': '0xd20c5f9fe8270a738ed3e541521f396b386ea369', // From previous test
+            'nssien.mate': '0xf01625906B33923b3203c9480eC90c4c4B258547' // New ID for current test
         };
+        let addressBook = {...hardcodedTestIDs};
+        
         const ADDRESS_BOOK_KEY = 'splitmate_address_book';
         const ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 
         function loadAddressBook() {
+            // Start with only the hardcoded test IDs
+            addressBook = {...hardcodedTestIDs};
+            
+            // Overwrite/merge with user-saved contacts from local storage
             const stored = localStorage.getItem(ADDRESS_BOOK_KEY);
-            // Overwrite hardcoded test data with local storage data, if any.
             if (stored) {
                  const storedAddressBook = JSON.parse(stored);
-                 // Merge stored contacts into the mock address book
                  Object.assign(addressBook, storedAddressBook);
             }
             
@@ -271,8 +276,6 @@
                 updateMateIdUI(null);
             }
             
-            // NOTE: All mock contacts (like 'alice') have been removed.
-
             renderAddressBookList();
         }
 
@@ -280,7 +283,10 @@
             addressBookList.innerHTML = '';
             const contacts = Object.entries(addressBook);
             
-            // Filter out 'me' if not connected, but keep it at the top
+            // Keys of hardcoded test IDs
+            const hardcodedKeys = Object.keys(hardcodedTestIDs);
+
+            // Filter out 'me' if not connected
             const displayContacts = contacts.filter(([username]) => username !== 'me' || currentAccount);
 
             if (displayContacts.length === 0) {
@@ -290,26 +296,42 @@
 
             // Sort 'me' and '.mate' IDs to the top
             displayContacts.sort(([a], [b]) => {
+                const isAHardcoded = hardcodedKeys.includes(a);
+                const isBHardcoded = hardcodedKeys.includes(b);
+                
                 if (a === 'me') return -1;
                 if (b === 'me') return 1;
-                if (a.endsWith(MATE_SUFFIX) && currentAccount && addressBook[a] === currentAccount) return -1;
-                if (b.endsWith(MATE_SUFFIX) && currentAccount && addressBook[b] === currentAccount) return 1;
+                if (a.endsWith(MATE_SUFFIX) && addressBook[a] === currentAccount) return -1;
+                if (b.endsWith(MATE_SUFFIX) && addressBook[b] === currentAccount) return 1;
+                if (isAHardcoded && !isBHardcoded) return -1;
+                if (!isAHardcoded && isBHardcoded) return 1;
                 return a.localeCompare(b);
             });
 
             displayContacts.forEach(([username, address]) => {
                 const isMe = username === 'me';
-                const isMateId = username.endsWith(MATE_SUFFIX) && address.toLowerCase() === currentAccount.toLowerCase();
+                const isMateId = username.endsWith(MATE_SUFFIX) && address.toLowerCase() === (currentAccount ? currentAccount.toLowerCase() : '');
+                const isHardcoded = hardcodedKeys.includes(username);
+
                 const li = document.createElement('li');
-                li.className = `flex justify-between items-center py-1 px-2 border-b border-border/50 last:border-b-0 ${isMe || isMateId ? 'bg-primary/10 font-bold' : ''}`;
+                li.className = `flex justify-between items-center py-1 px-2 border-b border-border/50 last:border-b-0 ${isMe || isMateId ? 'bg-primary/10 font-bold' : isHardcoded ? 'bg-secondary/10' : ''}`;
                 li.innerHTML = `
-                    <span class="text-primary">${username} ${isMe ? '(Your Alias)' : isMateId ? '(Your ID)' : ''}</span>
+                    <span class="text-primary">${username} ${isMe ? '(Your Alias)' : isMateId ? '(Your ID)' : isHardcoded ? '(Test ID)' : ''}</span>
                     <span class="font-mono text-xs text-foreground/70">${address.slice(0, 6)}...${address.slice(-4)}</span>
                 `;
                 addressBookList.appendChild(li);
             });
         }
         
+        function getSavedContactsToStore() {
+            // Returns an object containing only the user-saved, non-hardcoded contacts
+            return Object.fromEntries(
+                Object.entries(addressBook).filter(([key]) => 
+                    key !== 'me' && !Object.keys(hardcodedTestIDs).includes(key)
+                )
+            );
+        }
+
         async function saveContactToAddressBook() {
             const username = contactUsernameInput.value.trim().toLowerCase();
             const addressOrName = contactAddressInput.value.trim();
@@ -372,12 +394,9 @@
             }
 
             addressBook[username] = resolvedAddress;
-            // The stored address book should ONLY contain user-saved contacts, not the mock data
-            // Filter out the mock data before saving back to localStorage
-            const contactsToStore = Object.fromEntries(
-                Object.entries(addressBook).filter(([key]) => key !== 'me' && key !== 'alice.mate' && key !== 'bob' && key !== 'udia.mate')
-            );
-            localStorage.setItem(ADDRESS_BOOK_KEY, JSON.stringify(contactsToStore));
+            
+            // Save ONLY the user-defined, non-hardcoded contacts back to localStorage
+            localStorage.setItem(ADDRESS_BOOK_KEY, JSON.stringify(getSavedContactsToStore()));
             
             showStatusMessage(`Contact **${username}** saved successfully!`, 'success');
             contactUsernameInput.value = '';
@@ -398,10 +417,7 @@
                 delete addressBook[existingMateId];
 
                 // 3. Save the pruned address book to localStorage
-                const contactsToStore = Object.fromEntries(
-                    Object.entries(addressBook).filter(([key]) => key !== 'me' && key !== 'alice.mate' && key !== 'bob' && key !== 'udia.mate')
-                );
-                localStorage.setItem(ADDRESS_BOOK_KEY, JSON.stringify(contactsToStore));
+                localStorage.setItem(ADDRESS_BOOK_KEY, JSON.stringify(getSavedContactsToStore()));
                 
                 // 4. Update UI
                 updateMateIdUI(null);
@@ -781,7 +797,7 @@
             let participants = []; 
             let amountsWei = []; 
             let totalParticipantsAmountUSD = 0; 
-            const exchangeRate = 100000; 
+            const exchangeRate = 100000; // Mock Rate for internal USD to "Wei" conversion
             
             for (let i = 0; i < participantAddressInputs.length; i++) {
                 const nameOrAddress = participantAddressInputs[i].value.trim();
@@ -816,6 +832,7 @@
 
                 participants.push(resolvedAddress);
                 
+                // Conversion: USD * rate = "wei"
                 const amountWei = web3.utils.toBN(Math.round(amountUSD * exchangeRate));
                 amountsWei.push(amountWei.toString());
             }
@@ -833,6 +850,7 @@
                 return;
             }
             
+            // Add creator and their share
             participants.push(currentAccount);
             const creatorShareWei = web3.utils.toBN(Math.round(creatorShareUSD * exchangeRate));
             amountsWei.push(creatorShareWei.toString());
@@ -843,12 +861,13 @@
                 showStatusMessage("Sending transaction to create bill...", 'info');
                 
                 // MOCK SUCCESS RECEIPT for UI Demo
-                // const txHash = '0xMockTxHash1234567890abcdef1234567890abcdef1234567890abcdef';
+                const txHash = '0xMockTxHash1234567890abcdef1234567890abcdef1234567890abcdef';
                 
                 // // ACTUAL CONTRACT CALL (uncomment when ready to test live)
+                // const totalWei = web3.utils.toBN(Math.round(totalAmountUSD * exchangeRate));
                 // const result = await splitMateContract.methods.createBill(
                 //     participants, 
-                //     web3.utils.toBN(Math.round(totalAmountUSD * exchangeRate)),
+                //     totalWei.toString(),
                 //     amountsWei,
                 //     merchantAddress,
                 //     description
@@ -858,8 +877,6 @@
                 // });
                 // const txHash = result.transactionHash;
 
-
-                const txHash = '0xMockTxHash1234567890abcdef1234567890abcdef1234567890abcdef'; // Keep mock for no-op demo
 
                 showStatusMessage(`Bill **${description}** successfully created!`, 'success', txHash);
                 showStatusMessage(`**NEXT STEP:** Pay your own share (estimated ${creatorShareUSD.toFixed(2)} USD). You are automatically included as a participant but must send the transaction.`, 'alert');
