@@ -289,7 +289,6 @@
 				"type": "address"
 			},
 			{
-				"indexed": false,
 				"internalType": "uint256",
 				"name": "amountPaid",
 				"type": "uint256"
@@ -463,6 +462,19 @@
     // Utility function to format USD to $X.XX string
     function formatUsd(amount) {
         return `$${parseFloat(amount).toFixed(2)}`;
+    }
+    
+    // Utility function to round and truncate ETH amounts to prevent the "too many decimal places" error
+    // We truncate to 18 decimal places (the max precision for Wei)
+    function toWeiString(usdAmount) {
+        const ethAmount = usdAmount / ETH_USD_PRICE;
+        // Truncate to 18 decimal places to prevent floating point errors during toWei conversion
+        const ethString = ethAmount.toFixed(20); // Get enough digits first
+        const [integerPart, decimalPart] = ethString.split('.');
+        const truncatedDecimalPart = decimalPart ? decimalPart.substring(0, 18) : '0';
+        const truncatedEthString = `${integerPart}.${truncatedDecimalPart}`;
+        
+        return web3.utils.toWei(truncatedEthString, 'ether');
     }
     
     
@@ -656,7 +668,7 @@
                             `;
                         } else {
                              // Not a participant 
-                            actionButton = `<p class="text-muted-foreground font-semibold mt-4">Not a participant in this bill.</p>`;
+                            actionButton = `<p class="text-muted-foreground font-semibold mt-4">Not a participant in this bill in the database.</p>`;
                         }
                     }
                 } else { // Bill is COMPLETE
@@ -723,34 +735,37 @@
     
     function updateSplitSummary() {
         // NOTE: Dynamic split summary logic for 'Even Split' and 'Manual Split' should go here.
-        // For now, this function is a no-op but it's called on input changes.
-        // It's safe to keep the function empty for now if your current focus is the dashboard.
         splitSummary.classList.add('hidden');
         manualSummary.classList.add('hidden');
     }
 
     function toggleSplitTypeFields() {
-        // NOTE: Dynamic UI toggling logic for participant inputs should go here.
-        // It's safe to keep the function empty for now if your current focus is the dashboard.
+        const isManual = splitTypeSelect.value === 'manual';
+        const amountInputs = participantContainer.querySelectorAll('input[name="participant-amount"]');
+        amountInputs.forEach(input => {
+            input.style.display = isManual ? 'block' : 'none';
+            input.required = isManual;
+        });
+        updateSplitSummary();
     }
 
     function addParticipantField() {
-        // NOTE: Dynamic participant field addition logic should go here.
-        // For testing, you can manually add the HTML inputs into the participant-fields-container
-        // or ensure this function creates them.
         participantCount++;
         const participantGroup = document.createElement('div');
         participantGroup.className = 'participant-group';
+        
+        const isManual = splitTypeSelect.value === 'manual';
+        
         participantGroup.innerHTML = `
             <input type="text" name="participant-address" placeholder="Participant ${participantCount} Address" required
                 class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50" />
             <input type="number" name="participant-amount" step="0.01" placeholder="Share (USD, if Manual)" 
-                class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50 split-manual-input" style="display:none; flex-grow: 0.5;"/>
-            <button type="button" onclick="this.parentElement.remove(); participantCount--;" 
+                class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50 split-manual-input" 
+                style="display:${isManual ? 'block' : 'none'}; flex-grow: 0.5;" ${isManual ? 'required' : ''}/>
+            <button type="button" onclick="this.parentElement.remove(); participantCount--; updateSplitSummary();" 
                 class="bg-red-500/20 text-red-500 hover:bg-red-500/30 text-sm font-semibold py-1 px-3 rounded-lg transition duration-300 ml-2">Remove</button>
         `;
         participantContainer.appendChild(participantGroup);
-        toggleSplitTypeFields(); // Update visibility based on split type
         updateSplitSummary(); // Recalculate summary
     }
 
@@ -766,7 +781,6 @@
 
         // --- FORM DATA GATHERING AND VALIDATION ---
         const billName = document.getElementById('bill-name').value;
-        const totalAmountInput = document.getElementById('total-amount'); // Re-get for live value
         const totalAmountUSD = parseFloat(totalAmountInput.value) || 0;
         const merchantAddress = document.getElementById('merchant-address').value;
         const splitType = splitTypeSelect.value;
@@ -788,8 +802,10 @@
         if (splitType === 'even') {
             const totalPeople = calculatedParticipantCount + 1;
             const evenShare = totalAmountUSD / totalPeople;
+            // Fill participant shares with the calculated even share
             participantSharesUSD = Array(calculatedParticipantCount).fill(evenShare);
         } else {
+            // Manual Split
             amountInputs.forEach(input => {
                 participantSharesUSD.push(parseFloat(input.value) || 0);
             });
@@ -802,25 +818,22 @@
             showStatusMessage("error", `Total participant shares ($${totalParticipantShares.toFixed(2)}) exceed the total bill amount ($${totalAmountUSD.toFixed(2)}).`);
             return;
         }
+        
+        // --- FIX: Use toWeiString utility for all conversions to prevent floating point error ---
+        const valueToSend = toWeiString(creatorShareUSD); 
 
-        const creatorShareETH = creatorShareUSD / ETH_USD_PRICE;
-        // Use BigNumber for precise Wei calculation
-        const valueToSend = web3.utils.toWei(String(creatorShareETH), 'ether'); 
-
-        showStatusMessage("loading", `Initiating Collective Payment: Sending your share of ~${creatorShareETH.toFixed(4)} ETH to the escrow... Awaiting MetaMask approval...`);
+        showStatusMessage("loading", `Initiating Collective Payment: Sending your share (Wei) to the escrow... Awaiting MetaMask approval...`);
 
         try {
             submitBillButton.disabled = true;
             
             const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
 
-            const participantSharesWEI = participantSharesUSD.map(amount => {
-                const ethAmount = amount / ETH_USD_PRICE;
-                // Use BigNumber for precise Wei calculation
-                return web3.utils.toWei(String(ethAmount), 'ether');
-            });
+            // Convert all participant shares to truncated Wei strings
+            const participantSharesWEI = participantSharesUSD.map(toWeiString);
 
-            const totalAmountWei = web3.utils.toWei(String(totalAmountUSD / ETH_USD_PRICE), 'ether');
+            // Convert total amount to truncated Wei string
+            const totalAmountWei = toWeiString(totalAmountUSD);
 
             const result = await splitMateContract.methods.createBill(
                 billName, 
@@ -830,7 +843,7 @@
                 participantSharesWEI
             ).send({ 
                 from: currentAccount,
-                value: valueToSend
+                value: valueToSend // Creator's share being sent
             });
 
             // 1. Show Success Message
