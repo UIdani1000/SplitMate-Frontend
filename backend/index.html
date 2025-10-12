@@ -575,26 +575,122 @@
 
     // --- DASHBOARD DISPLAY LOGIC (Multi-Bill Fetch) ---
     async function loadUserBills() {
-    if (!currentAccount) {
-        billsListMessageEl.textContent = 'Please connect your wallet to view your bills.';
-        return;
-    }
-    
-    // ✨ FIX: Ensure web3 provider is active
-    if (!web3) {
-        // Re-initialize web3 if it somehow dropped, or if the page loaded passively
-        if (window.ethereum) {
-            web3 = new Web3(window.ethereum);
-        } else {
-            billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-red-500">Error: MetaMask not found or disconnected.</p></div>`;
+        if (!currentAccount) {
+            billsListMessageEl.textContent = 'Please connect your wallet to view your bills.';
             return;
         }
-    }
-    // END FIX
 
-    const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
-    
-    // ... rest of the function
+        // ✨ FIX: Ensure web3 provider is active
+        if (!web3) {
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+            } else {
+                billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-red-500">Error: MetaMask not found or disconnected.</p></div>`;
+                return;
+            }
+        }
+        // END FIX
+
+        const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
+        billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-yellow-500">Fetching the last ${BILLS_TO_FETCH} bills from Sepolia...</p></div>`;
+
+        try {
+            const nextId = await splitMateContract.methods.nextBillId().call();
+            const lastBillId = Number(nextId) - 1;
+            const bills = [];
+
+            if (lastBillId < 1) {
+                billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-muted-foreground">No bills found on the contract.</p></div>`;
+                updateDashboardStats(bills);
+                return;
+            }
+            
+            // Fetch multiple bills by iterating backward
+            for (let i = lastBillId; i > 0 && i > lastBillId - BILLS_TO_FETCH; i--) {
+                // The 'bills' getter now includes the name!
+                const billDetails = await splitMateContract.methods.bills(i).call();
+                bills.push({...billDetails, id: i}); 
+            }
+            
+            // Update Dashboard Stats (async logic inside)
+            await updateDashboardStats(bills);
+
+            // Render the bill cards
+            billsListContainer.innerHTML = '';
+            
+            if (bills.length === 0) {
+                 billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-muted-foreground">No recent bills found on the contract.</p></div>`;
+                 return;
+            }
+            
+            for (const bill of bills) {
+                const totalAmountUSD = weiToUsd(bill.totalAmount);
+                const collectedAmountUSD = weiToUsd(bill.collectedAmount);
+                // Removed unused creatorShareUSD from the iteration
+                
+                const statusText = bill.status == 0 ? 
+                    '<span class="text-red-500 font-bold">OPEN</span>' : 
+                    '<span class="text-green-500 font-bold">COMPLETE</span>';
+
+                const isCreator = bill.creator.toLowerCase() === currentAccount.toLowerCase();
+                const roleText = isCreator ? 'CREATOR' : 'PARTICIPANT';
+                
+                let actionButton = '';
+                let participantShareDisplay = '';
+                let requiredShareWei = '0';
+                
+                if (bill.status == 0) { // Bill is OPEN
+                    if (isCreator) {
+                        actionButton = `<p class="text-yellow-500 font-semibold mt-4">Awaiting payment from participants...</p>`;
+                    } else {
+                         // Participant. Use the new getter to find the share.
+                        requiredShareWei = await splitMateContract.methods.getParticipantShare(bill.id, currentAccount).call();
+                        const requiredShareUSD = weiToUsd(requiredShareWei);
+                        
+                        // Check if the user is a registered participant
+                        if (Number(requiredShareWei) > 0) {
+                            participantShareDisplay = `<p><strong>Your Share:</strong> <span class="text-green-500 font-bold">${formatUsd(requiredShareUSD)}</span></p>`;
+                            
+                            // Participant action button
+                            actionButton = `
+                                <button onclick="handlePayShare(${bill.id}, '${bill.name}')" 
+                                    class="w-full bg-secondary hover:bg-secondary/90 text-background font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md shadow-secondary/30 mt-4">
+                                    Pay Your Share (${formatUsd(requiredShareUSD)})
+                                </button>
+                            `;
+                        } else {
+                             // Not a participant 
+                            actionButton = `<p class="text-muted-foreground font-semibold mt-4">Not a participant in this bill.</p>`;
+                        }
+                    }
+                } else { // Bill is COMPLETE
+                    actionButton = `<p class="text-green-500 font-semibold mt-4">Bill is COMPLETE. Funds settled.</p>`;
+                }
+
+                // Render the bill card
+                const billCard = `
+                    <div class="bg-card p-6 rounded-xl shadow-lg border border-border space-y-3">
+                        <div class="flex justify-between items-center pb-2 border-b border-border">
+                            <h3 class="text-xl font-semibold text-primary">${bill.name}</h3>
+                            ${statusText}
+                        </div>
+                        
+                        <p><strong>Your Role:</strong> <span class="text-primary">${roleText}</span></p>
+                        <p><strong>Total Bill:</strong> <span class="text-secondary">${formatUsd(totalAmountUSD)}</span></p>
+                        <p><strong>Collected:</strong> <span class="text-yellow-500">${formatUsd(collectedAmountUSD)}</span></p>
+                        ${participantShareDisplay}
+                        
+                        ${actionButton}
+                    </div>
+                `;
+                billsListContainer.innerHTML += billCard;
+            }
+
+        } catch (error) {
+            console.error("Error loading bills:", error);
+            billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-red-500">Error fetching bill data from blockchain. (Check MetaMask Network: Sepolia)</p></div>`;
+        }
+    }
 
         const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
         billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-yellow-500">Fetching the last ${BILLS_TO_FETCH} bills from Sepolia...</p></div>`;
