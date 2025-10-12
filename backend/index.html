@@ -261,10 +261,7 @@
                 updateMateIdUI(null);
             }
             
-            // DEMO: Pre-populate other contacts
-            if (!addressBook['alice']) {
-                addressBook['alice'] = '0xabcdeF0123456789abcdeF0123456789abcdeF01';
-            }
+            // NOTE: All mock contacts (like 'alice') have been removed.
 
             renderAddressBookList();
         }
@@ -644,27 +641,25 @@
             billsList.innerHTML = '<p class="text-center text-primary/50">Loading your bills...</p>';
 
             try {
-                // --- MOCK DATA FOR DEMO --- (Replace with actual contract calls)
-                const mockBills = [
-                    { billId: '0', description: 'Office Supplies', creator: currentAccount, totalAmountEth: '0.15', yourShareEth: '0.05', yourShareWei: '50000000000000000', status: 'OPEN' },
-                    { billId: '1', description: 'Weekend Getaway', creator: '0x1234567890123456789012345678901234567890', totalAmountEth: '0.50', yourShareEth: '0.25', yourShareWei: '250000000000000000', status: 'COMPLETE' },
-                ];
-                // --- END MOCK DATA ---
+                // --- MOCK DATA REMOVED. This is where actual contract calls would go. ---
+                const realBills = []; // Placeholder for real fetch result
+                // --- END OF REAL DATA PLACEHOLDER ---
 
                 billsList.innerHTML = '';
-                if (mockBills.length === 0) {
+                if (realBills.length === 0) {
                     billsList.innerHTML = '<p class="text-center text-secondary/70">You are not involved in any bills yet. Create one!</p>';
+                    // Ensure balances are set to zero when no bills are present
+                    totalDueToYouEl.textContent = '0.00 ETH'; 
+                    totalYouOweEl.textContent = '0.00 ETH'; 
+                    netBalanceEl.textContent = '0.00 ETH';
                     return;
                 }
 
-                mockBills.forEach(bill => {
+                realBills.forEach(bill => {
                     billsList.appendChild(createBillCard(bill));
                 });
 
-                // Update Balances (Mocked)
-                totalDueToYouEl.textContent = '0.00 ETH'; 
-                totalYouOweEl.textContent = '0.05 ETH'; 
-                netBalanceEl.textContent = '-0.05 ETH';
+                // Real balance update logic based on realBills would go here.
 
             } catch (error) {
                 console.error("Error loading bills:", error);
@@ -859,7 +854,7 @@
         splitTypeSelect.addEventListener('change', toggleSplitTypeFields);
         totalAmountInput.addEventListener('input', updateSplitSummary);
         saveContactBtn.addEventListener('click', saveContactToAddressBook);
-        clearMateIdBtn.addEventListener('click', clearMateId); // NEW HANDLER
+        clearMateIdBtn.addEventListener('click', clearMateId); 
 
         // Handler for the .mate ID display in the header (navigates to the new Profile page)
         mateIdDisplay.addEventListener('click', () => {
