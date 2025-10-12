@@ -463,7 +463,7 @@
         return `$${parseFloat(amount).toFixed(2)}`;
     }
     
-    // <<< FINAL FIX FOR EVM REVERT: Improved toWei precision >>>
+    // Function to convert USD amount to WEI string with high precision
     function toWeiString(usdAmount) {
         if (usdAmount === 0) return '0';
         
@@ -825,7 +825,7 @@
         }
         
         const totalParticipantShares = participantSharesUSD.reduce((sum, amount) => sum + amount, 0);
-        const creatorShareUSD = totalAmountUSD - totalParticipantShares;
+        let creatorShareUSD = totalAmountUSD - totalParticipantShares;
         
         // --- FINAL VALIDATION CHECKS (CRITICAL for EVM Revert) ---
         if (creatorShareUSD < 0) {
@@ -833,7 +833,7 @@
             return;
         }
 
-        // 1. ADD CREATOR AS LAST PARTICIPANT AND THEIR SHARE
+        // 1. ADD CREATOR AS LAST PARTICIPANT AND THEIR SHARE (USD)
         participantAddresses.push(currentAccount);
         participantSharesUSD.push(creatorShareUSD); 
         
@@ -845,6 +845,45 @@
             return;
         }
         
+        // --- CONVERT TO WEI ---
+        const totalAmountWei = web3.utils.toBN(toWeiString(totalAmountUSD));
+        const participantSharesWEI = participantSharesUSD.map(shareUSD => web3.utils.toBN(toWeiString(shareUSD)));
+        
+        // --- PRECISION CORRECTION (THE FINAL FIX) ---
+        // Sum the Wei shares to see how much precision was lost due to truncation
+        let currentWeiSum = web3.utils.toBN('0');
+        for (const shareWei of participantSharesWEI) {
+            currentWeiSum = currentWeiSum.add(shareWei);
+        }
+
+        // Calculate the difference (should be tiny)
+        const difference = totalAmountWei.sub(currentWeiSum);
+        
+        // If there is a difference, add it to the creator's share (the last element in the array)
+        if (difference.gtn(0)) {
+            // Add the difference to the last participant's share (which is the creator's share)
+            const creatorShareIndex = participantSharesWEI.length - 1;
+            participantSharesWEI[creatorShareIndex] = participantSharesWEI[creatorShareIndex].add(difference);
+        } else if (difference.ltn(0)) {
+            // This should not happen if the USD math is correct, but indicates too much Wei was calculated.
+            showStatusMessage("error", "Critical precision error: The sum of calculated shares exceeds the total bill amount in Wei. Try simpler amounts.");
+            return;
+        }
+        
+        // Final check: The sum of adjusted Wei shares MUST now equal the total amount Wei.
+        let finalWeiSumCheck = web3.utils.toBN('0');
+        for (const shareWei of participantSharesWEI) {
+            finalWeiSumCheck = finalWeiSumCheck.add(shareWei);
+        }
+        if (!finalWeiSumCheck.eq(totalAmountWei)) {
+             showStatusMessage("error", "Internal error: Precision fix failed. The final Wei sum does not match the total bill amount.");
+             return;
+        }
+        
+        // Convert the BigNumber Wei shares back to string format for the contract call
+        const participantSharesWEIStrings = participantSharesWEI.map(bn => bn.toString());
+
+
         // 3. VALUE SENT WITH TRANSACTION IS NOW 0 
         const valueToSend = web3.utils.toWei('0', 'ether'); 
 
@@ -855,18 +894,12 @@
             
             const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
 
-            // Convert all participant shares (including creator's last) to truncated Wei strings
-            const participantSharesWEI = participantSharesUSD.map(toWeiString);
-
-            // Convert total amount to truncated Wei string
-            const totalAmountWei = toWeiString(totalAmountUSD);
-
             const result = await splitMateContract.methods.createBill(
                 billName, 
-                totalAmountWei,
+                totalAmountWei.toString(), // Send total amount as string
                 merchantAddress,
                 participantAddresses, 
-                participantSharesWEI
+                participantSharesWEIStrings // Send corrected Wei share strings
             ).send({ 
                 from: currentAccount,
                 value: valueToSend // 0 Wei is sent
