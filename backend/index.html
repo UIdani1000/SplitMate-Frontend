@@ -575,10 +575,26 @@
 
     // --- DASHBOARD DISPLAY LOGIC (Multi-Bill Fetch) ---
     async function loadUserBills() {
-        if (!currentAccount) {
-            billsListMessageEl.textContent = 'Please connect your wallet to view your bills.';
+    if (!currentAccount) {
+        billsListMessageEl.textContent = 'Please connect your wallet to view your bills.';
+        return;
+    }
+    
+    // ✨ FIX: Ensure web3 provider is active
+    if (!web3) {
+        // Re-initialize web3 if it somehow dropped, or if the page loaded passively
+        if (window.ethereum) {
+            web3 = new Web3(window.ethereum);
+        } else {
+            billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-red-500">Error: MetaMask not found or disconnected.</p></div>`;
             return;
         }
+    }
+    // END FIX
+
+    const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
+    
+    // ... rest of the function
 
         const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
         billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-yellow-500">Fetching the last ${BILLS_TO_FETCH} bills from Sepolia...</p></div>`;
