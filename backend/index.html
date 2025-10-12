@@ -164,10 +164,195 @@
     let participantCount = 0; // Tracks participants added (excluding creator)
     
     // <<< ACTION REQUIRED >>>: REPLACE "0x..." with your Sepolia Contract Address
-    const SPLITMATE_CONTRACT_ADDRESS = "0x..."; 
+    const SPLITMATE_CONTRACT_ADDRESS = "0xF13462054C7670C59009E9721616C78cFE86ec4E"; 
 
     // <<< ACTION REQUIRED >>>: REPLACE the empty array with your contract's ABI JSON
-    const CONTRACT_ABI = []; 
+    const CONTRACT_ABI = [
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "billId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "merchant",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "finalSettlement",
+				"type": "uint256"
+			}
+		],
+		"name": "BillCompleted",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "billId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "creator",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "merchant",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "totalAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "BillCreated",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_name",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_totalAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address payable",
+				"name": "_merchant",
+				"type": "address"
+			},
+			{
+				"internalType": "address[]",
+				"name": "_participantAddresses",
+				"type": "address[]"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "_participantShares",
+				"type": "uint256[]"
+			}
+		],
+		"name": "createBill",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_billId",
+				"type": "uint256"
+			}
+		],
+		"name": "payShare",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "billId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "payer",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amountPaid",
+				"type": "uint256"
+			}
+		],
+		"name": "SharePaid",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "bills",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "totalAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "creator",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "merchant",
+				"type": "address"
+			},
+			{
+				"internalType": "enum SplitMate.BillStatus",
+				"name": "status",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "collectedAmount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "creatorShare",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "nextBillId",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+]; 
     
     // HARDCODED ETH PRICE FOR HACKATHON DEMO (1 ETH = $X USD)
     const ETH_USD_PRICE = 3000; // $3000 USD per 1 ETH (Used for conversion from form USD to Sepolia ETH/WEI)
