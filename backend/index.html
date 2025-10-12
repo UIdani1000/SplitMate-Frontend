@@ -166,7 +166,7 @@
     let participantCount = 0; // Tracks participants added (excluding creator)
     
     // <<< CONTRACT DETAILS >>>: Updated to SplitMateV2 contract address
-    const SPLITMATE_CONTRACT_ADDRESS = "0x8679D4254160B3f17E41533783AF582d8771D311"; 
+    const SPLITMATE_CONTRACT_ADDRESS = "0x195d869a9eF883bA3a827A99e3B36EcCFa9D1DF8"; 
 
     // <<< CONTRACT ABI >>>: Correct ABI JSON for SplitMateV2
     const CONTRACT_ABI = [
@@ -463,23 +463,16 @@
         return `$${parseFloat(amount).toFixed(2)}`;
     }
     
-    // Utility function to convert USD amount to WEI string with high precision
+    // Utility function to round and truncate ETH amounts to prevent the "too many decimal places" error
+    // We truncate to 18 decimal places (the max precision for Wei)
     function toWeiString(usdAmount) {
-        if (usdAmount === 0) return '0';
-        
         const ethAmount = usdAmount / ETH_USD_PRICE;
-        
-        // Convert to string with high precision (20 decimal places) to minimize floating point error
+        // Truncate to 20 decimal places to capture full precision before toWei
         const ethString = ethAmount.toFixed(20); 
+        const [integerPart, decimalPart] = ethString.split('.');
+        const truncatedDecimalPart = decimalPart ? decimalPart.substring(0, 18) : '0';
+        const truncatedEthString = `${integerPart}.${truncatedDecimalPart}`;
         
-        // Truncate to 18 decimal places which is max for WEI
-        const parts = ethString.split('.');
-        if (parts.length > 1) {
-            parts[1] = parts[1].substring(0, 18);
-        }
-        const truncatedEthString = parts.join('.');
-
-        // Use toWei
         return web3.utils.toWei(truncatedEthString, 'ether');
     }
     
@@ -509,7 +502,12 @@
                     const billTotalUSD = weiToUsd(bill.totalAmount);
                     const collectedUSD = weiToUsd(bill.collectedAmount);
                     
+                    // We need to exclude the creator's own share if they haven't paid it yet
+                    // The collectedAmount includes the creator's share if they paid it via payShare
+                    
                     // The simplest calculation for a creator is: Total Bill - Collected Amount
+                    // Since the contract requires ALL shares (including creator's) to be paid via payShare, 
+                    // this represents the total outstanding amount.
                     totalOwed += Math.max(0, weiToUsd(bill.totalAmount) - weiToUsd(bill.collectedAmount));
                     
                 } else {
@@ -825,68 +823,19 @@
         }
         
         const totalParticipantShares = participantSharesUSD.reduce((sum, amount) => sum + amount, 0);
-        let creatorShareUSD = totalAmountUSD - totalParticipantShares;
+        const creatorShareUSD = totalAmountUSD - totalParticipantShares;
         
-        // --- FINAL VALIDATION CHECKS (CRITICAL for EVM Revert) ---
         if (creatorShareUSD < 0) {
             showStatusMessage("error", `Total participant shares ($${totalParticipantShares.toFixed(2)}) exceed the total bill amount ($${totalAmountUSD.toFixed(2)}).`);
             return;
         }
-
-        // 1. ADD CREATOR AS LAST PARTICIPANT AND THEIR SHARE (USD)
+        
+        // --- CRITICAL FIXES FOR REVERT ---
+        // 1. ADD CREATOR AS LAST PARTICIPANT AND THEIR SHARE
         participantAddresses.push(currentAccount);
         participantSharesUSD.push(creatorShareUSD); 
         
-        // 2. CHECK FOR DUPLICATE ADDRESSES 
-        const allAddresses = [merchantAddress.toLowerCase(), ...participantAddresses.map(addr => addr.toLowerCase())];
-        const uniqueAddresses = new Set(allAddresses);
-        if (uniqueAddresses.size !== allAddresses.length) {
-            showStatusMessage("error", "Transaction failed: Duplicate addresses found among the Merchant, Creator, and Participants. Please ensure all addresses are unique.");
-            return;
-        }
-        
-        // --- CONVERT TO WEI & APPLY PRECISION CORRECTION (THE FINAL FIX) ---
-        // 1. Convert total amount to BigNumber
-        const totalAmountWei = web3.utils.toBN(toWeiString(totalAmountUSD));
-        
-        // 2. Convert all shares to BigNumber (BN)
-        const participantSharesWEI = participantSharesUSD.map(shareUSD => web3.utils.toBN(toWeiString(shareUSD)));
-        
-        // 3. Sum the BN shares to see how much precision was lost due to truncation
-        let currentWeiSum = web3.utils.toBN('0');
-        for (const shareWei of participantSharesWEI) {
-            currentWeiSum = currentWeiSum.add(shareWei);
-        }
-
-        // 4. Calculate the difference (should be tiny, e.g., 1 or 2 Wei)
-        const difference = totalAmountWei.sub(currentWeiSum);
-        
-        // 5. If there is a difference, add it to the creator's share (the last element in the array)
-        if (difference.gtn(0)) {
-            // Add the difference to the last participant's share (which is the creator's share)
-            const creatorShareIndex = participantSharesWEI.length - 1;
-            participantSharesWEI[creatorShareIndex] = participantSharesWEI[creatorShareIndex].add(difference);
-        } else if (difference.ltn(0)) {
-            // This should ideally not happen
-            showStatusMessage("error", "Critical precision error: The sum of calculated shares exceeds the total bill amount in Wei. Try simpler amounts.");
-            return;
-        }
-        
-        // Final check: The sum of adjusted Wei shares MUST now equal the total amount Wei.
-        let finalWeiSumCheck = web3.utils.toBN('0');
-        for (const shareWei of participantSharesWEI) {
-            finalWeiSumCheck = finalWeiSumCheck.add(shareWei);
-        }
-        if (!finalWeiSumCheck.eq(totalAmountWei)) {
-             showStatusMessage("error", "Internal error: Precision fix failed. The final Wei sum does not match the total bill amount.");
-             return;
-        }
-        
-        // 6. Convert the BigNumber Wei shares back to string format for the contract call
-        const participantSharesWEIStrings = participantSharesWEI.map(bn => bn.toString());
-
-
-        // 7. VALUE SENT WITH TRANSACTION IS 0 (The contract only records the shares)
+        // 2. VALUE SENT WITH TRANSACTION IS NOW 0 (Contract requires creator to pay their share later via payShare)
         const valueToSend = web3.utils.toWei('0', 'ether'); 
 
         showStatusMessage("loading", `Initiating Collective Payment: Sending 0 ETH to create bill escrow... Awaiting MetaMask approval...`);
@@ -896,15 +845,21 @@
             
             const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
 
+            // Convert all participant shares (including creator's last) to truncated Wei strings
+            const participantSharesWEI = participantSharesUSD.map(toWeiString);
+
+            // Convert total amount to truncated Wei string
+            const totalAmountWei = toWeiString(totalAmountUSD);
+
             const result = await splitMateContract.methods.createBill(
                 billName, 
-                totalAmountWei.toString(), // Send total amount as string
+                totalAmountWei,
                 merchantAddress,
                 participantAddresses, 
-                participantSharesWEIStrings // Send corrected Wei share strings
+                participantSharesWEI
             ).send({ 
                 from: currentAccount,
-                value: valueToSend // 0 Wei is sent
+                value: valueToSend // Now 0 Wei is sent
             });
 
             // 1. Show Success Message
