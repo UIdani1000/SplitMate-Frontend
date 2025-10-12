@@ -85,7 +85,7 @@
             <h2 class="text-3xl font-bold mb-6">Split Bills with Friends</h2>
             <div class="max-w-xl mx-auto bg-card p-8 rounded-xl shadow-2xl border border-border">
                 <p class="text-muted-foreground mb-6">
-                    Create a shared payment request using the Collective Payment Escrow model.
+                    Create a shared payment request using the **Collective Payment Escrow** model.
                 </p>
                 <form id="create-bill-form" class="space-y-6">
                     <div>
@@ -157,24 +157,20 @@
 
 <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
-
 <script>
     // Global state variables
     let web3 = null;
     let currentAccount = null;
     let participantCount = 0; // Tracks participants added (excluding creator)
     
-    // 🚨 1. PASTE YOUR ACTUAL DEPLOYED CONTRACT ADDRESS HERE (Sepolia EVM) 🚨
-    const SPLITMATE_CONTRACT_ADDRESS = "0x..."; // Placeholder
+    // <<< ACTION REQUIRED >>>: REPLACE "0x..." with your Sepolia Contract Address
+    const SPLITMATE_CONTRACT_ADDRESS = "0x..."; 
 
-    // 🚨 2. PASTE YOUR ACTUAL CONTRACT ABI JSON ARRAY HERE 🚨
-    const CONTRACT_ABI = [
-        // Your contract's function signatures (ABI) must be here for the code to work.
-    ]; 
+    // <<< ACTION REQUIRED >>>: REPLACE the empty array with your contract's ABI JSON
+    const CONTRACT_ABI = []; 
     
     // HARDCODED ETH PRICE FOR HACKATHON DEMO (1 ETH = $X USD)
-    const ETH_USD_PRICE = 3000; // $3000 USD per 1 ETH
+    const ETH_USD_PRICE = 3000; // $3000 USD per 1 ETH (Used for conversion from form USD to Sepolia ETH/WEI)
 
     // Get elements
     const connectButton = document.getElementById('connect-wallet-btn');
@@ -216,7 +212,6 @@
     }
 
     function updateWalletUI(address) {
-        // Clear listeners first
         connectButton.removeEventListener('click', handleConnectWallet);
 
         if (address) {
@@ -224,14 +219,12 @@
             connectButton.textContent = shortAddress;
             connectButton.classList.remove('bg-primary');
             connectButton.classList.add('bg-green-500');
-            // Enable form submission
             submitBillButton.disabled = false;
         } else {
             connectButton.textContent = "Connect Wallet";
             connectButton.classList.remove('bg-green-500');
             connectButton.classList.add('bg-primary');
             connectButton.addEventListener('click', handleConnectWallet);
-            // Disable form submission
             submitBillButton.disabled = true;
         }
     }
@@ -246,16 +239,11 @@
             }
 
             web3 = new Web3(window.ethereum);
-            
-            // Forces the MetaMask connection prompt
             const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
             
             if (accounts.length > 0) {
                 currentAccount = accounts[0];
                 updateWalletUI(currentAccount);
-                console.log("MetaMask connected successfully! Address:", currentAccount);
-            } else {
-                 showStatusMessage("error", "Connection failed: No accounts returned.");
             }
         } catch (error) {
             console.error("MetaMask Connection Error:", error);
@@ -263,7 +251,6 @@
         }
     };
     
-    // Add MetaMask listeners for account changes/disconnects
     if (window.ethereum) {
         window.ethereum.on('accountsChanged', (newAccounts) => {
             currentAccount = newAccounts.length > 0 ? newAccounts[0] : null;
@@ -271,19 +258,19 @@
         });
     }
 
-    // --- DYNAMIC FORM LOGIC (Keep as is) ---
+    // --- DYNAMIC FORM LOGIC ---
     
     function updateSplitSummary() {
         const totalAmount = parseFloat(totalAmountInput.value) || 0;
-        const totalParticipants = participantCount + 1; // Creator + others
+        const totalPeople = participantCount + 1; // Creator + others
         const splitType = splitTypeSelect.value;
         
         splitSummary.classList.add('hidden');
         manualSummary.classList.add('hidden');
 
         if (splitType === 'even') {
-            const share = totalParticipants > 1 ? (totalAmount / totalParticipants).toFixed(2) : totalAmount.toFixed(2);
-            splitSummary.textContent = `Even Split: $${share} per person (Total People: ${totalParticipants})`;
+            const share = totalPeople > 1 ? (totalAmount / totalPeople).toFixed(2) : totalAmount.toFixed(2);
+            splitSummary.textContent = `Even Split: $${share} per person (Total People: ${totalPeople})`;
             splitSummary.classList.remove('hidden');
         } else if (splitType === 'manual') {
             let totalEntered = 0;
@@ -304,7 +291,6 @@
         amountInputs.forEach(input => {
             if (splitType === 'even') {
                 input.type = 'hidden';
-                input.value = (parseFloat(totalAmountInput.value) / (participantCount + 1)).toFixed(2);
             } else {
                 input.type = 'number';
             }
@@ -331,7 +317,7 @@
         amountInput.step = '0.01';
         amountInput.className = 'w-1/4 p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50';
         amountInput.placeholder = 'Amount ($)';
-        amountInput.addEventListener('input', updateSplitSummary); // Listen for manual changes
+        amountInput.addEventListener('input', updateSplitSummary);
 
         const removeButton = document.createElement('button');
         removeButton.type = 'button';
@@ -352,7 +338,7 @@
     }
 
 
-    // --- FORM SUBMISSION LOGIC (Keep as is) ---
+    // --- FORM SUBMISSION LOGIC (COLLECTIVE PAYMENT) ---
     const handleBillSubmission = async (e) => {
         e.preventDefault();
         
@@ -360,23 +346,25 @@
             showStatusMessage("error", "Please connect your wallet first.");
             return;
         }
+        // VALIDATION: Ensure contract details are present before proceeding
+        if (CONTRACT_ABI.length === 0 || SPLITMATE_CONTRACT_ADDRESS === "0x...") {
+            showStatusMessage("error", "Error: Contract details are missing. Please update ABI and Address in the code.");
+            return; 
+        }
 
         const billName = document.getElementById('bill-name').value;
         const totalAmountUSD = parseFloat(totalAmountInput.value) || 0;
         const merchantAddress = document.getElementById('merchant-address').value;
         const splitType = splitTypeSelect.value;
         
-        const totalPeople = participantCount + 1; 
-
         if (totalAmountUSD <= 0 || participantCount < 1) {
             showStatusMessage("error", "Please enter a valid bill amount and at least one participant.");
             return;
         }
         
-        // 1. Gather Participant Data (Logic for Even/Manual is unchanged)
+        // 1. Gather Participant Data (Addresses and Amounts in USD)
         let participantAddresses = [];
-        let participantAmountsUSD = [];
-        let totalEnteredManual = 0;
+        let participantSharesUSD = []; // Shares for all participants *EXCEPT* the creator
         
         const addressInputs = participantContainer.querySelectorAll('input[name="participant-address"]');
         const amountInputs = participantContainer.querySelectorAll('input[name="participant-amount"]');
@@ -384,23 +372,21 @@
         addressInputs.forEach(input => participantAddresses.push(input.value));
 
         if (splitType === 'even') {
+            const totalPeople = participantCount + 1;
             const evenShare = totalAmountUSD / totalPeople;
-            participantAmountsUSD = Array(participantCount).fill(evenShare); // Just participant shares
+            participantSharesUSD = Array(participantCount).fill(evenShare);
         } else { // Manual Split Validation
             amountInputs.forEach(input => {
-                const amount = parseFloat(input.value) || 0;
-                participantAmountsUSD.push(amount);
-                totalEnteredManual += amount;
+                participantSharesUSD.push(parseFloat(input.value) || 0);
             });
-            // Validation check: Does total amount minus all participant shares equal the creator's share?
         }
         
-        // Calculate Creator's Share (paid now)
-        const totalParticipantShares = participantAmountsUSD.reduce((sum, amount) => sum + amount, 0);
+        // 2. Calculate Creator's Share (which is paid in this transaction)
+        const totalParticipantShares = participantSharesUSD.reduce((sum, amount) => sum + amount, 0);
         const creatorShareUSD = totalAmountUSD - totalParticipantShares;
         
         if (creatorShareUSD < 0) {
-            showStatusMessage("error", "Total participant shares exceed the total bill amount.");
+            showStatusMessage("error", `Total participant shares ($${totalParticipantShares.toFixed(2)}) exceed the total bill amount ($${totalAmountUSD.toFixed(2)}).`);
             return;
         }
 
@@ -408,44 +394,41 @@
         const creatorShareETH = creatorShareUSD / ETH_USD_PRICE;
         const valueToSend = web3.utils.toWei(creatorShareETH.toFixed(18), 'ether'); 
 
-        showStatusMessage("loading", `Initiating Collective Payment: Sending your share of ~${creatorShareETH.toFixed(4)} ETH to the escrow...`);
+        showStatusMessage("loading", `Initiating Collective Payment: Sending your share of ~${creatorShareETH.toFixed(4)} ETH to the escrow... Awaiting MetaMask approval...`);
 
         try {
             submitBillButton.disabled = true;
             
-            // --- Fallback to MOCK if contract details are missing ---
-            if (CONTRACT_ABI.length === 0 || SPLITMATE_CONTRACT_ADDRESS === "0x...") {
-                await new Promise(resolve => setTimeout(resolve, 3000)); 
-                showStatusMessage("success", `Bill Mock Submitted! **ACTION REQUIRED**: Add ABI & Address for real Sepolia transaction. Bill: ${billName}, Total: $${totalAmountUSD}.`);
-            } else {
-                // --- REAL EVM INTERACTION (COLLECTIVE PAYMENT) ---
-                
-                const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
+            // --- REAL EVM INTERACTION (COLLECTIVE PAYMENT) ---
+            
+            const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
 
-                // Convert all amounts to WEI for the contract
-                const participantAmountsWEI = participantAmountsUSD.map(amount => {
-                    const ethAmount = amount / ETH_USD_PRICE;
-                    return web3.utils.toWei(ethAmount.toFixed(18), 'ether');
-                });
+            // Convert all participant shares to WEI for the contract
+            const participantSharesWEI = participantSharesUSD.map(amount => {
+                const ethAmount = amount / ETH_USD_PRICE;
+                return web3.utils.toWei(ethAmount.toFixed(18), 'ether');
+            });
 
-                const result = await splitMateContract.methods.createBill(
-                    billName, 
-                    web3.utils.toWei((totalAmountUSD / ETH_USD_PRICE).toFixed(18), 'ether'), // Total amount in WEI
-                    merchantAddress,
-                    participantAddresses, // Array of participant addresses
-                    participantAmountsWEI // Array of corresponding amounts in WEI
-                ).send({ 
-                    from: currentAccount,
-                    value: valueToSend // Creator pays their share here
-                });
+            // This line triggers the MetaMask popup!
+            const result = await splitMateContract.methods.createBill(
+                billName, 
+                web3.utils.toWei((totalAmountUSD / ETH_USD_PRICE).toFixed(18), 'ether'), // Total bill amount in WEI
+                merchantAddress,
+                participantAddresses, // Array of participant addresses
+                participantSharesWEI // Array of corresponding shares in WEI
+            ).send({ 
+                from: currentAccount,
+                value: valueToSend // Creator pays their calculated share here
+            });
 
-                showStatusMessage("success", `Collective Bill Created! Tx Hash: ${result.transactionHash.slice(0, 4)}...${result.transactionHash.slice(-4)}. Your share is in escrow.`);
+            showStatusMessage("success", `Collective Bill Created! Tx Hash: ${result.transactionHash.slice(0, 4)}...${result.transactionHash.slice(-4)}. Your share is in escrow.`);
 
-            }
+            billForm.reset();
             
         } catch (error) {
             console.error("Transaction Error:", error);
-            showStatusMessage("error", `Transaction failed. Error: ${error.message || "User rejected transaction."}`);
+            // This error message is triggered if the user rejects the transaction or if the contract call reverts
+            showStatusMessage("error", `Transaction failed. Error: ${error.message.substring(0, 80) || "User rejected transaction or contract call failed."}`);
         } finally {
              submitBillButton.disabled = false;
         }
@@ -453,16 +436,13 @@
     
     // --- NAVIGATION LOGIC ---
     function navigate(hash) {
-        // 1. Hide all sections
         Object.values(sections).forEach(section => {
             if(section) section.classList.add('hidden');
         });
 
-        // 2. Show target section
         const target = sections[hash.replace('#', '')];
         if (target) {
             target.classList.remove('hidden');
-            // 3. Update nav link active state
             navLinks.forEach(link => {
                 if (link.getAttribute('href') === hash) {
                     link.classList.remove('text-foreground');
@@ -478,18 +458,14 @@
 
     // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', async () => {
-        // Initial setup for the wallet UI
         updateWalletUI(null);
 
-        // Add event listeners for dynamic form
         addParticipantBtn.addEventListener('click', addParticipantField);
         splitTypeSelect.addEventListener('change', toggleSplitTypeFields);
         totalAmountInput.addEventListener('input', updateSplitSummary);
-
-        // Add event listener for the form submission
         billForm.addEventListener('submit', handleBillSubmission);
 
-        // --- NAVIGATION EVENT LISTENERS ---
+        // Navigation setup
         navLinks.forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -501,7 +477,7 @@
         const initialHash = window.location.hash || '#dashboard';
         navigate(initialHash);
         
-        // --- Passive Auto-Connect Check (for approved users) ---
+        // Passive Auto-Connect Check
         if (window.ethereum) {
             web3 = new Web3(window.ethereum);
             try {
