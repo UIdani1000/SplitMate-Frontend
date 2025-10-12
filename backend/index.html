@@ -217,7 +217,7 @@
         const mateIdDisplay = document.getElementById('mateIdDisplay'); 
         const currentIdStatus = document.getElementById('currentIdStatus'); 
         
-        // Dashboard Balance Elements (FIX ADDED HERE)
+        // Dashboard Balance Elements
         const totalDueToYouEl = document.getElementById('totalDueToYou');
         const totalYouOweEl = document.getElementById('totalYouOwe');
         const netBalanceEl = document.getElementById('netBalance');
@@ -632,7 +632,6 @@
                 });
 
                 // Update Balances (Mocked)
-                // This is where the ReferenceError occurred, now fixed by DOM declaration
                 totalDueToYouEl.textContent = '0.00 ETH'; 
                 totalYouOweEl.textContent = '0.05 ETH'; 
                 netBalanceEl.textContent = '-0.05 ETH';
@@ -717,8 +716,16 @@
             
             // --- STEP 1: RESOLVE MERCHANT ADDRESS ---
             let merchantAddress = await resolveNameOrAddress(merchantAddressInput);
+            
             if (!merchantAddress) {
-                showStatusMessage(`Invalid Merchant Address/Name: **${merchantAddressInput}** could not be resolved.`, 'error');
+                let errorMessage = `Invalid Merchant Address/Name: **${merchantAddressInput}** could not be resolved.`;
+                
+                // --- IMPROVED ERROR MESSAGE FOR .MATE ID ---
+                if (merchantAddressInput.toLowerCase().endsWith(MATE_SUFFIX)) {
+                     errorMessage += ` Please ensure you have: 1) Connected your wallet, and 2) Registered **${merchantAddressInput}** on the **Profile / ID** page.`;
+                }
+                
+                showStatusMessage(errorMessage, 'error');
                 return;
             }
             
@@ -736,7 +743,11 @@
                 let resolvedAddress = await resolveNameOrAddress(nameOrAddress);
 
                 if (!resolvedAddress) {
-                    showStatusMessage(`Invalid Participant Input: Failed to resolve name/address for **${nameOrAddress}**`, 'error');
+                    let participantError = `Invalid Participant Input: Failed to resolve name/address for **${nameOrAddress}**`;
+                    if (nameOrAddress.toLowerCase().endsWith(MATE_SUFFIX)) {
+                         participantError += ` (Check Profile / ID page for registration).`;
+                    }
+                    showStatusMessage(participantError, 'error');
                     return;
                 }
 
