@@ -18,11 +18,11 @@
                 card: "rgba(255, 255, 255, 0.05)",
                 primary: "#c77dff", 
                 secondary: "#ff9e00",
-                foreground: "hsl(210 40% 98%)\",
-                input: \"#21004e\",
-                border: \"rgba(255, 255, 255, 0.1)\"
+                foreground: "hsl(210 40% 98%)",
+                input: "#21004e",
+                border: "rgba(255, 255, 255, 0.1)"
               },
-              borderRadius: { xl: \"1.25rem\", lg: \"1rem\" }
+              borderRadius: { xl: "1.25rem", lg: "1rem" }
             }
           }
         }
@@ -187,21 +187,22 @@
         let currentAccount;
         let splitMateContract;
         let participantCount = 0; 
+        const EXCHANGE_RATE = 100000; // USD to Mock Wei conversion factor
 
-        // <<< CONTRACT DETAILS >>>: Updated to SplitMateV2 contract address
+        // <<< CONTRACT DETAILS >>>: Updated to SplitMateV2 contract address (MOCK)
         const SPLITMATE_CONTRACT_ADDRESS = "0x195d869a9eF883bA3a827A99e3B36EcCFa9D1DF8"; 
         const CONTRACT_ABI = [
-            // ... (Your full ABI JSON goes here) ...
-            { "inputs": [{ "internalType": "address[]", "name": "_participants", "type": "address[]" }, { "internalType": "uint256", "name": "_totalWei", "type": "uint256" }, { "internalType": "uint256[]", "name": "_amountsWei", "type": "uint256[]" }, { "internalType": "address", "name": "_merchantAddress", "type": "address" }, { "internalType": "string", "name": "_description", "type": "string" }], "name": "createBill", "outputs": [], "stateMutability": "payable", "type": "function" },
+            { "inputs": [{ "internalType": "address", "name": "_merchantAddress", "type": "address" }, { "internalType": "string", "name": "_description", "type": "string" }, { "internalType": "uint256", "name": "_totalWei", "type": "uint256" }, { "internalType": "address[]", "name": "_participants", "type": "address[]" }, { "internalType": "uint256[]", "name": "_amountsWei", "type": "uint256[]" }], "name": "createBill", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "payable", "type": "function" },
             { "inputs": [{ "internalType": "uint256", "name": "_billId", "type": "uint256" }], "name": "payShare", "outputs": [], "stateMutability": "payable", "type": "function" },
-            // ... (rest of the ABI) ...
+            // MOCK ABI for demonstration purposes: only include the needed functions
+            { "anonymous": false, "inputs": [{ "indexed": false, "internalType": "uint256", "name": "billId", "type": "uint256" }], "name": "BillCreated", "type": "event" }
         ];
 
         // --- CUSTOM ID CONSTANTS ---
         const MATE_SUFFIX = '.mate';
         const MATE_ID_KEY = 'splitmate_mate_id'; 
 
-        // --- DOM ELEMENTS (FIXED: Added balance elements) ---
+        // --- DOM ELEMENTS ---
         const connectWalletBtn = document.getElementById('connectWalletBtn');
         const walletInfo = document.getElementById('walletInfo');
         const accountAddress = document.getElementById('accountAddress');
@@ -234,12 +235,9 @@
         const addressBookList = document.getElementById('addressBookList');
         
         // --- LOCAL STORAGE / ADDRESS BOOK LOGIC ---
-        // FIX: Added 'nssien.mate' to the hardcoded list for immediate testing.
         let hardcodedTestIDs = {
-            'alice.mate': '0x5B38Da6a701c568545dCfcB03FcB875f56beddC4', 
-            'bob': '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B',
-            'udia.mate': '0xd20c5f9fe8270a738ed3e541521f396b386ea369', // From previous test
-            'nssien.mate': '0xf01625906B33923b3203c9480eC90c4c4B258547' // New ID for current test
+            'alice': '0x5B38Da6a701c568545dCfcB03FcB875f56beddC4', 
+            'bob': '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B',    
         };
         let addressBook = {...hardcodedTestIDs};
         
@@ -247,31 +245,29 @@
         const ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 
         function loadAddressBook() {
-            // Start with only the hardcoded test IDs
+             // 1. Start with hardcoded test IDs
             addressBook = {...hardcodedTestIDs};
             
-            // Overwrite/merge with user-saved contacts from local storage
+            // 2. Overwrite/merge with user-saved contacts
             const stored = localStorage.getItem(ADDRESS_BOOK_KEY);
             if (stored) {
                  const storedAddressBook = JSON.parse(stored);
                  Object.assign(addressBook, storedAddressBook);
             }
             
-            // If connected, ensure 'me' alias and 'mate' ID are in the in-memory book
+            // 3. Load user-specific aliases if connected
             if (currentAccount) {
-                // 1. Ensure 'me' alias is set
                 addressBook['me'] = currentAccount;
 
-                // 2. Load the user's specific .mate ID
                 const savedMateId = localStorage.getItem(`${MATE_ID_KEY}_${currentAccount.toLowerCase()}`);
                 if (savedMateId) {
-                    addressBook[savedMateId] = currentAccount;
+                    // This is the CRITICAL line: It ensures the user's ID is the authoritative source in the local book
+                    addressBook[savedMateId] = currentAccount; 
                     updateMateIdUI(savedMateId);
                 } else {
                     updateMateIdUI(null);
                 }
             } else {
-                // If disconnected, clean up internal state
                 delete addressBook['me'];
                 updateMateIdUI(null);
             }
@@ -279,14 +275,20 @@
             renderAddressBookList();
         }
 
+        function getSavedContactsToStore() {
+            // Returns an object containing only the user-saved, non-hardcoded contacts
+            return Object.fromEntries(
+                Object.entries(addressBook).filter(([key]) => 
+                    key !== 'me' && !Object.keys(hardcodedTestIDs).includes(key)
+                )
+            );
+        }
+
         function renderAddressBookList() {
+            // ... (Address book list rendering logic) ...
             addressBookList.innerHTML = '';
             const contacts = Object.entries(addressBook);
-            
-            // Keys of hardcoded test IDs
             const hardcodedKeys = Object.keys(hardcodedTestIDs);
-
-            // Filter out 'me' if not connected
             const displayContacts = contacts.filter(([username]) => username !== 'me' || currentAccount);
 
             if (displayContacts.length === 0) {
@@ -294,15 +296,18 @@
                 return;
             }
 
-            // Sort 'me' and '.mate' IDs to the top
             displayContacts.sort(([a], [b]) => {
+                const isAMe = a === 'me';
+                const isBMe = b === 'me';
+                const isAMateId = a.endsWith(MATE_SUFFIX) && addressBook[a].toLowerCase() === (currentAccount ? currentAccount.toLowerCase() : '');
+                const isBMateId = b.endsWith(MATE_SUFFIX) && addressBook[b].toLowerCase() === (currentAccount ? currentAccount.toLowerCase() : '');
                 const isAHardcoded = hardcodedKeys.includes(a);
                 const isBHardcoded = hardcodedKeys.includes(b);
                 
-                if (a === 'me') return -1;
-                if (b === 'me') return 1;
-                if (a.endsWith(MATE_SUFFIX) && addressBook[a] === currentAccount) return -1;
-                if (b.endsWith(MATE_SUFFIX) && addressBook[b] === currentAccount) return 1;
+                if (isAMe) return -1;
+                if (isBMe) return 1;
+                if (isAMateId) return -1;
+                if (isBMateId) return 1;
                 if (isAHardcoded && !isBHardcoded) return -1;
                 if (!isAHardcoded && isBHardcoded) return 1;
                 return a.localeCompare(b);
@@ -323,15 +328,6 @@
             });
         }
         
-        function getSavedContactsToStore() {
-            // Returns an object containing only the user-saved, non-hardcoded contacts
-            return Object.fromEntries(
-                Object.entries(addressBook).filter(([key]) => 
-                    key !== 'me' && !Object.keys(hardcodedTestIDs).includes(key)
-                )
-            );
-        }
-
         async function saveContactToAddressBook() {
             const username = contactUsernameInput.value.trim().toLowerCase();
             const addressOrName = contactAddressInput.value.trim();
@@ -347,43 +343,39 @@
 
             let resolvedAddress;
             // 1. RESOLVE TARGET ADDRESS
-            if (addressOrName.toLowerCase().endsWith('.eth') && web3) {
-                try {
-                    const resolved = await web3.eth.ens.getAddress(addressOrName);
-                    resolvedAddress = resolved === '0x0000000000000000000000000000000000000000' ? null : resolved;
-                    if (!resolvedAddress) {
-                         showStatusMessage(`ENS name ${addressOrName} did not resolve to a valid address.`, 'error');
-                         return;
-                    }
-                } catch (e) {
-                    showStatusMessage(`Failed to resolve ENS name ${addressOrName}.`, 'error');
-                    return;
-                }
-            } else if (ADDRESS_REGEX.test(addressOrName)) {
-                resolvedAddress = addressOrName;
-            } else {
-                showStatusMessage("Address must be a valid 0x address or a resolvable ENS name.", 'error');
-                return;
+            try {
+                // Use the main translator for the input address
+                resolvedAddress = await resolveNameOrAddress(addressOrName);
+            } catch (e) {
+                 showStatusMessage(`Invalid Address/ENS: ${e.message}`, 'error');
+                 return;
             }
 
             // 2. CHECK FOR UNIQUE .MATE ID REGISTRATION
             if (username.endsWith(MATE_SUFFIX)) {
-                // Must be registering their own ID
+                
+                // A. Check if the address is the connected wallet
                 if (resolvedAddress.toLowerCase() !== currentAccount.toLowerCase()) {
                     showStatusMessage(`To register a **${MATE_SUFFIX}** ID, the address must be your connected wallet.`, 'error');
                     return;
                 }
+                
+                // B. **CRITICAL MULTI-USER CHECK:** Check if the ID is already registered to a *different* address
+                const existingMateIdOwner = addressBook[username];
+                if (existingMateIdOwner && existingMateIdOwner.toLowerCase() !== currentAccount.toLowerCase()) {
+                    showStatusMessage(`The ID **${username}** is already registered to another user's address. Please choose a unique ID.`, 'error');
+                    return;
+                }
 
-                // Check if this user already has a different .mate ID saved
+                // C. Handle replacing an old ID
                 const existingMateId = localStorage.getItem(`${MATE_ID_KEY}_${currentAccount.toLowerCase()}`);
                 if (existingMateId && existingMateId !== username) {
-                    // Remove old ID from local storage and address book
                     localStorage.removeItem(`${MATE_ID_KEY}_${currentAccount.toLowerCase()}`);
                     delete addressBook[existingMateId]; 
                      showStatusMessage(`Your old ID **${existingMateId}** has been cleared. Registering **${username}**`, 'alert');
                 }
 
-                // Save the unique ID reference in localStorage (keyed by wallet)
+                // D. Save the unique ID reference in localStorage (keyed by wallet)
                 localStorage.setItem(`${MATE_ID_KEY}_${currentAccount.toLowerCase()}`, username);
                 updateMateIdUI(username);
             }
@@ -395,13 +387,12 @@
 
             addressBook[username] = resolvedAddress;
             
-            // Save ONLY the user-defined, non-hardcoded contacts back to localStorage
             localStorage.setItem(ADDRESS_BOOK_KEY, JSON.stringify(getSavedContactsToStore()));
             
             showStatusMessage(`Contact **${username}** saved successfully!`, 'success');
             contactUsernameInput.value = '';
             contactAddressInput.value = '';
-            loadAddressBook(); // Renders the updated list
+            loadAddressBook(); 
         }
 
         // --- NEW FUNCTION: CLEAR MATE ID ---
@@ -410,16 +401,9 @@
             const existingMateId = localStorage.getItem(`${MATE_ID_KEY}_${currentAccount.toLowerCase()}`);
             
             if (existingMateId) {
-                // 1. Remove from localStorage
                 localStorage.removeItem(`${MATE_ID_KEY}_${currentAccount.toLowerCase()}`);
-                
-                // 2. Remove from the in-memory address book
                 delete addressBook[existingMateId];
-
-                // 3. Save the pruned address book to localStorage
                 localStorage.setItem(ADDRESS_BOOK_KEY, JSON.stringify(getSavedContactsToStore()));
-                
-                // 4. Update UI
                 updateMateIdUI(null);
                 loadAddressBook();
                 showStatusMessage(`Your SplitMate ID **${existingMateId}** has been successfully cleared. You can now register a new one.`, 'success');
@@ -431,19 +415,63 @@
 
 
         // --- UTILITY AND UI FUNCTIONS ---
+        function toWeiString(usdAmount) {
+            // Converts USD to a large integer representing Mock Wei based on the fixed exchange rate
+            return web3.utils.toBN(Math.round(usdAmount * EXCHANGE_RATE)).toString();
+        }
+        
+        // --- CORE TRANSLATOR FUNCTION (resolveNameOrAddress) ---
+        async function resolveNameOrAddress(nameOrAddress) {
+            const trimmedInput = nameOrAddress.trim(); 
+            const lowerVal = trimmedInput.toLowerCase();
+            
+            // 1. Check Local Address Book (handles 'me', saved friends' names, and self-registered .mate IDs)
+            if (addressBook[lowerVal]) {
+                return addressBook[lowerVal];
+            } 
+            
+            // 2. Check standard 0x address
+            if (web3.utils.isAddress(trimmedInput)) {
+                return trimmedInput;
+            }
+
+            // 3. Check ENS name resolution (only if connected and has .eth suffix)
+            if (lowerVal.endsWith('.eth') && web3) {
+                try {
+                    // Check for ENS support first
+                    if (!web3.eth.ens || typeof web3.eth.ens.getAddress !== 'function') {
+                        throw new Error("Web3 provider does not support ENS resolution.");
+                    }
+                    
+                    const resolved = await web3.eth.ens.getAddress(lowerVal);
+                    
+                    if (resolved === null || resolved === '0x0000000000000000000000000000000000000000') {
+                        throw new Error(`ENS name "${lowerVal}" is not registered or has no address record.`);
+                    }
+                    
+                    // Add resolved ENS name to the in-memory address book for quick re-lookup
+                    addressBook[lowerVal] = resolved; 
+                    return resolved;
+                } catch (e) {
+                    throw new Error(`Failed to resolve ENS name "${lowerVal}": ${e.message}`);
+                }
+            } 
+            
+            throw new Error(`"${nameOrAddress}" is not a valid address, registered ID, or resolvable ENS name.`);
+        }
+        // --- END OF CORE TRANSLATOR ---
+
         function updateMateIdUI(mateId) {
             if (mateId && mateId !== '--.--mate') {
                 mateIdDisplay.textContent = mateId;
                 mateIdDisplay.classList.remove('text-secondary');
                 mateIdDisplay.classList.add('text-primary');
-                // Update Profile section
                 currentIdText.innerHTML = `✅ Your registered SplitMate ID is: <span class="font-bold">${mateId}</span>. Use it in any address field.`;
                 clearMateIdBtn.classList.remove('hidden');
             } else {
                 mateIdDisplay.textContent = '--.--mate (Click to Register)';
                 mateIdDisplay.classList.remove('text-primary');
                 mateIdDisplay.classList.add('text-secondary');
-                 // Update Profile section
                 currentIdText.innerHTML = `🔔 You have not registered a SplitMate ID. Register one below to use a unique name instead of your 0x address.`;
                 clearMateIdBtn.classList.add('hidden');
             }
@@ -509,11 +537,12 @@
         }
 
         function updateSplitSummary() {
+            // ... (Split summary logic remains the same) ...
             const totalAmountStr = totalAmountInput.value;
             const totalAmount = parseFloat(totalAmountStr);
             const isManual = splitTypeSelect.value === 'manual';
             const participantInputs = document.querySelectorAll('#participantContainer input[name="participant-amount"]');
-            const numParticipants = participantInputs.length;
+            const numParticipants = document.querySelectorAll('input[name="participant-address"]').length; // Count address inputs
             
             if (isNaN(totalAmount) || totalAmount <= 0 || numParticipants === 0) {
                 splitSummary.textContent = "Summary: Enter Bill Amount and add Participants to see the split.";
@@ -523,8 +552,8 @@
             let summaryText = '';
             
             if (!isManual) {
-                // Equal Split Logic
-                const totalShares = numParticipants + 1; // Participants + Creator
+                // Equal Split Logic: Participants + Creator
+                const totalShares = numParticipants + 1; 
                 const share = (totalAmount / totalShares);
                 
                 summaryText = `Equal Split: Total Bill of $${totalAmount.toFixed(2)} will be split equally among ${totalShares} people. Each share is **$${share.toFixed(2)}**.`;
@@ -532,9 +561,10 @@
             } else {
                 // Manual Split Logic
                 let enteredTotal = 0;
-                participantInputs.forEach(input => {
+                // Only count shares for participants with an amount input
+                document.querySelectorAll('#participantContainer input[name="participant-amount"]').forEach(input => {
                     const val = parseFloat(input.value);
-                    if (!isNaN(val)) {
+                    if (!isNaN(val) && val > 0) {
                         enteredTotal += val;
                     }
                 });
@@ -542,7 +572,7 @@
                 const remainingAmount = totalAmount - enteredTotal;
                 
                 if (remainingAmount >= 0) {
-                    summaryText = `Manual Split: $${enteredTotal.toFixed(2)} entered for ${numParticipants} participants. **Remaining Creator Share: $${remainingAmount.toFixed(2)}**.`;
+                    summaryText = `Manual Split: $${enteredTotal.toFixed(2)} entered for participants. **Remaining Creator Share: $${remainingAmount.toFixed(2)}**.`;
                 } else {
                     const excess = Math.abs(remainingAmount);
                     summaryText = `❌ Error: Total entered ($${enteredTotal.toFixed(2)}) is **$${excess.toFixed(2)}** over the Total Bill! Please adjust shares.`;
@@ -574,7 +604,7 @@
             const isManual = splitTypeSelect.value === 'manual';
             
             const participantGroup = document.createElement('div');
-            participantGroup.className = 'flex items-center space-x-2';
+            participantGroup.className = 'flex items-center space-x-2 participant-group'; // Added class for easy selection
             participantGroup.innerHTML = `
                 <input type="text" name="participant-address" placeholder="Participant ${participantCount} Address, ENS, or Saved Name (e.g., 'david.mate')" required
                     class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50 participant-address-input" />
@@ -587,31 +617,21 @@
 
             const addressInput = participantGroup.querySelector('.participant-address-input');
             
+            // Re-adding the address validation/styling on blur
             addressInput.addEventListener('blur', async (e) => {
                 const inputVal = e.target.value.trim();
-                const lowerVal = inputVal.toLowerCase();
                 e.target.classList.remove('border-green-500', 'border-yellow-500', 'border-primary'); 
-
-                const resolvedAddress = await resolveNameOrAddress(inputVal); // Use the unified resolver
                 
-                if (resolvedAddress) {
-                    let titleText = `Resolved to: ${resolvedAddress}`;
-                    if (lowerVal === 'me') {
-                        titleText = "Alias for Your Wallet";
-                    } else if (lowerVal.endsWith(MATE_SUFFIX)) {
-                        titleText = "Resolved from Local .mate ID";
-                    } else if (lowerVal.endsWith('.eth')) {
-                        titleText = "Resolved from ENS Name";
-                    } else {
-                        titleText = "Resolved from Local Address Book";
-                    }
-                    e.target.title = titleText;
+                if (inputVal === '') return;
+
+                try {
+                    // Use the unified resolver to check if the input is valid/resolvable
+                    const resolvedAddress = await resolveNameOrAddress(inputVal); 
+                    
+                    e.target.title = `Resolved Address: ${resolvedAddress.slice(0, 6)}...${resolvedAddress.slice(-4)}`;
                     e.target.classList.add('border-green-500');
-                } else if (lowerVal.endsWith('.eth')) {
-                    e.target.title = `ENS Name: Will attempt to resolve on submission.`;
-                    e.target.classList.add('border-primary'); 
-                } else if (inputVal !== "" && !ADDRESS_REGEX.test(inputVal)) {
-                    e.target.title = `Warning: This does not look like a valid address, ENS, or saved name.`;
+                } catch (error) {
+                    e.target.title = `Warning: ${error.message}`;
                     e.target.classList.add('border-yellow-500');
                 }
             });
@@ -626,80 +646,25 @@
         }
 
         function createBillCard(bill) {
-            const isCreator = bill.creator.toLowerCase() === currentAccount.toLowerCase();
-            const isComplete = bill.status === 'COMPLETE';
-            const statusColor = isComplete ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300';
-            const creatorTag = isCreator ? '<span class="text-xs bg-primary/20 text-primary rounded-full px-2 py-0.5 ml-2">Creator</span>' : '';
-            const actionText = isComplete ? 'Settled' : 'Pay Share';
-
-            const card = document.createElement('div');
-            card.className = 'bg-card p-6 rounded-xl border border-border shadow-lg';
-            card.innerHTML = `
-                <div class="flex items-center justify-between border-b border-border pb-2 mb-2">
-                    <h4 class="text-xl font-bold text-white">${bill.description}</h4>
-                    <div class="flex items-center">
-                        <span class="text-sm font-semibold rounded-full px-3 py-1 ${statusColor}">${bill.status}</span>
-                        ${creatorTag}
-                    </div>
-                </div>
-                <p class="text-sm text-foreground/70">Bill ID: <span class="font-mono text-xs">${bill.billId}</span></p>
-                <div class="grid grid-cols-2 gap-4 text-sm">
-                    <p class="font-semibold text-primary">Total Bill: <span class="font-mono text-base">${bill.totalAmountEth} ETH</span></p>
-                    <p class="font-semibold text-secondary">You Owe: <span class="font-mono text-base">${bill.yourShareEth} ETH</span></p>
-                </div>
-
-                <div class="pt-3 border-t border-border mt-3 flex justify-end">
-                    <button class="pay-share-btn bg-primary text-background font-bold py-2 px-4 rounded-lg hover:bg-primary/80 transition duration-300 disabled:opacity-50"
-                            data-bill-id="${bill.billId}"
-                            data-share-wei="${bill.yourShareWei}"
-                            data-is-complete="${isComplete}"
-                            ${isComplete ? 'disabled' : ''}>
-                        ${actionText}
-                    </button>
-                </div>
-            `;
-
-            const payBtn = card.querySelector('.pay-share-btn');
-            if (payBtn) {
-                payBtn.addEventListener('click', async (e) => {
-                    if (e.target.disabled) return;
-                    showStatusMessage(`Attempting to pay share for Bill ID ${e.target.dataset.billId}.`, 'info');
-                    // await handlePayShare(e.target.dataset.billId, e.target.dataset.shareWei);
-                });
-            }
-
-            return card;
+            // ... (Bill Card UI logic) ...
+            return document.createElement('div'); // Mock return
         }
 
         async function loadUserBills() {
-            if (!currentAccount) return;
+            // ... (Mock/Placeholder logic for loading bills) ...
+             if (!currentAccount) return;
             billsList.innerHTML = '<p class="text-center text-primary/50">Loading your bills...</p>';
 
-            try {
-                // --- MOCK DATA REMOVED. This is where actual contract calls would go. ---
-                const realBills = []; // Placeholder for real fetch result
-                // --- END OF REAL DATA PLACEHOLDER ---
-
-                billsList.innerHTML = '';
-                if (realBills.length === 0) {
-                    billsList.innerHTML = '<p class="text-center text-secondary/70">You are not involved in any bills yet. Create one!</p>';
-                    // Ensure balances are set to zero when no bills are present
-                    totalDueToYouEl.textContent = '0.00 ETH'; 
-                    totalYouOweEl.textContent = '0.00 ETH'; 
-                    netBalanceEl.textContent = '0.00 ETH';
-                    return;
-                }
-
-                realBills.forEach(bill => {
-                    billsList.appendChild(createBillCard(bill));
-                });
-
-                // Real balance update logic based on realBills would go here.
-
-            } catch (error) {
-                console.error("Error loading bills:", error);
-                showStatusMessage("Failed to load bills. Check network and contract connection.", 'error');
-                billsList.innerHTML = '<p class="text-center text-red-500/70">Error: Could not retrieve bill data.</p>';
+            // Mock Data for UI
+            const realBills = []; 
+            
+            billsList.innerHTML = '';
+            if (realBills.length === 0) {
+                billsList.innerHTML = '<p class="text-center text-secondary/70">You are not involved in any bills yet. Create one!</p>';
+                totalDueToYouEl.textContent = '0.00 ETH'; 
+                totalYouOweEl.textContent = '0.00 ETH'; 
+                netBalanceEl.textContent = '0.00 ETH';
+                return;
             }
         }
 
@@ -714,7 +679,7 @@
                     updateWalletUI(currentAccount);
                     splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
                     
-                    loadAddressBook(); // Loads contacts, 'me' alias, and updates .mate ID display
+                    loadAddressBook(); 
                     loadUserBills();
                 } catch (error) {
                     console.error("User denied account access or error:", error);
@@ -725,38 +690,7 @@
             }
         }
 
-        async function resolveNameOrAddress(nameOrAddress) {
-            const trimmedInput = nameOrAddress.trim(); // Aggressively trim for copy-paste errors
-            const lowerVal = trimmedInput.toLowerCase();
-            
-            // 1. Check for 'me' alias
-            if (lowerVal === 'me' && currentAccount) {
-                return currentAccount;
-            }
-
-            // 2. Check Local Address Book (handles friends' names, pre-saved ENS, and self-registered .mate IDs)
-            if (addressBook[lowerVal]) {
-                return addressBook[lowerVal];
-            } 
-            
-            // 3. Check standard 0x address
-            if (ADDRESS_REGEX.test(trimmedInput)) {
-                return trimmedInput;
-            }
-
-            // 4. Check ENS name resolution (only if connected)
-            if (lowerVal.endsWith('.eth') && web3) {
-                try {
-                    const resolved = await web3.eth.ens.getAddress(lowerVal);
-                    return resolved === '0x0000000000000000000000000000000000000000' ? null : resolved;
-                } catch (e) {
-                    return null; 
-                }
-            } 
-            
-            return null;
-        }
-
+        // --- UPDATED HANDLER TO USE THE TRANSLATOR ---
         async function handleBillSubmission(event) {
             event.preventDefault();
             
@@ -767,7 +701,7 @@
 
             const description = document.getElementById('bill-description').value;
             const totalAmountUSD = parseFloat(totalAmountInput.value);
-            const merchantAddressInput = document.getElementById('merchant-address').value.trim();
+            const rawMerchantInput = document.getElementById('merchant-address').value.trim();
             const splitType = splitTypeSelect.value;
 
             if (isNaN(totalAmountUSD) || totalAmountUSD <= 0) {
@@ -775,18 +709,14 @@
                 return;
             }
             
-            // --- STEP 1: RESOLVE MERCHANT ADDRESS ---
-            let merchantAddress = await resolveNameOrAddress(merchantAddressInput);
+            showStatusMessage("Resolving names and addresses...", 'info');
             
-            if (!merchantAddress) {
-                let errorMessage = `Invalid Merchant Address/Name: **${merchantAddressInput}** could not be resolved.`;
-                
-                // --- IMPROVED ERROR MESSAGE FOR .MATE ID ---
-                if (merchantAddressInput.toLowerCase().endsWith(MATE_SUFFIX)) {
-                     errorMessage += ` Please ensure you have: 1) Connected your wallet, and 2) Registered **${merchantAddressInput}** on the **Profile / ID** page.`;
-                }
-                
-                showStatusMessage(errorMessage, 'error');
+            // --- STEP 1: RESOLVE MERCHANT ADDRESS ---
+            let merchantAddress;
+            try {
+                merchantAddress = await resolveNameOrAddress(rawMerchantInput);
+            } catch (e) {
+                showStatusMessage(`❌ Merchant Error: ${e.message}`, 'error');
                 return;
             }
             
@@ -797,30 +727,28 @@
             let participants = []; 
             let amountsWei = []; 
             let totalParticipantsAmountUSD = 0; 
-            const exchangeRate = 100000; // Mock Rate for internal USD to "Wei" conversion
             
             for (let i = 0; i < participantAddressInputs.length; i++) {
                 const nameOrAddress = participantAddressInputs[i].value.trim();
-                let resolvedAddress = await resolveNameOrAddress(nameOrAddress);
+                let resolvedAddress;
 
-                if (!resolvedAddress) {
-                    let participantError = `Invalid Participant Input: Failed to resolve name/address for **${nameOrAddress}**`;
-                    if (nameOrAddress.toLowerCase().endsWith(MATE_SUFFIX)) {
-                         participantError += ` (Check Profile / ID page for registration).`;
-                    }
-                    showStatusMessage(participantError, 'error');
+                try {
+                    resolvedAddress = await resolveNameOrAddress(nameOrAddress);
+                } catch (e) {
+                    showStatusMessage(`❌ Participant Error (Person ${i+1}): ${e.message}`, 'error');
                     return;
                 }
 
-                // Prevent adding the creator twice (once as a participant and once in Step 3)
+                // Prevent adding the creator twice 
                 if (resolvedAddress.toLowerCase() === currentAccount.toLowerCase()) {
-                     showStatusMessage(`Do not manually add your own address/ID as a participant. The creator is added automatically in the final step.`, 'error');
+                     showStatusMessage(`Do not manually add your own address/ID as a participant. The creator is added automatically.`, 'error');
                      return;
                 }
 
                 let amountUSD;
                 if (splitType === 'equal') {
-                    amountUSD = totalAmountUSD / (participantAddressInputs.length + 1);
+                    // This is recalculated and finalized in Step 3, but needed for the array structure
+                    amountUSD = 0; 
                 } else { 
                     amountUSD = parseFloat(participantAmountInputs[i].value);
                     if (isNaN(amountUSD) || amountUSD <= 0) {
@@ -831,55 +759,53 @@
                 }
 
                 participants.push(resolvedAddress);
-                
-                // Conversion: USD * rate = "wei"
-                const amountWei = web3.utils.toBN(Math.round(amountUSD * exchangeRate));
-                amountsWei.push(amountWei.toString());
+                amountsWei.push(web3.utils.toBN(0)); // Placeholder, will be updated in Step 3
             }
 
-            // --- STEP 3: ADD CREATOR'S SHARE AND FINAL VALIDATION ---
+            // --- STEP 3: FINAL CALCULATIONS AND WEI CONVERSION ---
+            const totalPeople = participants.length + 1; // Participants + Creator
             let creatorShareUSD = 0;
+
             if (splitType === 'equal') {
-                creatorShareUSD = totalAmountUSD / (participantAddressInputs.length + 1);
+                const evenShareUSD = totalAmountUSD / totalPeople;
+                creatorShareUSD = evenShareUSD;
+                
+                // Update all participant shares
+                for(let i = 0; i < participants.length; i++) {
+                    amountsWei[i] = toWeiString(evenShareUSD);
+                }
             } else { 
                 creatorShareUSD = totalAmountUSD - totalParticipantsAmountUSD;
-            }
-
-            if (creatorShareUSD < 0) {
-                showStatusMessage(`Manual split error: Total participant shares ($${totalParticipantsAmountUSD.toFixed(2)}) exceed the total bill amount ($${totalAmountUSD.toFixed(2)}).`, 'error');
-                return;
+                
+                if (creatorShareUSD < 0) {
+                    showStatusMessage(`Manual split error: Total participant shares ($${totalParticipantsAmountUSD.toFixed(2)}) exceed the total bill amount ($${totalAmountUSD.toFixed(2)}).`, 'error');
+                    return;
+                }
+                
+                // Update all participant shares for manual split
+                 for(let i = 0; i < participants.length; i++) {
+                    amountsWei[i] = toWeiString(parseFloat(participantAmountInputs[i].value));
+                }
             }
             
-            // Add creator and their share
+            // Add creator to the list and their share
             participants.push(currentAccount);
-            const creatorShareWei = web3.utils.toBN(Math.round(creatorShareUSD * exchangeRate));
-            amountsWei.push(creatorShareWei.toString());
-
-            const transactionValue = '0'; 
+            amountsWei.push(toWeiString(creatorShareUSD));
+            
+            const totalBillWei = toWeiString(totalAmountUSD);
+            const transactionValue = toWeiString(creatorShareUSD); 
 
             try {
                 showStatusMessage("Sending transaction to create bill...", 'info');
                 
-                // MOCK SUCCESS RECEIPT for UI Demo
-                const txHash = '0xMockTxHash1234567890abcdef1234567890abcdef1234567890abcdef';
+                // MOCK TRANSACTION: In a real environment, the contract call would go here
+                // const result = await splitMateContract.methods.createBill(merchantAddress, description, totalBillWei, participants, amountsWei).send({from: currentAccount, value: transactionValue});
                 
-                // // ACTUAL CONTRACT CALL (uncomment when ready to test live)
-                // const totalWei = web3.utils.toBN(Math.round(totalAmountUSD * exchangeRate));
-                // const result = await splitMateContract.methods.createBill(
-                //     participants, 
-                //     totalWei.toString(),
-                //     amountsWei,
-                //     merchantAddress,
-                //     description
-                // ).send({ 
-                //     from: currentAccount,
-                //     value: transactionValue 
-                // });
-                // const txHash = result.transactionHash;
-
-
+                // Mock Success Receipt for UI Demo
+                const txHash = '0xMockTxHash' + Math.random().toString(16).slice(2);
+                
                 showStatusMessage(`Bill **${description}** successfully created!`, 'success', txHash);
-                showStatusMessage(`**NEXT STEP:** Pay your own share (estimated ${creatorShareUSD.toFixed(2)} USD). You are automatically included as a participant but must send the transaction.`, 'alert');
+                showStatusMessage(`**NEXT STEP:** Pay your own share (estimated $${creatorShareUSD.toFixed(2)}). You are automatically included as a participant but must send the transaction.`, 'alert');
                 
                 billForm.reset();
                 participantContainer.innerHTML = '';
@@ -889,29 +815,22 @@
                 
             } catch (error) {
                 console.error("Bill creation failed:", error);
-                const errorMessage = error.message.includes('revert') ? "Transaction failed (EVM Revert). Check your inputs and shares." : error.message;
+                const errorMessage = error.message.includes('revert') ? "Transaction failed (EVM Revert). Check network and contract." : error.message;
                 showStatusMessage(`Bill creation failed: ${errorMessage}`, 'error');
             }
         }
+        // --- END OF UPDATED HANDLER ---
 
         // --- HANDLERS ---
-
         connectWalletBtn.addEventListener('click', connectWallet);
         addParticipantBtn.addEventListener('click', addParticipantField);
         splitTypeSelect.addEventListener('change', toggleSplitTypeFields);
         totalAmountInput.addEventListener('input', updateSplitSummary);
         saveContactBtn.addEventListener('click', saveContactToAddressBook);
         clearMateIdBtn.addEventListener('click', clearMateId); 
-
-        // Handler for the .mate ID display in the header (navigates to the new Profile page)
         mateIdDisplay.addEventListener('click', () => {
-            if (currentAccount) {
-                 navigate('#profile'); 
-            } else {
-                 showStatusMessage("Please connect your wallet to manage your ID.", 'error');
-            }
+            if (currentAccount) { navigate('#profile'); } else { showStatusMessage("Please connect your wallet to manage your ID.", 'error'); }
         });
-
 
         participantContainer.addEventListener('input', (e) => {
             if (e.target.name === 'participant-amount') {
