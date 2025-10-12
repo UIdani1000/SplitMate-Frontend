@@ -771,54 +771,108 @@
 
 
     // --- FORM SUBMISSION LOGIC (Collective Payment) ---
-    const handleBillSubmission = async (e) => {
-        e.preventDefault();
-        
-        if (!currentAccount) {
-            showStatusMessage("error", "Please connect your wallet first.");
-            return;
-        }
+const handleBillSubmission = async (e) => {
+    e.preventDefault();
+    
+    if (!currentAccount) {
+        showStatusMessage("error", "Please connect your wallet first.");
+        return;
+    }
 
-        // --- FORM DATA GATHERING AND VALIDATION ---
-        const billName = document.getElementById('bill-name').value;
-        const totalAmountUSD = parseFloat(totalAmountInput.value) || 0;
-        const merchantAddress = document.getElementById('merchant-address').value;
-        const splitType = splitTypeSelect.value;
-        
-        const currentParticipantInputs = participantContainer.querySelectorAll('.participant-group');
-        const calculatedParticipantCount = currentParticipantInputs.length; 
-        
-        if (totalAmountUSD <= 0 || calculatedParticipantCount < 1) {
-            showStatusMessage("error", "Please enter a valid bill amount and at least one participant.");
-            return;
-        }
-        
-        let participantAddresses = [];
-        let participantSharesUSD = []; 
-        const addressInputs = participantContainer.querySelectorAll('input[name="participant-address"]');
-        const amountInputs = participantContainer.querySelectorAll('input[name="participant-amount"]');
-        addressInputs.forEach(input => participantAddresses.push(input.value));
+    // --- FORM DATA GATHERING AND VALIDATION ---
+    const billName = document.getElementById('bill-name').value;
+    const totalAmountUSD = parseFloat(totalAmountInput.value) || 0;
+    const merchantAddress = document.getElementById('merchant-address').value;
+    const splitType = splitTypeSelect.value;
+    
+    const currentParticipantInputs = participantContainer.querySelectorAll('.participant-group');
+    const calculatedParticipantCount = currentParticipantInputs.length; 
+    
+    if (totalAmountUSD <= 0 || calculatedParticipantCount < 1) {
+        showStatusMessage("error", "Please enter a valid bill amount and at least one participant.");
+        return;
+    }
+    
+    let participantAddresses = [];
+    let participantSharesUSD = []; 
+    const addressInputs = participantContainer.querySelectorAll('input[name="participant-address"]');
+    const amountInputs = participantContainer.querySelectorAll('input[name="participant-amount"]');
+    addressInputs.forEach(input => participantAddresses.push(input.value));
 
-        if (splitType === 'even') {
-            const totalPeople = calculatedParticipantCount + 1;
-            const evenShare = totalAmountUSD / totalPeople;
-            // Fill participant shares with the calculated even share
-            participantSharesUSD = Array(calculatedParticipantCount).fill(evenShare);
-        } else {
-            // Manual Split
-            amountInputs.forEach(input => {
-                participantSharesUSD.push(parseFloat(input.value) || 0);
-            });
-        }
+    // --- Calculate Shares ---
+    if (splitType === 'even') {
+        const totalPeople = calculatedParticipantCount + 1; // Participants + Creator
+        const evenShare = totalAmountUSD / totalPeople;
+        participantSharesUSD = Array(calculatedParticipantCount).fill(evenShare);
+    } else {
+        amountInputs.forEach(input => {
+            participantSharesUSD.push(parseFloat(input.value) || 0);
+        });
+    }
+    
+    const totalParticipantShares = participantSharesUSD.reduce((sum, amount) => sum + amount, 0);
+    const creatorShareUSD = totalAmountUSD - totalParticipantShares;
+    
+    if (creatorShareUSD < 0) {
+        showStatusMessage("error", `Total participant shares ($${totalParticipantShares.toFixed(2)}) exceed the total bill amount ($${totalAmountUSD.toFixed(2)}).`);
+        return;
+    }
+    
+    // --- CRITICAL FIXES FOR REVERT ---
+    // 1. ADD CREATOR AS LAST PARTICIPANT AND THEIR SHARE
+    participantAddresses.push(currentAccount);
+    participantSharesUSD.push(creatorShareUSD); 
+    
+    // 2. VALUE SENT WITH TRANSACTION IS NOW 0 (Contract requires creator to pay their share later via payShare)
+    const valueToSend = web3.utils.toWei('0', 'ether'); 
+
+    showStatusMessage("loading", `Initiating Collective Payment: Sending 0 ETH to create bill escrow... Awaiting MetaMask approval...`);
+
+    try {
+        submitBillButton.disabled = true;
         
-        const totalParticipantShares = participantSharesUSD.reduce((sum, amount) => sum + amount, 0);
-        const creatorShareUSD = totalAmountUSD - totalParticipantShares;
+        const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
+
+        // Convert all participant shares (including creator's last) to truncated Wei strings
+        const participantSharesWEI = participantSharesUSD.map(toWeiString);
+
+        // Convert total amount to truncated Wei string
+        const totalAmountWei = toWeiString(totalAmountUSD);
+
+        const result = await splitMateContract.methods.createBill(
+            billName, 
+            totalAmountWei,
+            merchantAddress,
+            participantAddresses, 
+            participantSharesWEI
+        ).send({ 
+            from: currentAccount,
+            value: valueToSend // Now 0 Wei is sent
+        });
+
+        // 1. Show Success Message
+        showStatusMessage("success", `Collective Bill Created! Tx Hash: ${result.transactionHash.slice(0, 8)}...${result.transactionHash.slice(-8)}. **REMINDER: You must pay your own share now!**`);
         
-        if (creatorShareUSD < 0) {
-            showStatusMessage("error", `Total participant shares ($${totalParticipantShares.toFixed(2)}) exceed the total bill amount ($${totalAmountUSD.toFixed(2)}).`);
-            return;
-        }
+        // 2. Create and Append the View Status Button
+        const viewButton = document.createElement('button');
+        viewButton.textContent = 'View Bill Status';
+        viewButton.className = 'w-full mt-4 bg-primary hover:bg-primary/90 text-background font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md shadow-primary/30';
+        viewButton.onclick = () => {
+            navigate('#dashboard'); 
+            loadUserBills(); // Load the new bill details immediately
+        };
         
+        billStatusMessage.appendChild(viewButton); 
+
+        billForm.reset();
+        
+    } catch (error) {
+        console.error("Transaction Error:", error);
+        showStatusMessage("error", `Transaction failed. Error: ${error.message.substring(0, 80) || "User rejected transaction or contract call failed."}`);
+    } finally {
+         submitBillButton.disabled = false;
+    }
+};
         // --- FIX: Use toWeiString utility for all conversions to prevent floating point error ---
         const valueToSend = toWeiString(creatorShareUSD); 
 
