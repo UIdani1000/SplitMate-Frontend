@@ -463,16 +463,23 @@
         return `$${parseFloat(amount).toFixed(2)}`;
     }
     
-    // Utility function to round and truncate ETH amounts to prevent the "too many decimal places" error
-    // We truncate to 18 decimal places (the max precision for Wei)
+    // <<< FINAL FIX FOR EVM REVERT: Improved toWei precision >>>
     function toWeiString(usdAmount) {
-        const ethAmount = usdAmount / ETH_USD_PRICE;
-        // Truncate to 20 decimal places to capture full precision before toWei
-        const ethString = ethAmount.toFixed(20); 
-        const [integerPart, decimalPart] = ethString.split('.');
-        const truncatedDecimalPart = decimalPart ? decimalPart.substring(0, 18) : '0';
-        const truncatedEthString = `${integerPart}.${truncatedDecimalPart}`;
+        if (usdAmount === 0) return '0';
         
+        const ethAmount = usdAmount / ETH_USD_PRICE;
+        
+        // Convert to string with high precision (20 decimal places) to minimize floating point error
+        const ethString = ethAmount.toFixed(20); 
+        
+        // Truncate to 18 decimal places which is max for WEI
+        const parts = ethString.split('.');
+        if (parts.length > 1) {
+            parts[1] = parts[1].substring(0, 18);
+        }
+        const truncatedEthString = parts.join('.');
+
+        // Use toWei
         return web3.utils.toWei(truncatedEthString, 'ether');
     }
     
@@ -502,12 +509,7 @@
                     const billTotalUSD = weiToUsd(bill.totalAmount);
                     const collectedUSD = weiToUsd(bill.collectedAmount);
                     
-                    // We need to exclude the creator's own share if they haven't paid it yet
-                    // The collectedAmount includes the creator's share if they paid it via payShare
-                    
                     // The simplest calculation for a creator is: Total Bill - Collected Amount
-                    // Since the contract requires ALL shares (including creator's) to be paid via payShare, 
-                    // this represents the total outstanding amount.
                     totalOwed += Math.max(0, weiToUsd(bill.totalAmount) - weiToUsd(bill.collectedAmount));
                     
                 } else {
@@ -836,7 +838,6 @@
         participantSharesUSD.push(creatorShareUSD); 
         
         // 2. CHECK FOR DUPLICATE ADDRESSES 
-        // This is the most likely cause of the current revert if all other fixes are in place.
         const allAddresses = [merchantAddress.toLowerCase(), ...participantAddresses.map(addr => addr.toLowerCase())];
         const uniqueAddresses = new Set(allAddresses);
         if (uniqueAddresses.size !== allAddresses.length) {
