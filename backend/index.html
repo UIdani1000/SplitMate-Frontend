@@ -47,6 +47,7 @@
             <nav>
                 <a href="#dashboard" class="nav-link text-primary font-semibold mx-3 hover:text-secondary transition duration-300">Dashboard</a>
                 <a href="#create" class="nav-link text-foreground font-semibold mx-3 hover:text-secondary transition duration-300">Create Bill</a>
+                <a href="#profile" class="nav-link text-foreground font-semibold mx-3 hover:text-secondary transition duration-300">Profile / ID</a>
             </nav>
             <button id="connectWalletBtn" class="bg-primary text-background font-bold py-2 px-4 rounded-lg hover:bg-primary/80 transition duration-300">
                 Connect Wallet
@@ -88,6 +89,33 @@
                 <p id="loadingMessage" class="text-center text-primary/50">Connect your wallet to view your bills.</p>
             </div>
         </section>
+        
+        <section id="profile" class="page-section hidden" data-section="profile">
+            <h2 class="text-4xl font-extrabold text-white mb-6 border-b border-primary/30 pb-2">Your Profile & Unique ID</h2>
+            
+            <div id="addressBookManager" class="bg-card p-6 rounded-xl border border-border shadow-lg">
+                <h3 class="text-xl font-semibold text-white border-b border-border pb-2 mb-3">Local Address Book Manager</h3>
+                
+                <div id="currentIdStatus" class="p-3 mb-4 rounded-lg bg-primary/10 text-primary font-medium">
+                    </div>
+
+                <p class="text-sm text-foreground/70 mb-4">
+                    Register your **unique SplitMate ID** (e.g., `david.mate`) by entering it below and linking it to your connected wallet address. 
+                    You can then use this ID in any address field across the app.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input type="text" id="contactUsername" placeholder="Username (e.g., Alice or david.mate)" class="p-3 rounded-lg bg-input border border-border text-foreground"/>
+                    <input type="text" id="contactAddress" placeholder="0x... or ENS name (Your Wallet Address for ID)" class="p-3 rounded-lg bg-input border border-border text-foreground"/>
+                    <button type="button" id="saveContactBtn" class="bg-secondary text-background font-bold py-3 rounded-lg hover:bg-secondary/80 transition duration-300">Save Contact</button>
+                </div>
+                
+                <h4 class="text-lg font-semibold text-white mt-6 mb-3 border-b border-border pb-1">Saved Contacts</h4>
+                <div class="mt-4 max-h-60 overflow-y-auto p-2 bg-input rounded-lg border border-border">
+                    <ul id="addressBookList" class="text-sm space-y-1">
+                        </ul>
+                </div>
+            </div>
+        </section>
 
         <section id="create" class="page-section hidden" data-section="create">
             <h2 class="text-4xl font-extrabold text-white mb-6 border-b border-primary/30 pb-2">Create New Bill</h2>
@@ -111,35 +139,15 @@
                                 placeholder="100.00" min="0.01"/>
                         </div>
                         <div>
-                            <div class="flex justify-between items-center">
-                                <label for="merchant-address" class="block text-sm font-medium text-foreground mb-1">Merchant/Settlement Address</label>
-                                <button type="button" id="toggleAddressBookBtn" class="text-xs text-primary hover:underline font-medium">Manage Local Contacts</button>
-                            </div>
+                            <label for="merchant-address" class="block text-sm font-medium text-foreground mb-1">Merchant/Settlement Address</label>
                             <input type="text" id="merchant-address" required
                                 class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50" 
                                 placeholder="0x..., ENS name, or your ID (e.g., david.mate)" />
-                            <p class="text-xs text-primary/70 mt-1">This is where the final, collected funds will be sent upon completion.</p>
+                            <p class="text-xs text-primary/70 mt-1">This is where the final, collected funds will be sent upon completion. Use the Profile page to manage your IDs.</p>
                         </div>
                     </div>
                 </div>
-
-                <div id="addressBookManager" class="bg-card p-6 rounded-xl border border-border shadow-lg hidden">
-                    <h3 class="text-xl font-semibold text-white border-b border-border pb-2 mb-3">Local Address Book Manager</h3>
-                    <p class="text-sm text-foreground/70 mb-4">
-                        To register your **unique ID** (e.g., `david.mate`), enter it in the Username field and your wallet address in the Address field.
-                        You can also save friends' names or addresses here.
-                    </p>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <input type="text" id="contactUsername" placeholder="Username (e.g., Alice or david.mate)" class="p-3 rounded-lg bg-input border border-border text-foreground"/>
-                        <input type="text" id="contactAddress" placeholder="0x... or ENS name" class="p-3 rounded-lg bg-input border border-border text-foreground"/>
-                        <button type="button" id="saveContactBtn" class="bg-secondary text-background font-bold py-3 rounded-lg hover:bg-secondary/80 transition duration-300">Save Contact</button>
-                    </div>
-                    <div class="mt-4 max-h-40 overflow-y-auto p-2 bg-input rounded-lg border border-border">
-                        <ul id="addressBookList" class="text-sm space-y-1">
-                            </ul>
-                    </div>
-                </div>
-
+                
                 <div class="bg-card p-6 rounded-xl border border-border shadow-lg space-y-4">
                     <h3 class="text-2xl font-semibold text-white mb-3 border-b border-border pb-2">Splitting Method</h3>
                     
@@ -206,10 +214,10 @@
         const statusMessageContainer = document.getElementById('statusMessageContainer');
         const billsList = document.getElementById('billsList');
         const navLinks = document.querySelectorAll('.nav-link');
-        const mateIdDisplay = document.getElementById('mateIdDisplay'); // NEW
+        const mateIdDisplay = document.getElementById('mateIdDisplay'); 
+        const currentIdStatus = document.getElementById('currentIdStatus'); // NEW
 
-        // Address Book Manager Elements
-        const toggleAddressBookBtn = document.getElementById('toggleAddressBookBtn');
+        // Address Book Manager Elements (Now located in the #profile section)
         const addressBookManager = document.getElementById('addressBookManager');
         const saveContactBtn = document.getElementById('saveContactBtn');
         const contactUsernameInput = document.getElementById('contactUsername');
@@ -241,6 +249,7 @@
             } else {
                 // If disconnected, clean up internal state
                 delete addressBook['me'];
+                updateMateIdUI(null);
             }
             
             // DEMO: Pre-populate other contacts
@@ -267,8 +276,8 @@
             displayContacts.sort(([a], [b]) => {
                 if (a === 'me') return -1;
                 if (b === 'me') return 1;
-                if (a.endsWith(MATE_SUFFIX)) return -1;
-                if (b.endsWith(MATE_SUFFIX)) return 1;
+                if (a.endsWith(MATE_SUFFIX) && currentAccount) return -1;
+                if (b.endsWith(MATE_SUFFIX) && currentAccount) return 1;
                 return a.localeCompare(b);
             });
 
@@ -329,8 +338,9 @@
                 // Check if this user already has a different .mate ID saved
                 const existingMateId = localStorage.getItem(`${MATE_ID_KEY}_${currentAccount.toLowerCase()}`);
                 if (existingMateId && existingMateId !== username) {
+                    // Remove old ID from local address book if it exists
+                    delete addressBook[existingMateId]; 
                      showStatusMessage(`You already had **${existingMateId}**. Overwriting with **${username}**`, 'alert');
-                     delete addressBook[existingMateId]; // Remove old ID from in-memory book
                 }
 
                 // Save the unique ID reference in localStorage (keyed by wallet)
@@ -358,10 +368,12 @@
                 mateIdDisplay.textContent = mateId;
                 mateIdDisplay.classList.remove('text-secondary');
                 mateIdDisplay.classList.add('text-primary');
+                currentIdStatus.innerHTML = `✅ Your registered SplitMate ID is: <span class="font-bold">${mateId}</span>. Use it in any address field.`;
             } else {
                 mateIdDisplay.textContent = '--.--mate (Click to Register)';
                 mateIdDisplay.classList.remove('text-primary');
                 mateIdDisplay.classList.add('text-secondary');
+                currentIdStatus.innerHTML = `🔔 You have not registered a SplitMate ID. Register one below to use a unique name instead of your 0x address.`;
             }
         }
 
@@ -413,19 +425,18 @@
                 networkId.textContent = 'Sepolia'; 
                 submitBillBtn.removeAttribute('disabled');
                 submitBillBtn.textContent = 'Create Bill';
-                mateIdDisplay.classList.remove('hidden'); // Show the new ID display
+                mateIdDisplay.classList.remove('hidden'); 
 
             } else {
                 connectWalletBtn.classList.remove('hidden');
                 walletInfo.classList.add('hidden');
                 submitBillBtn.setAttribute('disabled', true);
                 submitBillBtn.textContent = 'Connect Wallet to Create Bill';
-                mateIdDisplay.classList.add('hidden'); // Hide the new ID display
+                mateIdDisplay.classList.add('hidden'); 
             }
         }
 
         function updateSplitSummary() {
-            // ... (existing logic) ...
             const totalAmountStr = totalAmountInput.value;
             const totalAmount = parseFloat(totalAmountStr);
             const isManual = splitTypeSelect.value === 'manual';
@@ -470,7 +481,6 @@
         }
 
         function toggleSplitTypeFields() {
-            // ... (existing logic) ...
             const isManual = splitTypeSelect.value === 'manual';
             const manualInputs = document.querySelectorAll('.split-manual-input');
             
@@ -488,7 +498,6 @@
         }
 
         function addParticipantField() {
-            // ... (existing logic) ...
             participantCount++;
             const isManual = splitTypeSelect.value === 'manual';
             
@@ -544,8 +553,85 @@
             updateSplitSummary();
         }
 
-        async function loadUserBills() {
+        function createBillCard(bill) {
             // ... (existing logic) ...
+            const isCreator = bill.creator.toLowerCase() === currentAccount.toLowerCase();
+            const isComplete = bill.status === 'COMPLETE';
+            const statusColor = isComplete ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300';
+            const creatorTag = isCreator ? '<span class="text-xs bg-primary/20 text-primary rounded-full px-2 py-0.5 ml-2">Creator</span>' : '';
+            const actionText = isComplete ? 'Settled' : 'Pay Share';
+
+            const card = document.createElement('div');
+            card.className = 'bg-card p-6 rounded-xl border border-border shadow-lg';
+            card.innerHTML = `
+                <div class="flex items-center justify-between border-b border-border pb-2 mb-2">
+                    <h4 class="text-xl font-bold text-white">${bill.description}</h4>
+                    <div class="flex items-center">
+                        <span class="text-sm font-semibold rounded-full px-3 py-1 ${statusColor}">${bill.status}</span>
+                        ${creatorTag}
+                    </div>
+                </div>
+                <p class="text-sm text-foreground/70">Bill ID: <span class="font-mono text-xs">${bill.billId}</span></p>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <p class="font-semibold text-primary">Total Bill: <span class="font-mono text-base">${bill.totalAmountEth} ETH</span></p>
+                    <p class="font-semibold text-secondary">You Owe: <span class="font-mono text-base">${bill.yourShareEth} ETH</span></p>
+                </div>
+
+                <div class="pt-3 border-t border-border mt-3 flex justify-end">
+                    <button class="pay-share-btn bg-primary text-background font-bold py-2 px-4 rounded-lg hover:bg-primary/80 transition duration-300 disabled:opacity-50"
+                            data-bill-id="${bill.billId}"
+                            data-share-wei="${bill.yourShareWei}"
+                            data-is-complete="${isComplete}"
+                            ${isComplete ? 'disabled' : ''}>
+                        ${actionText}
+                    </button>
+                </div>
+            `;
+
+            const payBtn = card.querySelector('.pay-share-btn');
+            if (payBtn) {
+                payBtn.addEventListener('click', async (e) => {
+                    if (e.target.disabled) return;
+                    showStatusMessage(`Attempting to pay share for Bill ID ${e.target.dataset.billId}.`, 'info');
+                    // await handlePayShare(e.target.dataset.billId, e.target.dataset.shareWei);
+                });
+            }
+
+            return card;
+        }
+
+        async function loadUserBills() {
+            if (!currentAccount) return;
+            billsList.innerHTML = '<p class="text-center text-primary/50">Loading your bills...</p>';
+
+            try {
+                // --- MOCK DATA FOR DEMO --- (Replace with actual contract calls)
+                const mockBills = [
+                    { billId: '0', description: 'Office Supplies', creator: currentAccount, totalAmountEth: '0.15', yourShareEth: '0.05', yourShareWei: '50000000000000000', status: 'OPEN' },
+                    { billId: '1', description: 'Weekend Getaway', creator: '0x1234567890123456789012345678901234567890', totalAmountEth: '0.50', yourShareEth: '0.25', yourShareWei: '250000000000000000', status: 'COMPLETE' },
+                ];
+                // --- END MOCK DATA ---
+
+                billsList.innerHTML = '';
+                if (mockBills.length === 0) {
+                    billsList.innerHTML = '<p class="text-center text-secondary/70">You are not involved in any bills yet. Create one!</p>';
+                    return;
+                }
+
+                mockBills.forEach(bill => {
+                    billsList.appendChild(createBillCard(bill));
+                });
+
+                // Update Balances (Mocked)
+                totalDueToYouEl.textContent = '0.00 ETH'; 
+                totalYouOweEl.textContent = '0.05 ETH'; 
+                netBalanceEl.textContent = '-0.05 ETH';
+
+            } catch (error) {
+                console.error("Error loading bills:", error);
+                showStatusMessage("Failed to load bills. Check network and contract connection.", 'error');
+                billsList.innerHTML = '<p class="text-center text-red-500/70">Error: Could not retrieve bill data.</p>';
+            }
         }
 
         // --- CORE APPLICATION LOGIC ---
@@ -715,16 +801,15 @@
         addParticipantBtn.addEventListener('click', addParticipantField);
         splitTypeSelect.addEventListener('change', toggleSplitTypeFields);
         totalAmountInput.addEventListener('input', updateSplitSummary);
-        toggleAddressBookBtn.addEventListener('click', () => {
-            addressBookManager.classList.toggle('hidden');
-        });
         saveContactBtn.addEventListener('click', saveContactToAddressBook);
 
-        // New handler for the .mate ID display in the header
+        // Handler for the .mate ID display in the header (navigates to the new Profile page)
         mateIdDisplay.addEventListener('click', () => {
-            navigate('#create'); // Go to create bill page
-            addressBookManager.classList.remove('hidden'); // Show the manager
-            showStatusMessage("Use the Address Book Manager to set your **unique ID** (e.g., `david.mate`) and link it to your wallet.", 'info');
+            if (currentAccount) {
+                 navigate('#profile'); 
+            } else {
+                 showStatusMessage("Please connect your wallet to manage your ID.", 'error');
+            }
         });
 
 
