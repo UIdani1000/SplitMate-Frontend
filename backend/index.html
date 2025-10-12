@@ -563,10 +563,16 @@
                 const creatorShareUSD = weiToUsd(bill.creatorShare);
                 
                 // --- CRITICAL PARTICIPANT CALCULATION ASSUMPTION ---
-                const totalPeople = 3; 
-                const oneShareUSD = totalAmountUSD / totalPeople;
-                const oneShareETH = oneShareUSD / ETH_USD_PRICE;
-                const oneShareWEI = web3.utils.toWei(oneShareETH.toFixed(18), 'ether');
+// NOTE: This assumes an equal split between 3 people (Creator + 2 Participants).
+// For accurate share payment, the contract must expose the exact WEI share required for the connected user.
+const totalPeople = 3; 
+const totalAmountWEI = bill.totalAmount; // Use the raw WEI amount from the contract
+// Calculate the share in WEI using BigNumber math to avoid floating point issues
+const oneShareWEI_BN = web3.utils.toBN(totalAmountWEI).div(web3.utils.toBN(totalPeople));
+const oneShareWEI = oneShareWEI_BN.toString(); // Use the BigNumber result for payment
+
+// Recalculate display USD based on the precise WEI share
+const oneShareUSD = weiToUsd(oneShareWEI);
                 
                 const statusText = bill.status == 0 ? 
                     '<span class="text-red-500 font-bold">OPEN</span>' : 
