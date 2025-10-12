@@ -166,7 +166,6 @@
     let participantCount = 0; // Tracks participants added (excluding creator)
     
     // <<< CONTRACT DETAILS >>>: Updated to SplitMateV2 contract address
-    // ⚠️ CRITICAL FIX: The contract address must be updated to your latest deployment.
     const SPLITMATE_CONTRACT_ADDRESS = "0x8679D4254160B3f17E41533783AF582d8771D311"; 
 
     // <<< CONTRACT ABI >>>: Correct ABI JSON for SplitMateV2
@@ -468,8 +467,8 @@
     // We truncate to 18 decimal places (the max precision for Wei)
     function toWeiString(usdAmount) {
         const ethAmount = usdAmount / ETH_USD_PRICE;
-        // Truncate to 18 decimal places to prevent floating point errors during toWei conversion
-        const ethString = ethAmount.toFixed(20); // Get enough digits first
+        // Truncate to 20 decimal places to capture full precision before toWei
+        const ethString = ethAmount.toFixed(20); 
         const [integerPart, decimalPart] = ethString.split('.');
         const truncatedDecimalPart = decimalPart ? decimalPart.substring(0, 18) : '0';
         const truncatedEthString = `${integerPart}.${truncatedDecimalPart}`;
@@ -485,6 +484,13 @@
         
         if (!currentAccount) return;
         const currentAddress = currentAccount.toLowerCase();
+        
+        // Safety check for web3 being initialized before using it
+        if (!web3) {
+            console.error("Web3 is not initialized. Cannot update dashboard stats.");
+            return;
+        }
+        
         const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
 
         for (const bill of allBills) {
@@ -495,14 +501,20 @@
                     // Owed TO you: Total outstanding amount from participants.
                     const billTotalUSD = weiToUsd(bill.totalAmount);
                     const collectedUSD = weiToUsd(bill.collectedAmount);
-                    totalOwed += billTotalUSD - collectedUSD; 
+                    
+                    // We need to exclude the creator's own share if they haven't paid it yet
+                    // The collectedAmount includes the creator's share if they paid it via payShare
+                    
+                    // The simplest calculation for a creator is: Total Bill - Collected Amount
+                    // Since the contract requires ALL shares (including creator's) to be paid via payShare, 
+                    // this represents the total outstanding amount.
+                    totalOwed += Math.max(0, weiToUsd(bill.totalAmount) - weiToUsd(bill.collectedAmount));
+                    
                 } else {
                     // Owed BY you: Your required share amount, but only if you haven't paid.
-                    // Call the new view function to get the exact share.
                     const requiredShareWei = await splitMateContract.methods.getParticipantShare(bill.id, currentAccount).call();
                     
                     if (Number(requiredShareWei) > 0) {
-                        // *** HACKATHON ASSUMPTION: If bill is open AND they are a participant, they owe their share. ***
                         const shareUSD = weiToUsd(requiredShareWei);
                         totalYouOwe += shareUSD;
                     }
@@ -541,7 +553,7 @@
         try {
             requiredShareWei = await splitMateContract.methods.getParticipantShare(billId, currentAccount).call();
             if (Number(requiredShareWei) === 0) {
-                alert("It seems you are not a participant in this bill or your share is 0.");
+                alert("It seems you are not a participant in this bill or your share is 0 (already paid).");
                 return;
             }
         } catch (e) {
@@ -588,7 +600,7 @@
             return;
         }
 
-        // ✨ FIX: Ensure web3 provider is active (safety check from previous step)
+        // Safety Check: Ensure web3 provider is active
         if (!web3) {
             if (window.ethereum) {
                 web3 = new Web3(window.ethereum);
@@ -597,8 +609,7 @@
                 return;
             }
         }
-        // END FIX
-
+        
         const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
         billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-yellow-500">Fetching the last ${BILLS_TO_FETCH} bills from Sepolia...</p></div>`;
 
@@ -615,7 +626,6 @@
             
             // Fetch multiple bills by iterating backward
             for (let i = lastBillId; i > 0 && i > lastBillId - BILLS_TO_FETCH; i--) {
-                // The 'bills' getter now includes the name!
                 const billDetails = await splitMateContract.methods.bills(i).call();
                 bills.push({...billDetails, id: i}); 
             }
@@ -633,8 +643,8 @@
             
             for (const bill of bills) {
                 const totalAmountUSD = weiToUsd(bill.totalAmount);
-                const collectedAmountUSD = weiToUsd(bill.collectedAmount);
-                // Removed unused creatorShareUSD from the iteration
+                // The amount collected includes the creator's share once they pay it.
+                const collectedAmountUSD = weiToUsd(bill.collectedAmount); 
                 
                 const statusText = bill.status == 0 ? 
                     '<span class="text-red-500 font-bold">OPEN</span>' : 
@@ -645,32 +655,33 @@
                 
                 let actionButton = '';
                 let participantShareDisplay = '';
-                let requiredShareWei = '0';
                 
                 if (bill.status == 0) { // Bill is OPEN
-                    if (isCreator) {
+                    // Participant or Creator role logic
+                    
+                    // Use the new getter to find the share for ANY user
+                    const requiredShareWei = await splitMateContract.methods.getParticipantShare(bill.id, currentAccount).call();
+                    const requiredShareUSD = weiToUsd(requiredShareWei);
+                        
+                    // Check if the user is a registered participant and owes money (share > 0)
+                    if (Number(requiredShareWei) > 0) {
+                        participantShareDisplay = `<p><strong>Your Share:</strong> <span class="text-red-500 font-bold">${formatUsd(requiredShareUSD)}</span></p>`;
+                        
+                        // Action button to pay
+                        actionButton = `
+                            <button onclick="handlePayShare(${bill.id}, '${bill.name}')" 
+                                class="w-full bg-secondary hover:bg-secondary/90 text-background font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md shadow-secondary/30 mt-4">
+                                Pay Your Share (${formatUsd(requiredShareUSD)})
+                            </button>
+                        `;
+                    } else if (isCreator) {
+                        // Creator whose share is 0 (meaning they already paid, or total bill = 0)
                         actionButton = `<p class="text-yellow-500 font-semibold mt-4">Awaiting payment from participants...</p>`;
                     } else {
-                         // Participant. Use the new getter to find the share.
-                        requiredShareWei = await splitMateContract.methods.getParticipantShare(bill.id, currentAccount).call();
-                        const requiredShareUSD = weiToUsd(requiredShareWei);
-                        
-                        // Check if the user is a registered participant
-                        if (Number(requiredShareWei) > 0) {
-                            participantShareDisplay = `<p><strong>Your Share:</strong> <span class="text-green-500 font-bold">${formatUsd(requiredShareUSD)}</span></p>`;
-                            
-                            // Participant action button
-                            actionButton = `
-                                <button onclick="handlePayShare(${bill.id}, '${bill.name}')" 
-                                    class="w-full bg-secondary hover:bg-secondary/90 text-background font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md shadow-secondary/30 mt-4">
-                                    Pay Your Share (${formatUsd(requiredShareUSD)})
-                                </button>
-                            `;
-                        } else {
-                             // Not a participant 
-                            actionButton = `<p class="text-muted-foreground font-semibold mt-4">Not a participant in this bill in the database.</p>`;
-                        }
+                        // Participant whose share is 0 (meaning they already paid, or were not added)
+                        actionButton = `<p class="text-green-500 font-semibold mt-4">Your share is paid or not required.</p>`;
                     }
+
                 } else { // Bill is COMPLETE
                     actionButton = `<p class="text-green-500 font-semibold mt-4">Bill is COMPLETE. Funds settled.</p>`;
                 }
@@ -679,7 +690,7 @@
                 const billCard = `
                     <div class="bg-card p-6 rounded-xl shadow-lg border border-border space-y-3">
                         <div class="flex justify-between items-center pb-2 border-b border-border">
-                            <h3 class="text-xl font-semibold text-primary">${bill.name}</h3>
+                            <h3 class="text-xl font-semibold text-primary">${bill.name} (ID: ${bill.id})</h3>
                             ${statusText}
                         </div>
                         
@@ -731,10 +742,11 @@
         });
     }
 
-    // --- FORM LOGIC (Placeholder: Needs dynamic logic) ---
+    // --- FORM LOGIC (UI for dynamic inputs) ---
     
     function updateSplitSummary() {
         // NOTE: Dynamic split summary logic for 'Even Split' and 'Manual Split' should go here.
+        // Simplified for now:
         splitSummary.classList.add('hidden');
         manualSummary.classList.add('hidden');
     }
@@ -771,119 +783,69 @@
 
 
     // --- FORM SUBMISSION LOGIC (Collective Payment) ---
-const handleBillSubmission = async (e) => {
-    e.preventDefault();
-    
-    if (!currentAccount) {
-        showStatusMessage("error", "Please connect your wallet first.");
-        return;
-    }
-
-    // --- FORM DATA GATHERING AND VALIDATION ---
-    const billName = document.getElementById('bill-name').value;
-    const totalAmountUSD = parseFloat(totalAmountInput.value) || 0;
-    const merchantAddress = document.getElementById('merchant-address').value;
-    const splitType = splitTypeSelect.value;
-    
-    const currentParticipantInputs = participantContainer.querySelectorAll('.participant-group');
-    const calculatedParticipantCount = currentParticipantInputs.length; 
-    
-    if (totalAmountUSD <= 0 || calculatedParticipantCount < 1) {
-        showStatusMessage("error", "Please enter a valid bill amount and at least one participant.");
-        return;
-    }
-    
-    let participantAddresses = [];
-    let participantSharesUSD = []; 
-    const addressInputs = participantContainer.querySelectorAll('input[name="participant-address"]');
-    const amountInputs = participantContainer.querySelectorAll('input[name="participant-amount"]');
-    addressInputs.forEach(input => participantAddresses.push(input.value));
-
-    // --- Calculate Shares ---
-    if (splitType === 'even') {
-        const totalPeople = calculatedParticipantCount + 1; // Participants + Creator
-        const evenShare = totalAmountUSD / totalPeople;
-        participantSharesUSD = Array(calculatedParticipantCount).fill(evenShare);
-    } else {
-        amountInputs.forEach(input => {
-            participantSharesUSD.push(parseFloat(input.value) || 0);
-        });
-    }
-    
-    const totalParticipantShares = participantSharesUSD.reduce((sum, amount) => sum + amount, 0);
-    const creatorShareUSD = totalAmountUSD - totalParticipantShares;
-    
-    if (creatorShareUSD < 0) {
-        showStatusMessage("error", `Total participant shares ($${totalParticipantShares.toFixed(2)}) exceed the total bill amount ($${totalAmountUSD.toFixed(2)}).`);
-        return;
-    }
-    
-    // --- CRITICAL FIXES FOR REVERT ---
-    // 1. ADD CREATOR AS LAST PARTICIPANT AND THEIR SHARE
-    participantAddresses.push(currentAccount);
-    participantSharesUSD.push(creatorShareUSD); 
-    
-    // 2. VALUE SENT WITH TRANSACTION IS NOW 0 (Contract requires creator to pay their share later via payShare)
-    const valueToSend = web3.utils.toWei('0', 'ether'); 
-
-    showStatusMessage("loading", `Initiating Collective Payment: Sending 0 ETH to create bill escrow... Awaiting MetaMask approval...`);
-
-    try {
-        submitBillButton.disabled = true;
+    const handleBillSubmission = async (e) => {
+        e.preventDefault();
         
-        const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
+        if (!currentAccount) {
+            showStatusMessage("error", "Please connect your wallet first.");
+            return;
+        }
 
-        // Convert all participant shares (including creator's last) to truncated Wei strings
-        const participantSharesWEI = participantSharesUSD.map(toWeiString);
-
-        // Convert total amount to truncated Wei string
-        const totalAmountWei = toWeiString(totalAmountUSD);
-
-        const result = await splitMateContract.methods.createBill(
-            billName, 
-            totalAmountWei,
-            merchantAddress,
-            participantAddresses, 
-            participantSharesWEI
-        ).send({ 
-            from: currentAccount,
-            value: valueToSend // Now 0 Wei is sent
-        });
-
-        // 1. Show Success Message
-        showStatusMessage("success", `Collective Bill Created! Tx Hash: ${result.transactionHash.slice(0, 8)}...${result.transactionHash.slice(-8)}. **REMINDER: You must pay your own share now!**`);
+        // --- FORM DATA GATHERING AND VALIDATION ---
+        const billName = document.getElementById('bill-name').value;
+        const totalAmountUSD = parseFloat(totalAmountInput.value) || 0;
+        const merchantAddress = document.getElementById('merchant-address').value;
+        const splitType = splitTypeSelect.value;
         
-        // 2. Create and Append the View Status Button
-        const viewButton = document.createElement('button');
-        viewButton.textContent = 'View Bill Status';
-        viewButton.className = 'w-full mt-4 bg-primary hover:bg-primary/90 text-background font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md shadow-primary/30';
-        viewButton.onclick = () => {
-            navigate('#dashboard'); 
-            loadUserBills(); // Load the new bill details immediately
-        };
+        const currentParticipantInputs = participantContainer.querySelectorAll('.participant-group');
+        const calculatedParticipantCount = currentParticipantInputs.length; 
         
-        billStatusMessage.appendChild(viewButton); 
-
-        billForm.reset();
+        if (totalAmountUSD <= 0 || calculatedParticipantCount < 1) {
+            showStatusMessage("error", "Please enter a valid bill amount and at least one participant.");
+            return;
+        }
         
-    } catch (error) {
-        console.error("Transaction Error:", error);
-        showStatusMessage("error", `Transaction failed. Error: ${error.message.substring(0, 80) || "User rejected transaction or contract call failed."}`);
-    } finally {
-         submitBillButton.disabled = false;
-    }
-};
-        // --- FIX: Use toWeiString utility for all conversions to prevent floating point error ---
-        const valueToSend = toWeiString(creatorShareUSD); 
+        let participantAddresses = [];
+        let participantSharesUSD = []; 
+        const addressInputs = participantContainer.querySelectorAll('input[name="participant-address"]');
+        const amountInputs = participantContainer.querySelectorAll('input[name="participant-amount"]');
+        addressInputs.forEach(input => participantAddresses.push(input.value));
 
-        showStatusMessage("loading", `Initiating Collective Payment: Sending your share (Wei) to the escrow... Awaiting MetaMask approval...`);
+        // --- Calculate Shares ---
+        if (splitType === 'even') {
+            const totalPeople = calculatedParticipantCount + 1; // Participants + Creator
+            const evenShare = totalAmountUSD / totalPeople;
+            participantSharesUSD = Array(calculatedParticipantCount).fill(evenShare);
+        } else {
+            amountInputs.forEach(input => {
+                participantSharesUSD.push(parseFloat(input.value) || 0);
+            });
+        }
+        
+        const totalParticipantShares = participantSharesUSD.reduce((sum, amount) => sum + amount, 0);
+        const creatorShareUSD = totalAmountUSD - totalParticipantShares;
+        
+        if (creatorShareUSD < 0) {
+            showStatusMessage("error", `Total participant shares ($${totalParticipantShares.toFixed(2)}) exceed the total bill amount ($${totalAmountUSD.toFixed(2)}).`);
+            return;
+        }
+        
+        // --- CRITICAL FIXES FOR REVERT ---
+        // 1. ADD CREATOR AS LAST PARTICIPANT AND THEIR SHARE
+        participantAddresses.push(currentAccount);
+        participantSharesUSD.push(creatorShareUSD); 
+        
+        // 2. VALUE SENT WITH TRANSACTION IS NOW 0 (Contract requires creator to pay their share later via payShare)
+        const valueToSend = web3.utils.toWei('0', 'ether'); 
+
+        showStatusMessage("loading", `Initiating Collective Payment: Sending 0 ETH to create bill escrow... Awaiting MetaMask approval...`);
 
         try {
             submitBillButton.disabled = true;
             
             const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
 
-            // Convert all participant shares to truncated Wei strings
+            // Convert all participant shares (including creator's last) to truncated Wei strings
             const participantSharesWEI = participantSharesUSD.map(toWeiString);
 
             // Convert total amount to truncated Wei string
@@ -897,11 +859,11 @@ const handleBillSubmission = async (e) => {
                 participantSharesWEI
             ).send({ 
                 from: currentAccount,
-                value: valueToSend // Creator's share being sent
+                value: valueToSend // Now 0 Wei is sent
             });
 
             // 1. Show Success Message
-            showStatusMessage("success", `Collective Bill Created! Tx Hash: ${result.transactionHash.slice(0, 8)}...${result.transactionHash.slice(-8)}. Your share is in escrow.`);
+            showStatusMessage("success", `Collective Bill Created! Tx Hash: ${result.transactionHash.slice(0, 8)}...${result.transactionHash.slice(-8)}. **REMINDER: You must pay your own share now!**`);
             
             // 2. Create and Append the View Status Button
             const viewButton = document.createElement('button');
@@ -972,7 +934,8 @@ const handleBillSubmission = async (e) => {
         
         // Passive Auto-Connect Check
         if (window.ethereum) {
-            web3 = new Web3(window.ethereum);
+            // Re-initialize web3 globally for passive check
+            web3 = new Web3(window.ethereum); 
             try {
                 const accounts = await web3.eth.getAccounts();
                 if (accounts.length > 0) {
