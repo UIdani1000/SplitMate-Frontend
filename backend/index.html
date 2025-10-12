@@ -79,7 +79,6 @@
                     <p id="totalYouOwe" class="text-3xl font-bold text-secondary">0.00 ETH</p>
                 </div>
                 <div class="bg-card p-6 rounded-xl border border-border shadow-lg">
-                    <p class="text-sm text-white/70 mb-1">Net Balance</p>
                     <p id="netBalance" class="text-3xl font-bold text-white">0.00 ETH</p>
                 </div>
             </div>
@@ -714,6 +713,12 @@
                 return;
             }
             
+            // --- DEBUGGING LOG ADDED HERE ---
+            console.log("DEBUG: Checking Merchant Address Resolution:");
+            console.log(`Input Name: ${merchantAddressInput.toLowerCase()}`);
+            console.log("Current Address Book (for lookup):", addressBook);
+            // ---------------------------------
+
             // --- STEP 1: RESOLVE MERCHANT ADDRESS ---
             let merchantAddress = await resolveNameOrAddress(merchantAddressInput);
             
@@ -722,7 +727,7 @@
                 
                 // --- IMPROVED ERROR MESSAGE FOR .MATE ID ---
                 if (merchantAddressInput.toLowerCase().endsWith(MATE_SUFFIX)) {
-                     errorMessage += ` Please ensure you have: 1) Connected your wallet, and 2) Registered **${merchantAddressInput}** on the **Profile / ID** page.`;
+                     errorMessage += ` Please ensure you have: 1) Connected your wallet, and 2) Registered **${merchantAddressInput}** on the **Profile / ID** page. (Check console for debug data.)`;
                 }
                 
                 showStatusMessage(errorMessage, 'error');
@@ -877,10 +882,10 @@
                     }
                 } catch (error) {
                     console.warn("Could not auto-connect, user interaction required.");
-                    loadAddressBook(); // Load static contacts even if disconnected
+                    loadAddressBook(); 
                 }
             } else {
-                loadAddressBook(); // Load static contacts if no web3 provider
+                loadAddressBook(); 
             }
             
             updateSplitSummary(); 
