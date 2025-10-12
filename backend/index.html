@@ -163,10 +163,10 @@
     let currentAccount = null;
     let participantCount = 0; // Tracks participants added (excluding creator)
     
-    // <<< ACTION REQUIRED >>>: REPLACE "0x..." with your Sepolia Contract Address
+    // <<< CONTRACT DETAILS >>>: Configured to your deployed contract
     const SPLITMATE_CONTRACT_ADDRESS = "0xF13462054C7670C59009E9721616C78cFE86ec4E"; 
 
-    // <<< ACTION REQUIRED >>>: REPLACE the empty array with your contract's ABI JSON
+    // <<< CONTRACT ABI >>>: Configured to your deployed contract
     const CONTRACT_ABI = [
 	{
 		"anonymous": false,
@@ -380,7 +380,8 @@
 
     // --- UTILITY AND UI FUNCTIONS ---
     function showStatusMessage(type, message) {
-        billStatusMessage.textContent = message;
+        // Clear previous messages/buttons and add new message text
+        billStatusMessage.innerHTML = `<p>${message}</p>`; 
         billStatusMessage.classList.remove('hidden', 'text-green-500', 'text-red-500', 'text-yellow-500');
         
         switch(type) {
@@ -397,7 +398,12 @@
     }
 
     function updateWalletUI(address) {
-        connectButton.removeEventListener('click', handleConnectWallet);
+        // Only add the listener if the wallet is NOT connected
+        if (!address) {
+            connectButton.addEventListener('click', handleConnectWallet);
+        } else {
+            connectButton.removeEventListener('click', handleConnectWallet);
+        }
 
         if (address) {
             const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -409,8 +415,73 @@
             connectButton.textContent = "Connect Wallet";
             connectButton.classList.remove('bg-green-500');
             connectButton.classList.add('bg-primary');
-            connectButton.addEventListener('click', handleConnectWallet);
             submitBillButton.disabled = true;
+        }
+    }
+    
+    // Utility function to convert WEI back to USD for display
+    function weiToUsd(wei) {
+        // Convert WEI to ETH, then ETH to USD using the hardcoded price
+        const ethAmount = web3.utils.fromWei(wei, 'ether');
+        return (parseFloat(ethAmount) * ETH_USD_PRICE).toFixed(2);
+    }
+    
+    async function loadUserBills() {
+        if (!currentAccount) {
+            document.getElementById('bills-list').innerHTML = '<p class="text-muted-foreground text-center">Please connect your wallet to view your bills.</p>';
+            return;
+        }
+
+        const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
+        const billsListContainer = document.getElementById('bills-list');
+        billsListContainer.innerHTML = '<p class="text-yellow-500 text-center">Loading bills from Sepolia...</p>';
+
+        try {
+            // 1. Get the ID of the next bill (The last created bill is ID - 1)
+            const nextId = await splitMateContract.methods.nextBillId().call();
+            const lastBillId = nextId - 1;
+
+            if (lastBillId < 1) {
+                billsListContainer.innerHTML = '<p class="text-muted-foreground text-center">No bills found for this contract.</p>';
+                return;
+            }
+            
+            // 2. Fetch the details of the last created bill
+            const billDetails = await splitMateContract.methods.bills(lastBillId).call();
+            
+            // Convert amounts for display
+            const totalAmountUSD = weiToUsd(billDetails.totalAmount);
+            const collectedAmountUSD = weiToUsd(billDetails.collectedAmount);
+            const creatorShareUSD = weiToUsd(billDetails.creatorShare);
+            
+            // Note: The BillStatus enum maps to 0=Open, 1=Complete.
+            const statusText = billDetails.status == 0 ? 
+                '<span class="text-red-500 font-bold">OPEN</span>' : 
+                '<span class="text-green-500 font-bold">COMPLETE</span>';
+
+            // 3. Render the bill card
+            billsListContainer.innerHTML = `
+                <div class="space-y-4 w-full">
+                    <div class="flex justify-between items-center pb-2 border-b border-border">
+                        <h3 class="text-xl font-semibold text-primary">Bill #${lastBillId} Details (Latest)</h3>
+                        ${statusText}
+                    </div>
+                    
+                    <p><strong>Total Bill Amount:</strong> <span class="text-secondary">$${totalAmountUSD}</span></p>
+                    <p><strong>Amount Collected:</strong> <span class="text-yellow-500">$${collectedAmountUSD}</span></p>
+                    <p><strong>Creator's Share Paid:</strong> $${creatorShareUSD}</p>
+                    <p><strong>Merchant Address:</strong> ${billDetails.merchant.slice(0, 6)}...${billDetails.merchant.slice(-4)}</p>
+                    <p><strong>Bill Creator:</strong> ${billDetails.creator.slice(0, 6)}...${billDetails.creator.slice(-4)}</p>
+                    
+                    <button class="bg-primary hover:bg-primary/90 text-background font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md shadow-primary/30 mt-4">
+                        Pay Your Share (Not Implemented Yet)
+                    </button>
+                </div>
+            `;
+
+        } catch (error) {
+            console.error("Error loading bills:", error);
+            billsListContainer.innerHTML = '<p class="text-red-500 text-center">Error fetching bill data from blockchain.</p>';
         }
     }
 
@@ -429,6 +500,7 @@
             if (accounts.length > 0) {
                 currentAccount = accounts[0];
                 updateWalletUI(currentAccount);
+                loadUserBills(); // <<< ADDED: Load bills on successful connect
             }
         } catch (error) {
             console.error("MetaMask Connection Error:", error);
@@ -440,6 +512,7 @@
         window.ethereum.on('accountsChanged', (newAccounts) => {
             currentAccount = newAccounts.length > 0 ? newAccounts[0] : null;
             updateWalletUI(currentAccount);
+            if(currentAccount) loadUserBills(); // Re-load bills if account changes
         });
     }
 
@@ -605,8 +678,23 @@
                 from: currentAccount,
                 value: valueToSend // Creator pays their calculated share here
             });
-
-            showStatusMessage("success", `Collective Bill Created! Tx Hash: ${result.transactionHash.slice(0, 4)}...${result.transactionHash.slice(-4)}. Your share is in escrow.`);
+            
+            // <<< UPDATED SUCCESS MESSAGE AND BUTTON LOGIC >>>
+            
+            // 1. Show Success Message
+            showStatusMessage("success", `Collective Bill Created! Tx Hash: ${result.transactionHash.slice(0, 8)}...${result.transactionHash.slice(-8)}. Your share is in escrow.`);
+            
+            // 2. Create and Append the View Status Button
+            const viewButton = document.createElement('button');
+            viewButton.textContent = 'View Bill Status';
+            viewButton.className = 'w-full mt-4 bg-primary hover:bg-primary/90 text-background font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md shadow-primary/30';
+            viewButton.onclick = () => {
+                navigate('#dashboard'); 
+                loadUserBills(); // Load the new bill details immediately
+            };
+            
+            // Append the button to the status message container
+            billStatusMessage.appendChild(viewButton); 
 
             billForm.reset();
             
@@ -656,6 +744,10 @@
                 e.preventDefault();
                 const hash = e.target.getAttribute('href');
                 navigate(hash);
+                // If navigating to dashboard, try to load bills (in case of manual hash change)
+                if (hash === '#dashboard' && currentAccount) {
+                    loadUserBills(); 
+                }
             });
         });
 
@@ -670,6 +762,7 @@
                 if (accounts.length > 0) {
                     currentAccount = accounts[0];
                     updateWalletUI(currentAccount);
+                    loadUserBills(); // <<< ADDED: Load bills on passive connect
                 }
             } catch (error) {
                 console.warn("Could not auto-connect, user interaction required.");
