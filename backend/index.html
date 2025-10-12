@@ -199,7 +199,7 @@
         const MATE_SUFFIX = '.mate';
         const MATE_ID_KEY = 'splitmate_mate_id'; 
 
-        // --- DOM ELEMENTS ---
+        // --- DOM ELEMENTS (FIXED: Added balance elements) ---
         const connectWalletBtn = document.getElementById('connectWalletBtn');
         const walletInfo = document.getElementById('walletInfo');
         const accountAddress = document.getElementById('accountAddress');
@@ -215,9 +215,14 @@
         const billsList = document.getElementById('billsList');
         const navLinks = document.querySelectorAll('.nav-link');
         const mateIdDisplay = document.getElementById('mateIdDisplay'); 
-        const currentIdStatus = document.getElementById('currentIdStatus'); // NEW
+        const currentIdStatus = document.getElementById('currentIdStatus'); 
+        
+        // Dashboard Balance Elements (FIX ADDED HERE)
+        const totalDueToYouEl = document.getElementById('totalDueToYou');
+        const totalYouOweEl = document.getElementById('totalYouOwe');
+        const netBalanceEl = document.getElementById('netBalance');
 
-        // Address Book Manager Elements (Now located in the #profile section)
+        // Address Book Manager Elements
         const addressBookManager = document.getElementById('addressBookManager');
         const saveContactBtn = document.getElementById('saveContactBtn');
         const contactUsernameInput = document.getElementById('contactUsername');
@@ -368,12 +373,17 @@
                 mateIdDisplay.textContent = mateId;
                 mateIdDisplay.classList.remove('text-secondary');
                 mateIdDisplay.classList.add('text-primary');
-                currentIdStatus.innerHTML = `✅ Your registered SplitMate ID is: <span class="font-bold">${mateId}</span>. Use it in any address field.`;
+                // Ensure currentIdStatus is available before setting innerHTML
+                if (currentIdStatus) {
+                    currentIdStatus.innerHTML = `✅ Your registered SplitMate ID is: <span class="font-bold">${mateId}</span>. Use it in any address field.`;
+                }
             } else {
                 mateIdDisplay.textContent = '--.--mate (Click to Register)';
                 mateIdDisplay.classList.remove('text-primary');
                 mateIdDisplay.classList.add('text-secondary');
-                currentIdStatus.innerHTML = `🔔 You have not registered a SplitMate ID. Register one below to use a unique name instead of your 0x address.`;
+                 if (currentIdStatus) {
+                    currentIdStatus.innerHTML = `🔔 You have not registered a SplitMate ID. Register one below to use a unique name instead of your 0x address.`;
+                }
             }
         }
 
@@ -554,7 +564,6 @@
         }
 
         function createBillCard(bill) {
-            // ... (existing logic) ...
             const isCreator = bill.creator.toLowerCase() === currentAccount.toLowerCase();
             const isComplete = bill.status === 'COMPLETE';
             const statusColor = isComplete ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300';
@@ -623,6 +632,7 @@
                 });
 
                 // Update Balances (Mocked)
+                // This is where the ReferenceError occurred, now fixed by DOM declaration
                 totalDueToYouEl.textContent = '0.00 ETH'; 
                 totalYouOweEl.textContent = '0.05 ETH'; 
                 netBalanceEl.textContent = '-0.05 ETH';
