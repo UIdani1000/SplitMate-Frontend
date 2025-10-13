@@ -48,13 +48,12 @@
         <nav class="hidden sm:flex space-x-6 text-sm font-medium">
             <a href="#dashboard" class="text-primary hover:text-secondary">Dashboard</a>
             <a href="#create-bill" class="text-foreground hover:text-secondary">Create Bill</a>
-            <a href="#profile" class="text-foreground hover:text-secondary">Profile / ID</a> 
             <a href="#leaderboard" class="text-foreground hover:text-secondary">Leaderboard</a>
         </nav>
         <button id="connect-wallet-btn"
-            class="bg-primary hover:bg-primary/90 text-background font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md shadow-primary/30">
-            Connect Wallet
-        </button>
+    class="bg-primary hover:bg-primary/90 text-background font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md shadow-primary/30">
+    Connect Wallet
+</button>
     </header>
 
     <main class="py-10">
@@ -62,8 +61,7 @@
         <section id="dashboard" class="mb-12">
             <h1 class="text-3xl font-bold mb-6">Dashboard</h1>
             <div id="balance-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-card p-6 
-                    rounded-xl shadow-lg border border-border">
+                <div class="bg-card p-6 rounded-xl shadow-lg border border-border">
                     <p class="text-lg text-muted-foreground">Total Owed To You</p>
                     <p id="total-owed" class="text-3xl font-bold text-green-500 mt-1">$0.00</p>
                 </div>
@@ -72,8 +70,7 @@
                     <p id="total-you-owe" class="text-3xl font-bold text-red-500 mt-1">$0.00</p>
                 </div>
                 <div class="bg-card p-6 rounded-xl shadow-lg border border-border">
-                    <p class="text-lg 
-                        text-muted-foreground">Net Balance</p>
+                    <p class="text-lg text-muted-foreground">Net Balance</p>
                     <p id="net-balance" class="text-3xl font-bold text-foreground mt-1">$0.00</p>
                 </div>
             </div>
@@ -99,20 +96,17 @@
                             class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
                             placeholder="Dinner at the Bar">
                     </div>
-                
                     <div>
                         <label for="total-amount" class="block text-sm font-medium text-foreground mb-2">Total Amount (USD)</label>
                         <input type="number" id="total-amount" step="0.01" required
-                            class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 
-                                focus:ring-primary/50 focus:border-primary/50"
+                            class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
                             placeholder="100.00">
                     </div>
                     <div>
-                        <label for="merchant-address" class="block text-sm font-medium text-foreground mb-2">Merchant/Bar 
-                            Address (Final Payment Receiver)</label>
+                        <label for="merchant-address" class="block text-sm font-medium text-foreground mb-2">Merchant/Bar Address (Final Payment Receiver)</label>
                         <input type="text" id="merchant-address" required
                             class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
-                            placeholder="Must be a 0x Sepolia Address (e.g., 0x5B38...ddC4)">
+                            placeholder="0x... (Sepolia Address)">
                     </div>
 
                     <div class="pt-4 border-t border-border">
@@ -132,7 +126,7 @@
                                 + Add Person
                             </button>
                         </div>
-                     
+                        
                         <div id="participant-fields-container">
                             </div>
                         
@@ -150,34 +144,6 @@
                     </button>
                     <div id="bill-status-message" class="text-center text-sm mt-4 hidden"></div>
                 </form>
-            </div>
-        </section>
-        
-        <section id="profile" class="mb-12 hidden">
-            <h2 class="text-3xl font-bold mb-6">Profile / ID Management</h2>
-            <div class="max-w-xl mx-auto bg-card p-8 rounded-xl shadow-2xl border border-border space-y-6">
-                
-                <h3 class="text-xl font-semibold text-primary">Your Wallet & Identification</h3>
-                <p class="text-muted-foreground">
-                    Due to local file constraints, all address fields must use a direct **0x Ethereum address**.
-                </p>
-                <div class="bg-input p-4 rounded-lg border border-border">
-                    <p class="text-sm font-medium text-foreground mb-1">Current Connected Address:</p>
-                    <p id="profile-wallet-address" class="break-all text-secondary font-mono text-lg">Not Connected</p>
-                </div>
-
-                <div class="pt-4 border-t border-border">
-                    <h3 class="text-xl font-semibold text-primary">Address Resolution Status</h3>
-                    <p class="text-sm text-red-500 mt-2 font-semibold">
-                        ❌ **.mate** IDs (e.g., `savvyshop.mate`) are **DISABLED** (Requires Local Storage/Server).
-                    </p>
-                    <p class="text-sm text-red-500 mt-2 font-semibold">
-                        ❌ **ENS** names (e.g., `name.eth`) are **UNSUPPORTED**.
-                    </p>
-                    <p class="text-sm text-green-500 mt-2 font-semibold">
-                        ✅ Only direct **0x...** Ethereum addresses are accepted.
-                    </p>
-                </div>
             </div>
         </section>
         
@@ -200,7 +166,8 @@
     let participantCount = 0; // Tracks participants added (excluding creator)
     
     // <<< CONTRACT DETAILS >>>: Updated to SplitMateV2 contract address
-    const SPLITMATE_CONTRACT_ADDRESS = "0x195d869a9eF883bA3a827A99e3B36EcCFa9D1DF8";
+    const SPLITMATE_CONTRACT_ADDRESS = "0x195d869a9eF883bA3a827A99e3B36EcCFa9D1DF8"; 
+
     // <<< CONTRACT ABI >>>: Correct ABI JSON for SplitMateV2
     const CONTRACT_ABI = [
 	{
@@ -418,10 +385,8 @@
 ] 
     
     // HARDCODED ETH PRICE FOR HACKATHON DEMO (1 ETH = $X USD)
-    const ETH_USD_PRICE = 3000;
-    // $3000 USD per 1 ETH (Used for conversion from form USD to Sepolia ETH/WEI)
-    const BILLS_TO_FETCH = 5;
-    // Fetch the 5 most recent bills
+    const ETH_USD_PRICE = 3000; // $3000 USD per 1 ETH (Used for conversion from form USD to Sepolia ETH/WEI)
+    const BILLS_TO_FETCH = 5; // Fetch the 5 most recent bills
 
     // Get elements
     const connectButton = document.getElementById('connect-wallet-btn');
@@ -434,43 +399,26 @@
     const addParticipantBtn = document.getElementById('add-participant-btn');
     const splitSummary = document.getElementById('split-summary');
     const manualSummary = document.getElementById('manual-summary');
+    
     // Dashboard Stats Elements
     const totalOwedEl = document.getElementById('total-owed');
     const totalYouOweEl = document.getElementById('total-you-owe');
     const netBalanceEl = document.getElementById('net-balance');
     const billsListContainer = document.getElementById('bills-list');
     const billsListMessageEl = document.getElementById('bills-list-message');
-    const profileWalletAddressEl = document.getElementById('profile-wallet-address'); // NEW ELEMENT
     
     // --- NAVIGATION ELEMENTS ---
     const sections = {
         'dashboard': document.getElementById('dashboard'),
         'create-bill': document.getElementById('create-bill'),
-        'profile': document.getElementById('profile'), // ADDED
         'leaderboard': document.getElementById('leaderboard')
     };
     const navLinks = document.querySelectorAll('nav a');
 
 
     // --- UTILITY AND UI FUNCTIONS ---
-    
-    // NEW FUNCTION: Simple Address Validation (Bypasses .mate and .eth)
-    function resolveAddress(nameOrAddress) {
-        if (!web3) throw new Error("Web3 not initialized. Cannot validate address.");
-
-        const lowerVal = nameOrAddress.toLowerCase().trim();
-
-        // 1. Check if it is a valid Ethereum address
-        if (web3.utils.isAddress(lowerVal)) {
-            return lowerVal; // Return as is
-        }
-
-        // 2. Reject all other inputs (including .mate, .eth)
-        throw new Error(`"${nameOrAddress}" is not a valid 0x Ethereum address. Please use a raw wallet address.`);
-    }
-
     function showStatusMessage(type, message) {
-        billStatusMessage.innerHTML = `<p>${message}</p>`;
+        billStatusMessage.innerHTML = `<p>${message}</p>`; 
         billStatusMessage.classList.remove('hidden', 'text-green-500', 'text-red-500', 'text-yellow-500');
         
         switch(type) {
@@ -488,20 +436,19 @@
 
     function updateWalletUI(address) {
         connectButton.removeEventListener('click', handleConnectWallet);
+
         if (address) {
             const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
             connectButton.textContent = shortAddress;
             connectButton.classList.remove('bg-primary');
             connectButton.classList.add('bg-green-500');
             submitBillButton.disabled = false;
-            if (profileWalletAddressEl) profileWalletAddressEl.textContent = address; // UPDATE PROFILE
         } else {
             connectButton.textContent = "Connect Wallet";
             connectButton.classList.remove('bg-green-500');
             connectButton.classList.add('bg-primary');
             connectButton.addEventListener('click', handleConnectWallet);
             submitBillButton.disabled = true;
-            if (profileWalletAddressEl) profileWalletAddressEl.textContent = "Not Connected"; // UPDATE PROFILE
         }
     }
     
@@ -521,20 +468,19 @@
     function toWeiString(usdAmount) {
         const ethAmount = usdAmount / ETH_USD_PRICE;
         // Truncate to 20 decimal places to capture full precision before toWei
-        const ethString = ethAmount.toFixed(20);
+        const ethString = ethAmount.toFixed(20); 
         const [integerPart, decimalPart] = ethString.split('.');
         const truncatedDecimalPart = decimalPart ? decimalPart.substring(0, 18) : '0';
         const truncatedEthString = `${integerPart}.${truncatedDecimalPart}`;
+        
         return web3.utils.toWei(truncatedEthString, 'ether');
     }
     
     
     // --- DASHBOARD STATS LOGIC (Placeholder) ---
     async function updateDashboardStats(allBills) {
-        let totalOwed = 0;
-        // Owed *TO* the current user (as creator)
-        let totalYouOwe = 0;
-        // Owed *BY* the current user (as participant)
+        let totalOwed = 0; // Owed *TO* the current user (as creator)
+        let totalYouOwe = 0; // Owed *BY* the current user (as participant)
         
         if (!currentAccount) return;
         const currentAddress = currentAccount.toLowerCase();
@@ -546,8 +492,10 @@
         }
         
         const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
+
         for (const bill of allBills) {
             const isCreator = bill.creator.toLowerCase() === currentAddress;
+            
             if (bill.status === '0') { // OPEN
                 if (isCreator) {
                     // Owed TO you: Total outstanding amount from participants.
@@ -575,6 +523,7 @@
         }
 
         const netBalance = totalOwed - totalYouOwe;
+
         totalOwedEl.textContent = formatUsd(totalOwed);
         totalYouOweEl.textContent = formatUsd(totalYouOwe);
         netBalanceEl.textContent = formatUsd(netBalance);
@@ -598,6 +547,7 @@
         }
         
         const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
+        
         // Use the new view function to get the EXACT required WEI amount
         let requiredShareWei = '0';
         try {
@@ -613,19 +563,22 @@
         }
         
         const requiredShareUSD = formatUsd(weiToUsd(requiredShareWei));
+        
         billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-yellow-500 font-bold">Awaiting MetaMask confirmation to pay ${requiredShareUSD} for Bill #${billId} (${billName})...</p></div>`;
+
         try {
             // Call the payShare function, sending the required WEI amount as 'value'
             const result = await splitMateContract.methods.payShare(billId).send({
                 from: currentAccount,
                 value: requiredShareWei
             });
+
             // Success
-            billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-green-500 font-bold">Share Paid Successfully for Bill #${billId}!
-                Tx Hash: ${result.transactionHash.slice(0, 8)}...${result.transactionHash.slice(-8)}.</p></div>`;
+            billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-green-500 font-bold">Share Paid Successfully for Bill #${billId}! Tx Hash: ${result.transactionHash.slice(0, 8)}...${result.transactionHash.slice(-8)}.</p></div>`;
             
             // Refresh the bills after successful payment
             setTimeout(loadUserBills, 3000);
+
         } catch (error) {
             console.error("Payment Transaction Error:", error);
             let message = "Payment failed. User rejected transaction or contract call failed.";
@@ -659,10 +612,12 @@
         
         const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
         billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-yellow-500">Fetching the last ${BILLS_TO_FETCH} bills from Sepolia...</p></div>`;
+
         try {
             const nextId = await splitMateContract.methods.nextBillId().call();
             const lastBillId = Number(nextId) - 1;
             const bills = [];
+
             if (lastBillId < 1) {
                 billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-muted-foreground">No bills found on the contract.</p></div>`;
                 updateDashboardStats(bills);
@@ -677,20 +632,24 @@
             
             // Update Dashboard Stats (async logic inside)
             await updateDashboardStats(bills);
+
             // Render the bill cards
             billsListContainer.innerHTML = '';
+            
             if (bills.length === 0) {
                  billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-muted-foreground">No recent bills found on the contract.</p></div>`;
-                return;
+                 return;
             }
             
             for (const bill of bills) {
                 const totalAmountUSD = weiToUsd(bill.totalAmount);
                 // The amount collected includes the creator's share once they pay it.
-                const collectedAmountUSD = weiToUsd(bill.collectedAmount);
+                const collectedAmountUSD = weiToUsd(bill.collectedAmount); 
+                
                 const statusText = bill.status == 0 ? 
                     '<span class="text-red-500 font-bold">OPEN</span>' : 
                     '<span class="text-green-500 font-bold">COMPLETE</span>';
+
                 const isCreator = bill.creator.toLowerCase() === currentAccount.toLowerCase();
                 const roleText = isCreator ? 'CREATOR' : 'PARTICIPANT';
                 
@@ -701,17 +660,17 @@
                     // Participant or Creator role logic
                     
                     // Use the new getter to find the share for ANY user
-            
                     const requiredShareWei = await splitMateContract.methods.getParticipantShare(bill.id, currentAccount).call();
                     const requiredShareUSD = weiToUsd(requiredShareWei);
+                        
                     // Check if the user is a registered participant and owes money (share > 0)
                     if (Number(requiredShareWei) > 0) {
                         participantShareDisplay = `<p><strong>Your Share:</strong> <span class="text-red-500 font-bold">${formatUsd(requiredShareUSD)}</span></p>`;
+                        
                         // Action button to pay
                         actionButton = `
                             <button onclick="handlePayShare(${bill.id}, '${bill.name}')" 
-                                class="w-full bg-secondary hover:bg-secondary/90 text-background font-semibold py-2 px-4 
-                                rounded-lg transition duration-300 shadow-md shadow-secondary/30 mt-4">
+                                class="w-full bg-secondary hover:bg-secondary/90 text-background font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md shadow-secondary/30 mt-4">
                                 Pay Your Share (${formatUsd(requiredShareUSD)})
                             </button>
                         `;
@@ -724,8 +683,7 @@
                     }
 
                 } else { // Bill is COMPLETE
-                    actionButton = `<p class="text-green-500 font-semibold mt-4">Bill is COMPLETE.
-                        Funds settled.</p>`;
+                    actionButton = `<p class="text-green-500 font-semibold mt-4">Bill is COMPLETE. Funds settled.</p>`;
                 }
 
                 // Render the bill card
@@ -735,12 +693,10 @@
                             <h3 class="text-xl font-semibold text-primary">${bill.name} (ID: ${bill.id})</h3>
                             ${statusText}
                         </div>
-                 
                         
                         <p><strong>Your Role:</strong> <span class="text-primary">${roleText}</span></p>
                         <p><strong>Total Bill:</strong> <span class="text-secondary">${formatUsd(totalAmountUSD)}</span></p>
                         <p><strong>Collected:</strong> <span class="text-yellow-500">${formatUsd(collectedAmountUSD)}</span></p>
-                        
                         ${participantShareDisplay}
                         
                         ${actionButton}
@@ -777,6 +733,7 @@
             showStatusMessage("error", `Connection failed. Error: User rejected connection.`);
         }
     };
+    
     if (window.ethereum) {
         window.ethereum.on('accountsChanged', (newAccounts) => {
             currentAccount = newAccounts.length > 0 ? newAccounts[0] : null;
@@ -812,14 +769,12 @@
         const isManual = splitTypeSelect.value === 'manual';
         
         participantGroup.innerHTML = `
-            <input type="text" name="participant-address" placeholder="Participant ${participantCount} Address (0x...)" required
+            <input type="text" name="participant-address" placeholder="Participant ${participantCount} Address" required
                 class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50" />
             <input type="number" name="participant-amount" step="0.01" placeholder="Share (USD, if Manual)" 
-                class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 
-                focus:border-primary/50 split-manual-input" 
-                style="display:${isManual ? 'block' : 'none'}; flex-grow: 0.5;"
-                ${isManual ? 'required' : ''}/>
-            <button type="button" onclick="this.parentElement.remove(); participantCount--; updateSplitSummary();"
+                class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50 split-manual-input" 
+                style="display:${isManual ? 'block' : 'none'}; flex-grow: 0.5;" ${isManual ? 'required' : ''}/>
+            <button type="button" onclick="this.parentElement.remove(); participantCount--; updateSplitSummary();" 
                 class="bg-red-500/20 text-red-500 hover:bg-red-500/30 text-sm font-semibold py-1 px-3 rounded-lg transition duration-300 ml-2">Remove</button>
         `;
         participantContainer.appendChild(participantGroup);
@@ -830,19 +785,16 @@
     // --- FORM SUBMISSION LOGIC (Collective Payment) ---
     const handleBillSubmission = async (e) => {
         e.preventDefault();
+        
         if (!currentAccount) {
             showStatusMessage("error", "Please connect your wallet first.");
-            return;
-        }
-        if (!web3) {
-            showStatusMessage("error", "Web3 not initialized. Cannot validate addresses.");
             return;
         }
 
         // --- FORM DATA GATHERING AND VALIDATION ---
         const billName = document.getElementById('bill-name').value;
         const totalAmountUSD = parseFloat(totalAmountInput.value) || 0;
-        const merchantAddressInput = document.getElementById('merchant-address').value;
+        const merchantAddress = document.getElementById('merchant-address').value;
         const splitType = splitTypeSelect.value;
         
         const currentParticipantInputs = participantContainer.querySelectorAll('.participant-group');
@@ -853,41 +805,13 @@
             return;
         }
         
-        // --- Merchant Address Resolution --- (Using the new resolveAddress function)
-        let resolvedMerchantAddress;
-        try {
-            resolvedMerchantAddress = resolveAddress(merchantAddressInput);
-        } catch (error) {
-            showStatusMessage("error", `❌ Merchant Address Error: ${error.message}`);
-            return;
-        }
-        
-        // --- Participant Address Resolution ---
-        let rawParticipantInputs = []; 
-        const addressInputs = participantContainer.querySelectorAll('input[name="participant-address"]');
-        addressInputs.forEach(input => rawParticipantInputs.push(input.value));
-
-        let resolvedParticipants = [];
-        let resolutionFailed = false;
-
-        for (let i = 0; i < rawParticipantInputs.length; i++) {
-            try {
-                const resolved = resolveAddress(rawParticipantInputs[i]);
-                resolvedParticipants.push(resolved);
-            } catch (error) {
-                showStatusMessage("error", `❌ Participant ${i + 1} Address Error: ${error.message}`);
-                resolutionFailed = true;
-                break;
-            }
-        }
-
-        if (resolutionFailed) return; // Stop if any participant address is invalid
-        
-        
-        // --- Calculate Shares (Same as before) ---
+        let participantAddresses = [];
         let participantSharesUSD = []; 
+        const addressInputs = participantContainer.querySelectorAll('input[name="participant-address"]');
         const amountInputs = participantContainer.querySelectorAll('input[name="participant-amount"]');
-        
+        addressInputs.forEach(input => participantAddresses.push(input.value));
+
+        // --- Calculate Shares ---
         if (splitType === 'even') {
             const totalPeople = calculatedParticipantCount + 1; // Participants + Creator
             const evenShare = totalAmountUSD / totalPeople;
@@ -906,43 +830,50 @@
             return;
         }
         
-        // --- Finalize Arrays for Contract Call ---
+        // --- CRITICAL FIXES FOR REVERT ---
         // 1. ADD CREATOR AS LAST PARTICIPANT AND THEIR SHARE
-        const finalParticipantAddresses = [...resolvedParticipants, currentAccount]; // Use resolved addresses
+        participantAddresses.push(currentAccount);
         participantSharesUSD.push(creatorShareUSD); 
         
-        // 2. VALUE SENT WITH TRANSACTION IS NOW 0 
-        const valueToSend = web3.utils.toWei('0', 'ether');
+        // 2. VALUE SENT WITH TRANSACTION IS NOW 0 (Contract requires creator to pay their share later via payShare)
+        const valueToSend = web3.utils.toWei('0', 'ether'); 
+
         showStatusMessage("loading", `Initiating Collective Payment: Sending 0 ETH to create bill escrow... Awaiting MetaMask approval...`);
+
         try {
             submitBillButton.disabled = true;
+            
             const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
 
             // Convert all participant shares (including creator's last) to truncated Wei strings
             const participantSharesWEI = participantSharesUSD.map(toWeiString);
+
             // Convert total amount to truncated Wei string
             const totalAmountWei = toWeiString(totalAmountUSD);
-            
+
             const result = await splitMateContract.methods.createBill(
                 billName, 
                 totalAmountWei,
-                resolvedMerchantAddress, // Use resolved merchant address
-                finalParticipantAddresses, // Use resolved participant addresses
+                merchantAddress,
+                participantAddresses, 
                 participantSharesWEI
             ).send({ 
                 from: currentAccount,
                 value: valueToSend // Now 0 Wei is sent
             });
+
             // 1. Show Success Message
             showStatusMessage("success", `Collective Bill Created! Tx Hash: ${result.transactionHash.slice(0, 8)}...${result.transactionHash.slice(-8)}. **REMINDER: You must pay your own share now!**`);
+            
             // 2. Create and Append the View Status Button
             const viewButton = document.createElement('button');
             viewButton.textContent = 'View Bill Status';
             viewButton.className = 'w-full mt-4 bg-primary hover:bg-primary/90 text-background font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md shadow-primary/30';
             viewButton.onclick = () => {
-                navigate('#dashboard');
+                navigate('#dashboard'); 
                 loadUserBills(); // Load the new bill details immediately
             };
+            
             billStatusMessage.appendChild(viewButton); 
 
             billForm.reset();
@@ -960,6 +891,7 @@
         Object.values(sections).forEach(section => {
             if(section) section.classList.add('hidden');
         });
+
         const target = sections[hash.replace('#', '')];
         if (target) {
             target.classList.remove('hidden');
@@ -968,7 +900,6 @@
                     link.classList.remove('text-foreground');
                     link.classList.add('text-primary');
                 } else {
-                    
                     link.classList.remove('text-primary');
                     link.classList.add('text-foreground');
                 }
@@ -1004,7 +935,7 @@
         // Passive Auto-Connect Check
         if (window.ethereum) {
             // Re-initialize web3 globally for passive check
-            web3 = new Web3(window.ethereum);
+            web3 = new Web3(window.ethereum); 
             try {
                 const accounts = await web3.eth.getAccounts();
                 if (accounts.length > 0) {
