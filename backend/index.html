@@ -6,6 +6,7 @@
     <title>SplitMate - Decentralized Bill Splitting</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     
     <script>
         tailwind.config = {
@@ -14,15 +15,15 @@
             extend: {
               colors: {
                 // Simplified core color palette
-                background: "#10002b",
-                card: "rgba(255, 255, 255, 0.05)",
-                primary: "#c77dff", 
-                secondary: "#ff9e00",
+                background: "#0d001f", // Slightly darker base
+                card: "rgba(255, 255, 255, 0.08)", // More transparent for glass effect
+                primary: "#9D4EDC", // Deep vibrant purple
+                secondary: "#ffb703", // Bright gold/amber accent
                 foreground: "hsl(210 40% 98%)",
-                input: "#21004e",
-                border: "rgba(255, 255, 255, 0.1)"
+                input: "rgba(255, 255, 255, 0.05)", // Transparent input background
+                border: "rgba(255, 255, 255, 0.15)" // Slightly stronger border
               },
-              borderRadius: { xl: "1.25rem", lg: "1rem" }
+              borderRadius: { xl: "1.5rem", lg: "1rem" } // Larger rounded corners
             }
           }
         }
@@ -32,125 +33,217 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body { font-family: 'Inter', sans-serif; }
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #10002b; }
-        ::-webkit-scrollbar-thumb { background: #7400b8; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #c77dff; }
-        /* Style for the dynamic participant inputs */
-        .participant-group { display: flex; align-items: center; margin-bottom: 1rem; }
-        .participant-group input { flex-grow: 1; margin-right: 0.5rem; }
+        ::-webkit-scrollbar-track { background: #0d001f; }
+        ::-webkit-scrollbar-thumb { background: #5a189a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9D4EDC; }
+
+        /* Custom Glass Effect for Cards */
+        .glass-card {
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .glass-card:hover {
+             transform: translateY(-2px);
+             box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+        /* Participant input group for flex layout */
+        .participant-group { 
+            display: flex; 
+            align-items: center; 
+            gap: 0.5rem; 
+            margin-bottom: 1rem;
+        }
+        .participant-group input { 
+            flex-grow: 1; 
+            padding-right: 2.5rem !important; /* Space for the icon */
+        }
+        /* Style for the address icon */
+        .address-input-wrapper {
+            position: relative;
+            flex-grow: 1;
+        }
+        .address-icon {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255, 255, 255, 0.4);
+            pointer-events: none;
+            font-size: 1.1rem;
+        }
+
+        /* Status Message Animation */
+        .status-message-pulse {
+             animation: pulse-border 1.5s infinite;
+        }
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(157, 78, 220, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(157, 78, 220, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(157, 78, 220, 0); }
+        }
     </style>
 </head>
 <body class="bg-background min-h-screen text-foreground antialiased overflow-x-hidden">
 <div class="container mx-auto px-4 sm:px-6 lg:px-8">
 
-    <header class="flex items-center justify-between py-6">
-        <a href="#" class="text-2xl font-bold text-primary">SplitMate</a>
-        <nav class="hidden sm:flex space-x-6 text-sm font-medium">
-            <a href="#dashboard" class="text-primary hover:text-secondary">Dashboard</a>
-            <a href="#create-bill" class="text-foreground hover:text-secondary">Create Bill</a>
-            <a href="#leaderboard" class="text-foreground hover:text-secondary">Leaderboard</a>
+    <header class="flex items-center justify-between py-6 border-b border-border/50">
+        <a href="#dashboard" class="text-3xl font-extrabold text-primary flex items-center gap-2">
+            <i class="fas fa-wallet"></i> SplitMate
+        </a>
+        <nav class="hidden sm:flex space-x-8 text-base font-medium">
+            <a href="#dashboard" class="text-primary hover:text-secondary transition-colors">Dashboard</a>
+            <a href="#create-bill" class="text-foreground hover:text-secondary transition-colors">Create Bill</a>
+            <a href="#profile" class="text-foreground hover:text-secondary transition-colors">ID Guide</a> 
+            <a href="#leaderboard" class="text-foreground hover:text-secondary transition-colors">Leaderboard</a>
         </nav>
         <button id="connect-wallet-btn"
-    class="bg-primary hover:bg-primary/90 text-background font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md shadow-primary/30">
-    Connect Wallet
-</button>
+            class="bg-primary hover:bg-primary/90 text-background font-bold py-2.5 px-6 rounded-xl transition duration-300 shadow-xl shadow-primary/30 transform hover:scale-[1.02]">
+            Connect Wallet
+        </button>
     </header>
 
-    <main class="py-10">
+    <main class="py-12">
 
-        <section id="dashboard" class="mb-12">
-            <h1 class="text-3xl font-bold mb-6">Dashboard</h1>
-            <div id="balance-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-card p-6 rounded-xl shadow-lg border border-border">
-                    <p class="text-lg text-muted-foreground">Total Owed To You</p>
-                    <p id="total-owed" class="text-3xl font-bold text-green-500 mt-1">$0.00</p>
+        <section id="dashboard" class="page-section mb-12">
+            <h1 class="text-4xl font-bold mb-8 border-b border-border/50 pb-4">Your Financial Hub 🏠</h1>
+            <div id="balance-container" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                
+                <div class="glass-card p-6 rounded-xl shadow-xl border border-border">
+                    <p class="text-lg text-foreground/80 font-semibold flex items-center gap-2"><i class="fas fa-arrow-up text-green-500"></i> Owed To You</p>
+                    <p id="total-owed" class="text-4xl font-extrabold text-green-400 mt-2">$0.00</p>
                 </div>
-                <div class="bg-card p-6 rounded-xl shadow-lg border border-border">
-                    <p class="text-lg text-muted-foreground">Total You Owe</p>
-                    <p id="total-you-owe" class="text-3xl font-bold text-red-500 mt-1">$0.00</p>
+                
+                <div class="glass-card p-6 rounded-xl shadow-xl border border-border">
+                    <p class="text-lg text-foreground/80 font-semibold flex items-center gap-2"><i class="fas fa-arrow-down text-red-500"></i> You Owe</p>
+                    <p id="total-you-owe" class="text-4xl font-extrabold text-red-400 mt-2">$0.00</p>
                 </div>
-                <div class="bg-card p-6 rounded-xl shadow-lg border border-border">
-                    <p class="text-lg text-muted-foreground">Net Balance</p>
-                    <p id="net-balance" class="text-3xl font-bold text-foreground mt-1">$0.00</p>
+                
+                <div class="glass-card p-6 rounded-xl shadow-xl border border-border">
+                    <p class="text-lg text-foreground/80 font-semibold flex items-center gap-2"><i class="fas fa-chart-line text-primary"></i> Net Balance</p>
+                    <p id="net-balance" class="text-4xl font-extrabold text-foreground mt-2">$0.00</p>
                 </div>
             </div>
 
-            <h2 class="text-2xl font-semibold mb-4 text-primary">Your Recent Bills</h2>
+            <h2 class="text-2xl font-semibold mb-6 text-primary border-b border-border/50 pb-3">Recent Bills</h2>
             <div id="bills-list" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="col-span-full bg-card p-6 rounded-xl shadow-lg border border-border min-h-20 flex items-center justify-center">
-                    <p class="text-muted-foreground text-center" id="bills-list-message">Please connect your wallet to view your bills.</p>
+                <div class="col-span-full glass-card p-6 rounded-xl shadow-lg border border-border min-h-20 flex items-center justify-center">
+                    <p class="text-foreground/60 text-center" id="bills-list-message">
+                        <i class="fas fa-exclamation-circle mr-2"></i> Please connect your wallet to view your bills.
+                    </p>
                 </div>
             </div>
         </section>
 
-        <section id="create-bill" class="mb-12 hidden">
-            <h2 class="text-3xl font-bold mb-6">Split Bills with Friends</h2>
-            <div class="max-w-xl mx-auto bg-card p-8 rounded-xl shadow-2xl border border-border">
-                <p class="text-muted-foreground mb-6">
-                    Create a shared payment request using the **Collective Payment Escrow** model.
+        <section id="create-bill" class="page-section mb-12 hidden">
+            <h2 class="text-4xl font-bold mb-8 border-b border-border/50 pb-4">Create New Collective Bill 💸</h2>
+            <div class="max-w-2xl mx-auto glass-card p-10 rounded-xl shadow-2xl border border-border">
+                <p class="text-foreground/80 mb-6 border-b border-border/50 pb-4">
+                    Set up the payment escrow. All participants must pay their share before the total is sent to the merchant.
                 </p>
                 <form id="create-bill-form" class="space-y-6">
                     <div>
-                        <label for="bill-name" class="block text-sm font-medium text-foreground mb-2">Bill Name</label>
+                        <label for="bill-name" class="block text-sm font-medium text-primary mb-2">Bill Name</label>
                         <input type="text" id="bill-name" required
-                            class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
+                            class="w-full p-4 rounded-xl bg-input border border-border text-foreground focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors"
                             placeholder="Dinner at the Bar">
                     </div>
+                
                     <div>
-                        <label for="total-amount" class="block text-sm font-medium text-foreground mb-2">Total Amount (USD)</label>
-                        <input type="number" id="total-amount" step="0.01" required
-                            class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
-                            placeholder="100.00">
+                        <label for="total-amount" class="block text-sm font-medium text-primary mb-2">Total Amount (USD)</label>
+                        <div class="relative">
+                            <input type="number" id="total-amount" step="0.01" required
+                                class="w-full p-4 pl-10 rounded-xl bg-input border border-border text-foreground text-lg font-mono focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors"
+                                placeholder="100.00">
+                            <i class="fas fa-dollar-sign address-icon" style="right: auto; left: 0.75rem;"></i>
+                        </div>
                     </div>
+                    
                     <div>
-                        <label for="merchant-address" class="block text-sm font-medium text-foreground mb-2">Merchant/Bar Address (Final Payment Receiver)</label>
-                        <input type="text" id="merchant-address" required
-                            class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50"
-                            placeholder="0x... (Sepolia Address)">
+                        <label for="merchant-address" class="block text-sm font-medium text-primary mb-2">Merchant Wallet Address (Final Receiver)</label>
+                        <div class="address-input-wrapper">
+                            <input type="text" id="merchant-address" required
+                                class="w-full p-4 rounded-xl bg-input border border-border text-foreground font-mono focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors"
+                                placeholder="0x... (Must be a 0x Ethereum Address)">
+                            <i class="fas fa-building address-icon"></i>
+                        </div>
                     </div>
 
-                    <div class="pt-4 border-t border-border">
-                        <label for="split-type" class="block text-sm font-medium text-foreground mb-2">Split Type</label>
+                    <div class="pt-4 border-t border-border/50">
+                        <label for="split-type" class="block text-sm font-medium text-primary mb-2">Split Type</label>
                         <select id="split-type"
-                            class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50">
+                            class="w-full p-4 rounded-xl bg-input border border-border text-foreground focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors appearance-none">
                             <option value="even">Even Split</option>
-                            <option value="manual">Manual Split</option>
+                            <option value="manual">Manual Split (Enter amounts below)</option>
                         </select>
                     </div>
 
-                    <div class="pt-4 border-t border-border space-y-4">
+                    <div class="pt-4 border-t border-border/50 space-y-4">
                         <div class="flex justify-between items-center mb-2">
-                            <h3 class="text-lg font-semibold text-primary">Participants (Excluding You)</h3>
+                            <h3 class="text-xl font-semibold text-secondary flex items-center gap-2"><i class="fas fa-users"></i> Participants (Excluding You)</h3>
                             <button type="button" id="add-participant-btn"
-                                class="bg-primary/20 text-primary hover:bg-primary/30 text-sm font-semibold py-1 px-3 rounded-lg transition duration-300">
-                                + Add Person
+                                class="bg-primary/30 text-primary hover:bg-primary/50 text-sm font-bold py-2 px-4 rounded-full transition duration-300 transform hover:scale-105">
+                                <i class="fas fa-plus mr-1"></i> Add Person
                             </button>
                         </div>
-                        
+                     
                         <div id="participant-fields-container">
                             </div>
                         
-                        <p id="split-summary" class="text-sm text-yellow-500 hidden">
-                            Even Split: $0.00 per person (based on 1 participant).
+                        <p id="split-summary" class="text-sm text-yellow-400 hidden p-3 bg-input rounded-lg border border-yellow-400/30">
+                            Even Split: $0.00 per person.
                         </p>
-                        <p id="manual-summary" class="text-sm text-yellow-500 hidden">
+                        <p id="manual-summary" class="text-sm text-yellow-400 hidden p-3 bg-input rounded-lg border border-yellow-400/30">
                             Manual Split: Total Entered: $0.00 / $0.00 Total Bill.
                         </p>
                     </div>
                     
                     <button type="submit" id="submit-bill-btn"
-                        class="w-full bg-secondary hover:bg-secondary/90 text-background font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md shadow-secondary/30 disabled:opacity-50" disabled>
-                        Initiate Collective Split
+                        class="w-full bg-secondary hover:bg-secondary/90 text-background font-bold py-4 px-4 rounded-xl transition duration-300 shadow-xl shadow-secondary/30 transform hover:scale-[1.01] disabled:opacity-50 disabled:shadow-none" disabled>
+                        Initiate Collective Split <i class="fas fa-paper-plane ml-2"></i>
                     </button>
-                    <div id="bill-status-message" class="text-center text-sm mt-4 hidden"></div>
+                    
+                    <div id="bill-status-message" class="text-center text-sm mt-4 p-4 rounded-xl font-medium hidden"></div>
                 </form>
             </div>
         </section>
         
-        <section id="leaderboard" class="mb-12 hidden">
-            <h2 class="text-3xl font-bold mb-6">Leaderboard</h2>
-            <div class="bg-card p-6 rounded-xl shadow-lg border border-border min-h-40 flex items-center justify-center">
-                <p class="text-muted-foreground text-center">Leaderboard features coming soon...</p>
+        <section id="profile" class="page-section mb-12 hidden">
+            <h2 class="text-4xl font-bold mb-8 border-b border-border/50 pb-4">Address & ID Guide 🆔</h2>
+            <div class="max-w-2xl mx-auto glass-card p-10 rounded-xl shadow-2xl border border-border space-y-8">
+                
+                <h3 class="text-2xl font-semibold text-primary border-b border-border/50 pb-3">Current Wallet Status</h3>
+                <div class="bg-input p-5 rounded-xl border border-border flex justify-between items-center">
+                    <p class="text-lg font-medium text-foreground/80">Connected Address:</p>
+                    <p id="profile-wallet-address" class="break-all text-secondary font-mono text-xl font-bold">Not Connected</p>
+                </div>
+
+                <div class="pt-4 border-t border-border/50">
+                    <h3 class="text-2xl font-semibold text-primary mb-4">Address Requirements</h3>
+                    <p class="text-foreground/80 mb-4">
+                        To maintain functionality while running locally, all inputs must strictly adhere to the standard Ethereum address format.
+                    </p>
+                    <ul class="space-y-3">
+                        <li class="p-3 rounded-lg bg-red-800/20 text-red-400 flex items-center gap-3 font-semibold">
+                            <i class="fas fa-times-circle text-xl"></i> **SplitMate IDs** (`username.mate`) are **DISABLED** (Requires Local Storage/Server).
+                        </li>
+                        <li class="p-3 rounded-lg bg-red-800/20 text-red-400 flex items-center gap-3 font-semibold">
+                            <i class="fas fa-times-circle text-xl"></i> **ENS Names** (`name.eth`) are **UNSUPPORTED**.
+                        </li>
+                        <li class="p-3 rounded-lg bg-green-800/20 text-green-400 flex items-center gap-3 font-semibold">
+                            <i class="fas fa-check-circle text-xl"></i> Only direct **0x...** Ethereum addresses are accepted.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+        
+        <section id="leaderboard" class="page-section mb-12 hidden">
+            <h2 class="text-4xl font-bold mb-8 border-b border-border/50 pb-4">The SplitMate Leaderboard 🏆</h2>
+            <div class="glass-card p-10 rounded-xl shadow-lg border border-border min-h-60 flex items-center justify-center">
+                <p class="text-foreground/60 text-xl font-medium text-center">
+                    <i class="fas fa-cog fa-spin mr-2"></i> Leaderboard features under construction...
+                </p>
             </div>
         </section>
 
@@ -158,7 +251,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
-
 <script>
     // Global state variables
     let web3 = null;
@@ -166,8 +258,7 @@
     let participantCount = 0; // Tracks participants added (excluding creator)
     
     // <<< CONTRACT DETAILS >>>: Updated to SplitMateV2 contract address
-    const SPLITMATE_CONTRACT_ADDRESS = "0x195d869a9eF883bA3a827A99e3B36EcCFa9D1DF8"; 
-
+    const SPLITMATE_CONTRACT_ADDRESS = "0x195d869a9eF883bA3a827A99e3B36EcCFa9D1DF8";
     // <<< CONTRACT ABI >>>: Correct ABI JSON for SplitMateV2
     const CONTRACT_ABI = [
 	{
@@ -385,8 +476,10 @@
 ] 
     
     // HARDCODED ETH PRICE FOR HACKATHON DEMO (1 ETH = $X USD)
-    const ETH_USD_PRICE = 3000; // $3000 USD per 1 ETH (Used for conversion from form USD to Sepolia ETH/WEI)
-    const BILLS_TO_FETCH = 5; // Fetch the 5 most recent bills
+    const ETH_USD_PRICE = 3000;
+    // $3000 USD per 1 ETH (Used for conversion from form USD to Sepolia ETH/WEI)
+    const BILLS_TO_FETCH = 5;
+    // Fetch the 5 most recent bills
 
     // Get elements
     const connectButton = document.getElementById('connect-wallet-btn');
@@ -399,56 +492,75 @@
     const addParticipantBtn = document.getElementById('add-participant-btn');
     const splitSummary = document.getElementById('split-summary');
     const manualSummary = document.getElementById('manual-summary');
-    
     // Dashboard Stats Elements
     const totalOwedEl = document.getElementById('total-owed');
     const totalYouOweEl = document.getElementById('total-you-owe');
     const netBalanceEl = document.getElementById('net-balance');
     const billsListContainer = document.getElementById('bills-list');
     const billsListMessageEl = document.getElementById('bills-list-message');
+    const profileWalletAddressEl = document.getElementById('profile-wallet-address'); // NEW ELEMENT
     
     // --- NAVIGATION ELEMENTS ---
     const sections = {
         'dashboard': document.getElementById('dashboard'),
         'create-bill': document.getElementById('create-bill'),
+        'profile': document.getElementById('profile'), 
         'leaderboard': document.getElementById('leaderboard')
     };
     const navLinks = document.querySelectorAll('nav a');
 
 
     // --- UTILITY AND UI FUNCTIONS ---
+    
+    // NEW FUNCTION: Simple Address Validation (Bypasses .mate and .eth)
+    function resolveAddress(nameOrAddress) {
+        if (!web3) throw new Error("Web3 not initialized. Cannot validate address.");
+
+        const lowerVal = nameOrAddress.toLowerCase().trim();
+
+        // 1. Check if it is a valid Ethereum address
+        if (web3.utils.isAddress(lowerVal)) {
+            return lowerVal; // Return as is
+        }
+
+        // 2. Reject all other inputs (including .mate, .eth)
+        throw new Error(`"${nameOrAddress}" is not a valid 0x Ethereum address. Please use a raw wallet address.`);
+    }
+
     function showStatusMessage(type, message) {
-        billStatusMessage.innerHTML = `<p>${message}</p>`; 
-        billStatusMessage.classList.remove('hidden', 'text-green-500', 'text-red-500', 'text-yellow-500');
+        billStatusMessage.innerHTML = `<p>${message}</p>`;
+        billStatusMessage.classList.remove('hidden', 'bg-green-800/20', 'bg-red-800/20', 'bg-yellow-800/20', 'text-green-400', 'text-red-400', 'text-yellow-400', 'status-message-pulse');
         
         switch(type) {
             case 'success':
-                billStatusMessage.classList.add('text-green-500');
+                billStatusMessage.classList.add('text-green-400', 'bg-green-800/20');
                 break;
             case 'error':
-                billStatusMessage.classList.add('text-red-500');
+                billStatusMessage.classList.add('text-red-400', 'bg-red-800/20');
                 break;
             case 'loading':
-                billStatusMessage.classList.add('text-yellow-500');
+                billStatusMessage.classList.add('text-yellow-400', 'bg-yellow-800/20', 'status-message-pulse');
                 break;
         }
+        billStatusMessage.classList.remove('hidden');
     }
 
     function updateWalletUI(address) {
         connectButton.removeEventListener('click', handleConnectWallet);
-
         if (address) {
             const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
             connectButton.textContent = shortAddress;
-            connectButton.classList.remove('bg-primary');
-            connectButton.classList.add('bg-green-500');
+            connectButton.classList.remove('bg-primary', 'shadow-primary/30');
+            connectButton.classList.add('bg-green-500', 'shadow-green-500/30');
             submitBillButton.disabled = false;
+            if (profileWalletAddressEl) profileWalletAddressEl.textContent = address; 
         } else {
             connectButton.textContent = "Connect Wallet";
-            connectButton.classList.remove('bg-green-500');
-            connectButton.classList.add('bg-primary');
+            connectButton.classList.remove('bg-green-500', 'shadow-green-500/30');
+            connectButton.classList.add('bg-primary', 'shadow-primary/30');
             connectButton.addEventListener('click', handleConnectWallet);
             submitBillButton.disabled = true;
+            if (profileWalletAddressEl) profileWalletAddressEl.textContent = "Not Connected"; 
         }
     }
     
@@ -468,19 +580,20 @@
     function toWeiString(usdAmount) {
         const ethAmount = usdAmount / ETH_USD_PRICE;
         // Truncate to 20 decimal places to capture full precision before toWei
-        const ethString = ethAmount.toFixed(20); 
+        const ethString = ethAmount.toFixed(20);
         const [integerPart, decimalPart] = ethString.split('.');
         const truncatedDecimalPart = decimalPart ? decimalPart.substring(0, 18) : '0';
         const truncatedEthString = `${integerPart}.${truncatedDecimalPart}`;
-        
         return web3.utils.toWei(truncatedEthString, 'ether');
     }
     
     
     // --- DASHBOARD STATS LOGIC (Placeholder) ---
     async function updateDashboardStats(allBills) {
-        let totalOwed = 0; // Owed *TO* the current user (as creator)
-        let totalYouOwe = 0; // Owed *BY* the current user (as participant)
+        let totalOwed = 0;
+        // Owed *TO* the current user (as creator)
+        let totalYouOwe = 0;
+        // Owed *BY* the current user (as participant)
         
         if (!currentAccount) return;
         const currentAddress = currentAccount.toLowerCase();
@@ -492,22 +605,15 @@
         }
         
         const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
-
         for (const bill of allBills) {
             const isCreator = bill.creator.toLowerCase() === currentAddress;
-            
             if (bill.status === '0') { // OPEN
                 if (isCreator) {
                     // Owed TO you: Total outstanding amount from participants.
                     const billTotalUSD = weiToUsd(bill.totalAmount);
                     const collectedUSD = weiToUsd(bill.collectedAmount);
                     
-                    // We need to exclude the creator's own share if they haven't paid it yet
-                    // The collectedAmount includes the creator's share if they paid it via payShare
-                    
                     // The simplest calculation for a creator is: Total Bill - Collected Amount
-                    // Since the contract requires ALL shares (including creator's) to be paid via payShare, 
-                    // this represents the total outstanding amount.
                     totalOwed += Math.max(0, weiToUsd(bill.totalAmount) - weiToUsd(bill.collectedAmount));
                     
                 } else {
@@ -523,16 +629,15 @@
         }
 
         const netBalance = totalOwed - totalYouOwe;
-
         totalOwedEl.textContent = formatUsd(totalOwed);
         totalYouOweEl.textContent = formatUsd(totalYouOwe);
         netBalanceEl.textContent = formatUsd(netBalance);
         
-        netBalanceEl.classList.remove('text-green-500', 'text-red-500', 'text-foreground');
+        netBalanceEl.classList.remove('text-green-400', 'text-red-400', 'text-foreground');
         if (netBalance > 0) {
-            netBalanceEl.classList.add('text-green-500');
+            netBalanceEl.classList.add('text-green-400');
         } else if (netBalance < 0) {
-            netBalanceEl.classList.add('text-red-500');
+            netBalanceEl.classList.add('text-red-400');
         } else {
             netBalanceEl.classList.add('text-foreground');
         }
@@ -547,8 +652,6 @@
         }
         
         const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
-        
-        // Use the new view function to get the EXACT required WEI amount
         let requiredShareWei = '0';
         try {
             requiredShareWei = await splitMateContract.methods.getParticipantShare(billId, currentAccount).call();
@@ -563,22 +666,24 @@
         }
         
         const requiredShareUSD = formatUsd(weiToUsd(requiredShareWei));
-        
-        billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-yellow-500 font-bold">Awaiting MetaMask confirmation to pay ${requiredShareUSD} for Bill #${billId} (${billName})...</p></div>`;
-
+        // Use the common status message container (temporarily hijack for a bold message)
+        billsListContainer.innerHTML = `<div class="col-span-full text-center p-4 glass-card border border-yellow-400/30">
+            <p class="text-yellow-400 font-bold"><i class="fas fa-spinner fa-spin mr-2"></i> Awaiting MetaMask confirmation to pay ${requiredShareUSD} for Bill #${billId} (${billName})...</p>
+        </div>`;
         try {
             // Call the payShare function, sending the required WEI amount as 'value'
             const result = await splitMateContract.methods.payShare(billId).send({
                 from: currentAccount,
                 value: requiredShareWei
             });
-
             // Success
-            billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-green-500 font-bold">Share Paid Successfully for Bill #${billId}! Tx Hash: ${result.transactionHash.slice(0, 8)}...${result.transactionHash.slice(-8)}.</p></div>`;
+            billsListContainer.innerHTML = `<div class="col-span-full text-center p-4 glass-card border border-green-400/30">
+                <p class="text-green-400 font-bold"><i class="fas fa-check-circle mr-2"></i> Share Paid Successfully for Bill #${billId}!
+                Tx Hash: ${result.transactionHash.slice(0, 8)}...${result.transactionHash.slice(-8)}.</p>
+            </div>`;
             
             // Refresh the bills after successful payment
             setTimeout(loadUserBills, 3000);
-
         } catch (error) {
             console.error("Payment Transaction Error:", error);
             let message = "Payment failed. User rejected transaction or contract call failed.";
@@ -589,7 +694,9 @@
             } else if (error.message.includes("Payment amount must match the required share exactly")) {
                  message = "Payment failed. Amount sent must EXACTLY match the required share. Please ensure your wallet is sending the precise amount fetched from the contract.";
             }
-            billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-red-500">${message}</p></div>`;
+            billsListContainer.innerHTML = `<div class="col-span-full text-center p-4 glass-card border border-red-400/30">
+                <p class="text-red-400"><i class="fas fa-times-circle mr-2"></i> ${message}</p>
+            </div>`;
         }
     }
 
@@ -605,21 +712,25 @@
             if (window.ethereum) {
                 web3 = new Web3(window.ethereum);
             } else {
-                billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-red-500">Error: MetaMask not found or disconnected.</p></div>`;
+                billsListContainer.innerHTML = `<div class="col-span-full text-center p-4 glass-card border border-red-400/30">
+                    <p class="text-red-400">Error: MetaMask not found or disconnected.</p>
+                </div>`;
                 return;
             }
         }
         
         const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
-        billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-yellow-500">Fetching the last ${BILLS_TO_FETCH} bills from Sepolia...</p></div>`;
-
+        billsListContainer.innerHTML = `<div class="col-span-full text-center p-4 glass-card border border-yellow-400/30">
+            <p class="text-yellow-400 font-bold"><i class="fas fa-search mr-2 fa-spin"></i> Fetching the last ${BILLS_TO_FETCH} bills from Sepolia...</p>
+        </div>`;
         try {
             const nextId = await splitMateContract.methods.nextBillId().call();
             const lastBillId = Number(nextId) - 1;
             const bills = [];
-
             if (lastBillId < 1) {
-                billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-muted-foreground">No bills found on the contract.</p></div>`;
+                billsListContainer.innerHTML = `<div class="col-span-full text-center p-4 glass-card border border-border">
+                    <p class="text-foreground/60">No bills found on the contract.</p>
+                </div>`;
                 updateDashboardStats(bills);
                 return;
             }
@@ -632,24 +743,21 @@
             
             // Update Dashboard Stats (async logic inside)
             await updateDashboardStats(bills);
-
             // Render the bill cards
             billsListContainer.innerHTML = '';
-            
             if (bills.length === 0) {
-                 billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-muted-foreground">No recent bills found on the contract.</p></div>`;
-                 return;
+                 billsListContainer.innerHTML = `<div class="col-span-full text-center p-4 glass-card border border-border">
+                     <p class="text-foreground/60">No recent bills found on the contract.</p>
+                 </div>`;
+                return;
             }
             
             for (const bill of bills) {
                 const totalAmountUSD = weiToUsd(bill.totalAmount);
-                // The amount collected includes the creator's share once they pay it.
-                const collectedAmountUSD = weiToUsd(bill.collectedAmount); 
-                
+                const collectedAmountUSD = weiToUsd(bill.collectedAmount);
                 const statusText = bill.status == 0 ? 
-                    '<span class="text-red-500 font-bold">OPEN</span>' : 
-                    '<span class="text-green-500 font-bold">COMPLETE</span>';
-
+                    '<span class="text-red-400 font-bold flex items-center gap-1"><i class="fas fa-lock-open"></i> OPEN</span>' : 
+                    '<span class="text-green-400 font-bold flex items-center gap-1"><i class="fas fa-lock"></i> COMPLETE</span>';
                 const isCreator = bill.creator.toLowerCase() === currentAccount.toLowerCase();
                 const roleText = isCreator ? 'CREATOR' : 'PARTICIPANT';
                 
@@ -657,46 +765,44 @@
                 let participantShareDisplay = '';
                 
                 if (bill.status == 0) { // Bill is OPEN
-                    // Participant or Creator role logic
-                    
-                    // Use the new getter to find the share for ANY user
                     const requiredShareWei = await splitMateContract.methods.getParticipantShare(bill.id, currentAccount).call();
                     const requiredShareUSD = weiToUsd(requiredShareWei);
-                        
-                    // Check if the user is a registered participant and owes money (share > 0)
+                    
                     if (Number(requiredShareWei) > 0) {
-                        participantShareDisplay = `<p><strong>Your Share:</strong> <span class="text-red-500 font-bold">${formatUsd(requiredShareUSD)}</span></p>`;
-                        
+                        participantShareDisplay = `<p class="text-lg"><strong>Your Share:</strong> <span class="text-red-400 font-bold">${formatUsd(requiredShareUSD)}</span></p>`;
                         // Action button to pay
                         actionButton = `
                             <button onclick="handlePayShare(${bill.id}, '${bill.name}')" 
-                                class="w-full bg-secondary hover:bg-secondary/90 text-background font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md shadow-secondary/30 mt-4">
-                                Pay Your Share (${formatUsd(requiredShareUSD)})
+                                class="w-full bg-secondary hover:bg-secondary/90 text-background font-bold py-3 px-4 
+                                rounded-lg transition duration-300 shadow-md shadow-secondary/30 mt-4 transform hover:scale-[1.01]">
+                                <i class="fas fa-money-bill-wave mr-2"></i> Pay Your Share (${formatUsd(requiredShareUSD)})
                             </button>
                         `;
                     } else if (isCreator) {
-                        // Creator whose share is 0 (meaning they already paid, or total bill = 0)
-                        actionButton = `<p class="text-yellow-500 font-semibold mt-4">Awaiting payment from participants...</p>`;
+                        actionButton = `<p class="text-yellow-400 font-semibold mt-4 flex items-center gap-2"><i class="fas fa-hourglass-half"></i> Awaiting payment from participants...</p>`;
                     } else {
-                        // Participant whose share is 0 (meaning they already paid, or were not added)
-                        actionButton = `<p class="text-green-500 font-semibold mt-4">Your share is paid or not required.</p>`;
+                        actionButton = `<p class="text-green-400 font-semibold mt-4 flex items-center gap-2"><i class="fas fa-thumbs-up"></i> Your share is paid or not required.</p>`;
                     }
 
                 } else { // Bill is COMPLETE
-                    actionButton = `<p class="text-green-500 font-semibold mt-4">Bill is COMPLETE. Funds settled.</p>`;
+                    actionButton = `<p class="text-green-400 font-semibold mt-4 flex items-center gap-2"><i class="fas fa-check-double"></i> Bill is COMPLETE. Funds settled.</p>`;
                 }
 
                 // Render the bill card
                 const billCard = `
-                    <div class="bg-card p-6 rounded-xl shadow-lg border border-border space-y-3">
-                        <div class="flex justify-between items-center pb-2 border-b border-border">
-                            <h3 class="text-xl font-semibold text-primary">${bill.name} (ID: ${bill.id})</h3>
+                    <div class="glass-card p-6 rounded-xl shadow-xl border border-border space-y-3">
+                        <div class="flex justify-between items-center pb-3 border-b border-border/50">
+                            <h3 class="text-2xl font-bold text-primary">${bill.name} <span class="text-sm text-foreground/50 font-normal">(ID: ${bill.id})</span></h3>
                             ${statusText}
                         </div>
                         
-                        <p><strong>Your Role:</strong> <span class="text-primary">${roleText}</span></p>
-                        <p><strong>Total Bill:</strong> <span class="text-secondary">${formatUsd(totalAmountUSD)}</span></p>
-                        <p><strong>Collected:</strong> <span class="text-yellow-500">${formatUsd(collectedAmountUSD)}</span></p>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <p><strong>Role:</strong> <span class="text-primary font-medium">${roleText}</span></p>
+                            <p><strong>Merchant:</strong> <span class="font-mono text-foreground/70">${bill.merchant.slice(0, 6)}...${bill.merchant.slice(-4)}</span></p>
+                            <p><strong>Total:</strong> <span class="text-secondary font-bold">${formatUsd(totalAmountUSD)}</span></p>
+                            <p><strong>Collected:</strong> <span class="text-yellow-400 font-bold">${formatUsd(collectedAmountUSD)}</span></p>
+                        </div>
+                        
                         ${participantShareDisplay}
                         
                         ${actionButton}
@@ -707,7 +813,9 @@
 
         } catch (error) {
             console.error("Error loading bills:", error);
-            billsListContainer.innerHTML = `<div class="col-span-full text-center p-4"><p class="text-red-500">Error fetching bill data from blockchain. (Check MetaMask Network: Sepolia)</p></div>`;
+            billsListContainer.innerHTML = `<div class="col-span-full text-center p-4 glass-card border border-red-400/30">
+                <p class="text-red-400"><i class="fas fa-exclamation-triangle mr-2"></i> Error fetching bill data from blockchain. (Check MetaMask Network: Sepolia)</p>
+            </div>`;
         }
     }
 
@@ -733,7 +841,6 @@
             showStatusMessage("error", `Connection failed. Error: User rejected connection.`);
         }
     };
-    
     if (window.ethereum) {
         window.ethereum.on('accountsChanged', (newAccounts) => {
             currentAccount = newAccounts.length > 0 ? newAccounts[0] : null;
@@ -745,10 +852,34 @@
     // --- FORM LOGIC (UI for dynamic inputs) ---
     
     function updateSplitSummary() {
-        // NOTE: Dynamic split summary logic for 'Even Split' and 'Manual Split' should go here.
-        // Simplified for now:
+        const totalAmount = parseFloat(totalAmountInput.value) || 0;
+        const currentParticipantInputs = participantContainer.querySelectorAll('.participant-group');
+        const calculatedParticipantCount = currentParticipantInputs.length; 
+        
         splitSummary.classList.add('hidden');
         manualSummary.classList.add('hidden');
+        
+        if (splitTypeSelect.value === 'even' && totalAmount > 0 && calculatedParticipantCount > 0) {
+            const totalPeople = calculatedParticipantCount + 1; // Participants + Creator
+            const evenShare = totalAmount / totalPeople;
+            splitSummary.innerHTML = `<i class="fas fa-balance-scale-left mr-2"></i> Even Split: **${formatUsd(evenShare)}** per person (Total ${totalPeople} shares).`;
+            splitSummary.classList.remove('hidden');
+        } else if (splitTypeSelect.value === 'manual' && totalAmount > 0) {
+            let totalEntered = 0;
+            const amountInputs = participantContainer.querySelectorAll('input[name="participant-amount"]');
+            amountInputs.forEach(input => totalEntered += (parseFloat(input.value) || 0));
+            
+            const remaining = totalAmount - totalEntered;
+            
+            manualSummary.innerHTML = `<i class="fas fa-calculator mr-2"></i> Manual Split: Total Entered: **${formatUsd(totalEntered)}** / **${formatUsd(totalAmount)}**. Creator share: **${formatUsd(remaining)}**.`;
+            manualSummary.classList.remove('hidden');
+            
+            if (remaining < 0) {
+                manualSummary.classList.add('text-red-400', 'bg-red-800/20', 'border-red-400/30');
+            } else {
+                 manualSummary.classList.remove('text-red-400', 'bg-red-800/20', 'border-red-400/30');
+            }
+        }
     }
 
     function toggleSplitTypeFields() {
@@ -769,15 +900,24 @@
         const isManual = splitTypeSelect.value === 'manual';
         
         participantGroup.innerHTML = `
-            <input type="text" name="participant-address" placeholder="Participant ${participantCount} Address" required
-                class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50" />
-            <input type="number" name="participant-amount" step="0.01" placeholder="Share (USD, if Manual)" 
-                class="w-full p-3 rounded-lg bg-input border border-border text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary/50 split-manual-input" 
-                style="display:${isManual ? 'block' : 'none'}; flex-grow: 0.5;" ${isManual ? 'required' : ''}/>
-            <button type="button" onclick="this.parentElement.remove(); participantCount--; updateSplitSummary();" 
-                class="bg-red-500/20 text-red-500 hover:bg-red-500/30 text-sm font-semibold py-1 px-3 rounded-lg transition duration-300 ml-2">Remove</button>
+            <div class="address-input-wrapper">
+                <input type="text" name="participant-address" placeholder="Participant ${participantCount} Address (0x...)" required
+                    class="w-full p-4 rounded-xl bg-input border border-border text-foreground font-mono focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors" />
+                <i class="fas fa-user address-icon"></i>
+            </div>
+            <input type="number" name="participant-amount" step="0.01" placeholder="Share (USD)" 
+                class="p-4 rounded-xl bg-input border border-border text-foreground text-sm font-mono focus:ring-2 focus:ring-secondary 
+                focus:border-secondary transition-colors" 
+                style="display:${isManual ? 'block' : 'none'}; flex-grow: 0.5; min-width: 100px;"
+                ${isManual ? 'required' : ''} oninput="updateSplitSummary()"/>
+            <button type="button" onclick="this.parentElement.remove(); participantCount--; updateSplitSummary();"
+                class="bg-red-500/20 text-red-400 hover:bg-red-500/30 text-lg font-semibold w-10 h-10 flex items-center justify-center rounded-full transition duration-300">
+                <i class="fas fa-trash"></i>
+            </button>
         `;
         participantContainer.appendChild(participantGroup);
+        // Add listener to the new address input for immediate feedback (optional but good UX)
+        participantGroup.querySelector('input[name="participant-address"]').addEventListener('input', updateSplitSummary);
         updateSplitSummary(); // Recalculate summary
     }
 
@@ -785,16 +925,19 @@
     // --- FORM SUBMISSION LOGIC (Collective Payment) ---
     const handleBillSubmission = async (e) => {
         e.preventDefault();
-        
         if (!currentAccount) {
             showStatusMessage("error", "Please connect your wallet first.");
+            return;
+        }
+        if (!web3) {
+            showStatusMessage("error", "Web3 not initialized. Cannot validate addresses.");
             return;
         }
 
         // --- FORM DATA GATHERING AND VALIDATION ---
         const billName = document.getElementById('bill-name').value;
         const totalAmountUSD = parseFloat(totalAmountInput.value) || 0;
-        const merchantAddress = document.getElementById('merchant-address').value;
+        const merchantAddressInput = document.getElementById('merchant-address').value;
         const splitType = splitTypeSelect.value;
         
         const currentParticipantInputs = participantContainer.querySelectorAll('.participant-group');
@@ -805,13 +948,41 @@
             return;
         }
         
-        let participantAddresses = [];
-        let participantSharesUSD = []; 
+        // --- Merchant Address Resolution --- 
+        let resolvedMerchantAddress;
+        try {
+            resolvedMerchantAddress = resolveAddress(merchantAddressInput);
+        } catch (error) {
+            showStatusMessage("error", `❌ Merchant Address Error: ${error.message}`);
+            return;
+        }
+        
+        // --- Participant Address Resolution ---
+        let rawParticipantInputs = []; 
         const addressInputs = participantContainer.querySelectorAll('input[name="participant-address"]');
-        const amountInputs = participantContainer.querySelectorAll('input[name="participant-amount"]');
-        addressInputs.forEach(input => participantAddresses.push(input.value));
+        addressInputs.forEach(input => rawParticipantInputs.push(input.value));
 
-        // --- Calculate Shares ---
+        let resolvedParticipants = [];
+        let resolutionFailed = false;
+
+        for (let i = 0; i < rawParticipantInputs.length; i++) {
+            try {
+                const resolved = resolveAddress(rawParticipantInputs[i]);
+                resolvedParticipants.push(resolved);
+            } catch (error) {
+                showStatusMessage("error", `❌ Participant ${i + 1} Address Error: ${error.message}`);
+                resolutionFailed = true;
+                break;
+            }
+        }
+
+        if (resolutionFailed) return; 
+        
+        
+        // --- Calculate Shares (Same as before) ---
+        let participantSharesUSD = []; 
+        const amountInputs = participantContainer.querySelectorAll('input[name="participant-amount"]');
+        
         if (splitType === 'even') {
             const totalPeople = calculatedParticipantCount + 1; // Participants + Creator
             const evenShare = totalAmountUSD / totalPeople;
@@ -826,61 +997,56 @@
         const creatorShareUSD = totalAmountUSD - totalParticipantShares;
         
         if (creatorShareUSD < 0) {
-            showStatusMessage("error", `Total participant shares ($${totalParticipantShares.toFixed(2)}) exceed the total bill amount ($${totalAmountUSD.toFixed(2)}).`);
+            showStatusMessage("error", `<i class="fas fa-exclamation-triangle mr-2"></i> Total participant shares (${formatUsd(totalParticipantShares)}) exceed the total bill amount (${formatUsd(totalAmountUSD)}).`);
             return;
         }
         
-        // --- CRITICAL FIXES FOR REVERT ---
+        // --- Finalize Arrays for Contract Call ---
         // 1. ADD CREATOR AS LAST PARTICIPANT AND THEIR SHARE
-        participantAddresses.push(currentAccount);
+        const finalParticipantAddresses = [...resolvedParticipants, currentAccount]; 
         participantSharesUSD.push(creatorShareUSD); 
         
-        // 2. VALUE SENT WITH TRANSACTION IS NOW 0 (Contract requires creator to pay their share later via payShare)
-        const valueToSend = web3.utils.toWei('0', 'ether'); 
-
-        showStatusMessage("loading", `Initiating Collective Payment: Sending 0 ETH to create bill escrow... Awaiting MetaMask approval...`);
-
+        // 2. VALUE SENT WITH TRANSACTION IS NOW 0 
+        const valueToSend = web3.utils.toWei('0', 'ether');
+        showStatusMessage("loading", `<i class="fas fa-hourglass-half mr-2"></i> Initiating Collective Payment: Sending 0 ETH to create bill escrow... Awaiting MetaMask approval...`);
         try {
             submitBillButton.disabled = true;
-            
             const splitMateContract = new web3.eth.Contract(CONTRACT_ABI, SPLITMATE_CONTRACT_ADDRESS);
 
-            // Convert all participant shares (including creator's last) to truncated Wei strings
             const participantSharesWEI = participantSharesUSD.map(toWeiString);
-
-            // Convert total amount to truncated Wei string
             const totalAmountWei = toWeiString(totalAmountUSD);
-
+            
             const result = await splitMateContract.methods.createBill(
                 billName, 
                 totalAmountWei,
-                merchantAddress,
-                participantAddresses, 
+                resolvedMerchantAddress, 
+                finalParticipantAddresses, 
                 participantSharesWEI
             ).send({ 
                 from: currentAccount,
-                value: valueToSend // Now 0 Wei is sent
+                value: valueToSend 
             });
-
             // 1. Show Success Message
-            showStatusMessage("success", `Collective Bill Created! Tx Hash: ${result.transactionHash.slice(0, 8)}...${result.transactionHash.slice(-8)}. **REMINDER: You must pay your own share now!**`);
-            
+            showStatusMessage("success", `<i class="fas fa-trophy mr-2"></i> **Success!** Collective Bill Created! Tx Hash: ${result.transactionHash.slice(0, 8)}...${result.transactionHash.slice(-8)}. **REMINDER: You must pay your own share now!**`);
             // 2. Create and Append the View Status Button
             const viewButton = document.createElement('button');
-            viewButton.textContent = 'View Bill Status';
-            viewButton.className = 'w-full mt-4 bg-primary hover:bg-primary/90 text-background font-semibold py-3 px-4 rounded-lg transition duration-300 shadow-md shadow-primary/30';
+            viewButton.textContent = 'View Bill Status & Pay Share';
+            viewButton.className = 'w-full mt-4 bg-primary hover:bg-primary/90 text-background font-bold py-3 px-4 rounded-xl transition duration-300 shadow-lg shadow-primary/30 transform hover:scale-[1.01]';
             viewButton.onclick = () => {
-                navigate('#dashboard'); 
-                loadUserBills(); // Load the new bill details immediately
+                navigate('#dashboard');
+                loadUserBills(); 
             };
-            
             billStatusMessage.appendChild(viewButton); 
 
             billForm.reset();
+            // Clear participant fields after successful submission
+            participantContainer.innerHTML = '';
+            participantCount = 0;
+            updateSplitSummary();
             
         } catch (error) {
             console.error("Transaction Error:", error);
-            showStatusMessage("error", `Transaction failed. Error: ${error.message.substring(0, 80) || "User rejected transaction or contract call failed."}`);
+            showStatusMessage("error", `<i class="fas fa-skull-crossbones mr-2"></i> Transaction failed. ${error.message.substring(0, 80) || "User rejected transaction or contract call failed."}`);
         } finally {
              submitBillButton.disabled = false;
         }
@@ -891,12 +1057,12 @@
         Object.values(sections).forEach(section => {
             if(section) section.classList.add('hidden');
         });
-
         const target = sections[hash.replace('#', '')];
         if (target) {
             target.classList.remove('hidden');
             navLinks.forEach(link => {
-                if (link.getAttribute('href') === hash) {
+                const linkHash = link.getAttribute('href');
+                if (linkHash === hash) {
                     link.classList.remove('text-foreground');
                     link.classList.add('text-primary');
                 } else {
@@ -935,7 +1101,7 @@
         // Passive Auto-Connect Check
         if (window.ethereum) {
             // Re-initialize web3 globally for passive check
-            web3 = new Web3(window.ethereum); 
+            web3 = new Web3(window.ethereum);
             try {
                 const accounts = await web3.eth.getAccounts();
                 if (accounts.length > 0) {
@@ -947,6 +1113,12 @@
                 console.warn("Could not auto-connect, user interaction required.");
             }
         }
+        
+        // Initial setup for form
+        updateSplitSummary();
+        toggleSplitTypeFields();
 
     });
 </script>
+</body>
+</html>
