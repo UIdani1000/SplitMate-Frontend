@@ -47,21 +47,14 @@
              transform: translateY(-2px);
              box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
         }
-        /* Participant input group for flex layout */
-        .participant-group { 
-            display: flex; 
-            align-items: center; 
-            gap: 0.5rem; 
-            margin-bottom: 1rem;
-        }
-        .participant-group input { 
-            flex-grow: 1; 
-            padding-right: 2.5rem !important; /* Space for the icon */
-        }
         /* Style for the address icon */
         .address-input-wrapper {
             position: relative;
             flex-grow: 1;
+        }
+        /* IMPORTANT: Adjusted padding-right here to work with new p-3 on inputs */
+        .address-input-wrapper input {
+             padding-right: 2.5rem !important; 
         }
         .address-icon {
             position: absolute;
@@ -85,22 +78,49 @@
     </style>
 </head>
 <body class="bg-background min-h-screen text-foreground antialiased overflow-x-hidden">
+<div id="mobile-menu" class="fixed inset-0 z-50 bg-background/95 backdrop-blur-lg hidden md:hidden">
+    <div class="flex flex-col h-full p-6">
+        <div class="flex justify-between items-center pb-6 border-b border-border/50">
+            <a href="#dashboard" class="text-3xl font-extrabold text-primary flex items-center gap-2">
+                <i class="fas fa-wallet"></i> SplitMate
+            </a>
+            <button id="mobile-menu-close" class="text-4xl text-foreground hover:text-red-400 transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <nav class="flex flex-col space-y-6 mt-10 text-xl font-medium">
+            <a href="#dashboard" class="text-primary hover:text-secondary transition-colors py-2" onclick="document.getElementById('mobile-menu').classList.add('hidden')">Dashboard</a>
+            <a href="#create-bill" class="text-foreground hover:text-secondary transition-colors py-2" onclick="document.getElementById('mobile-menu').classList.add('hidden')">Create Bill</a>
+            <a href="#profile" class="text-foreground hover:text-secondary transition-colors py-2" onclick="document.getElementById('mobile-menu').classList.add('hidden')">ID Guide</a> 
+            <a href="#leaderboard" class="text-foreground hover:text-secondary transition-colors py-2" onclick="document.getElementById('mobile-menu').classList.add('hidden')">Leaderboard</a>
+        </nav>
+    </div>
+</div>
+
 <div class="container mx-auto px-4 sm:px-6 lg:px-8">
 
     <header class="flex items-center justify-between py-6 border-b border-border/50">
         <a href="#dashboard" class="text-3xl font-extrabold text-primary flex items-center gap-2">
             <i class="fas fa-wallet"></i> SplitMate
         </a>
-        <nav class="hidden sm:flex space-x-8 text-base font-medium">
+        <nav class="hidden md:flex space-x-8 text-base font-medium">
             <a href="#dashboard" class="text-primary hover:text-secondary transition-colors">Dashboard</a>
             <a href="#create-bill" class="text-foreground hover:text-secondary transition-colors">Create Bill</a>
             <a href="#profile" class="text-foreground hover:text-secondary transition-colors">ID Guide</a> 
             <a href="#leaderboard" class="text-foreground hover:text-secondary transition-colors">Leaderboard</a>
         </nav>
-        <button id="connect-wallet-btn"
-            class="bg-primary hover:bg-primary/90 text-background font-bold py-2.5 px-6 rounded-xl transition duration-300 shadow-xl shadow-primary/30 transform hover:scale-[1.02]">
-            Connect Wallet
-        </button>
+        
+        <div class="flex items-center space-x-3">
+            <button id="connect-wallet-btn"
+                class="bg-primary hover:bg-primary/90 text-background font-bold py-2.5 px-6 rounded-xl transition duration-300 shadow-xl shadow-primary/30 transform hover:scale-[1.02] text-sm md:text-base">
+                Connect Wallet
+            </button>
+            
+            <button id="mobile-menu-toggle" class="md:hidden text-2xl text-foreground hover:text-secondary transition-colors p-2 rounded-lg">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
     </header>
 
     <main class="py-12">
@@ -126,7 +146,7 @@
             </div>
 
             <h2 class="text-2xl font-semibold mb-6 text-primary border-b border-border/50 pb-3">Recent Bills</h2>
-            <div id="bills-list" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div id="bills-list" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="col-span-full glass-card p-6 rounded-xl shadow-lg border border-border min-h-20 flex items-center justify-center">
                     <p class="text-foreground/60 text-center" id="bills-list-message">
                         <i class="fas fa-exclamation-circle mr-2"></i> Please connect your wallet to view your bills.
@@ -145,7 +165,7 @@
                     <div>
                         <label for="bill-name" class="block text-sm font-medium text-primary mb-2">Bill Name</label>
                         <input type="text" id="bill-name" required
-                            class="w-full p-4 rounded-xl bg-input border border-border text-foreground focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors"
+                            class="w-full p-3 rounded-xl bg-input border border-border text-foreground focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors"
                             placeholder="Dinner at the Bar">
                     </div>
                 
@@ -153,7 +173,7 @@
                         <label for="total-amount" class="block text-sm font-medium text-primary mb-2">Total Amount (USD)</label>
                         <div class="relative">
                             <input type="number" id="total-amount" step="0.01" required
-                                class="w-full p-4 pl-10 rounded-xl bg-input border border-border text-foreground text-lg font-mono focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors"
+                                class="w-full p-3 pl-10 rounded-xl bg-input border border-border text-foreground text-lg font-mono focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors"
                                 placeholder="100.00">
                             <i class="fas fa-dollar-sign address-icon" style="right: auto; left: 0.75rem;"></i>
                         </div>
@@ -163,7 +183,7 @@
                         <label for="merchant-address" class="block text-sm font-medium text-primary mb-2">Merchant Wallet Address (Final Receiver)</label>
                         <div class="address-input-wrapper">
                             <input type="text" id="merchant-address" required
-                                class="w-full p-4 rounded-xl bg-input border border-border text-foreground font-mono focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors"
+                                class="w-full p-3 rounded-xl bg-input border border-border text-foreground font-mono focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors"
                                 placeholder="0x... (Must be a 0x Ethereum Address)">
                             <i class="fas fa-building address-icon"></i>
                         </div>
@@ -172,7 +192,7 @@
                     <div class="pt-4 border-t border-border/50">
                         <label for="split-type" class="block text-sm font-medium text-primary mb-2">Split Type</label>
                         <select id="split-type"
-                            class="w-full p-4 rounded-xl bg-input border border-border text-foreground focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors appearance-none">
+                            class="w-full p-3 rounded-xl bg-input border border-border text-foreground focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors appearance-none">
                             <option value="even">Even Split</option>
                             <option value="manual">Manual Split (Enter amounts below)</option>
                         </select>
@@ -853,7 +873,7 @@
     
     function updateSplitSummary() {
         const totalAmount = parseFloat(totalAmountInput.value) || 0;
-        const currentParticipantInputs = participantContainer.querySelectorAll('.participant-group');
+        const currentParticipantInputs = participantContainer.querySelectorAll('.address-input-wrapper');
         const calculatedParticipantCount = currentParticipantInputs.length; 
         
         splitSummary.classList.add('hidden');
@@ -892,26 +912,28 @@
         updateSplitSummary();
     }
 
+    // --- UI TWERK: Updated addParticipantField for responsiveness ---
     function addParticipantField() {
         participantCount++;
         const participantGroup = document.createElement('div');
-        participantGroup.className = 'participant-group';
+        // New responsive classes: Stack on mobile (flex-col), row on medium screens (md:flex-row)
+        participantGroup.className = 'flex flex-col md:flex-row items-center gap-3 mb-4 p-4 bg-input/50 rounded-lg border border-border';
         
         const isManual = splitTypeSelect.value === 'manual';
         
         participantGroup.innerHTML = `
-            <div class="address-input-wrapper">
+            <div class="address-input-wrapper w-full md:flex-1">
                 <input type="text" name="participant-address" placeholder="Participant ${participantCount} Address (0x...)" required
-                    class="w-full p-4 rounded-xl bg-input border border-border text-foreground font-mono focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors" />
+                    class="w-full p-3 rounded-xl bg-background border border-border text-foreground font-mono focus:ring-2 focus:ring-secondary focus:border-secondary transition-colors" />
                 <i class="fas fa-user address-icon"></i>
             </div>
             <input type="number" name="participant-amount" step="0.01" placeholder="Share (USD)" 
-                class="p-4 rounded-xl bg-input border border-border text-foreground text-sm font-mono focus:ring-2 focus:ring-secondary 
+                class="w-full md:w-40 p-3 rounded-xl bg-background border border-border text-foreground text-sm font-mono focus:ring-2 focus:ring-secondary 
                 focus:border-secondary transition-colors" 
-                style="display:${isManual ? 'block' : 'none'}; flex-grow: 0.5; min-width: 100px;"
+                style="display:${isManual ? 'block' : 'none'};"
                 ${isManual ? 'required' : ''} oninput="updateSplitSummary()"/>
             <button type="button" onclick="this.parentElement.remove(); participantCount--; updateSplitSummary();"
-                class="bg-red-500/20 text-red-400 hover:bg-red-500/30 text-lg font-semibold w-10 h-10 flex items-center justify-center rounded-full transition duration-300">
+                class="bg-red-500/20 text-red-400 hover:bg-red-500/30 text-lg font-semibold w-10 h-10 flex items-center justify-center rounded-full transition duration-300 flex-shrink-0 mt-2 md:mt-0">
                 <i class="fas fa-trash"></i>
             </button>
         `;
@@ -940,7 +962,7 @@
         const merchantAddressInput = document.getElementById('merchant-address').value;
         const splitType = splitTypeSelect.value;
         
-        const currentParticipantInputs = participantContainer.querySelectorAll('.participant-group');
+        const currentParticipantInputs = participantContainer.querySelectorAll('.address-input-wrapper');
         const calculatedParticipantCount = currentParticipantInputs.length; 
         
         if (totalAmountUSD <= 0 || calculatedParticipantCount < 1) {
@@ -1072,7 +1094,17 @@
             });
         }
     }
+    
+    // --- UI TWERK: MOBILE NAVIGATION LOGIC ---
+    const mobileMenu = document.getElementById('mobile-menu');
+    const mobileToggle = document.getElementById('mobile-menu-toggle');
+    const mobileClose = document.getElementById('mobile-menu-close');
 
+    function toggleMobileMenu() {
+        mobileMenu.classList.toggle('hidden');
+        // Prevent background scrolling when menu is open
+        document.body.classList.toggle('overflow-hidden');
+    }
 
     // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', async () => {
@@ -1082,6 +1114,15 @@
         splitTypeSelect.addEventListener('change', toggleSplitTypeFields);
         totalAmountInput.addEventListener('input', updateSplitSummary);
         billForm.addEventListener('submit', handleBillSubmission);
+        
+        // Mobile navigation listeners
+        if (mobileToggle) mobileToggle.addEventListener('click', toggleMobileMenu);
+        if (mobileClose) mobileClose.addEventListener('click', toggleMobileMenu);
+        // Add event listeners to mobile menu links to close the menu
+        document.querySelectorAll('#mobile-menu a').forEach(link => {
+            link.addEventListener('click', toggleMobileMenu);
+        });
+
 
         // Navigation setup
         navLinks.forEach(link => {
