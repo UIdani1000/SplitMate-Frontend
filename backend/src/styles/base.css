@@ -1,0 +1,245 @@
+/* ================================================
+   SplitMate UI Core Styles (Improved Base)
+   ================================================ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --------------------------------
+   Global Theme & Base Settings
+-------------------------------- */
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  @apply bg-bg text-text-primary font-sans antialiased min-h-screen;
+}
+
+/* --------------------------------
+   Layout Utilities
+-------------------------------- */
+.app-bg {
+  background:
+    radial-gradient(800px 400px at 20% 0%, rgba(153,69,255,.08), transparent 60%),
+    radial-gradient(600px 300px at 80% 10%, rgba(0,255,179,.06), transparent 55%);
+}
+
+/* Smooth scroll for internal navigation */
+html {
+  scroll-behavior: smooth;
+}
+
+/* --------------------------------
+   Typography
+-------------------------------- */
+h1, h2, h3, h4, h5, h6 {
+  @apply font-display text-text-primary;
+}
+
+p {
+  @apply text-text-primary/90 leading-relaxed;
+}
+
+.text-muted {
+  @apply text-text-muted;
+}
+
+/* --------------------------------
+   Card Styles (Glass + Glow)
+-------------------------------- */
+.card {
+  @apply bg-card/80 backdrop-blur-md border border-white/5 rounded-2xl shadow-inset transition duration-300;
+}
+
+.card:hover {
+  @apply border-white/10 shadow-[0_0_12px_rgba(153,69,255,0.15)];
+}
+
+/* Special card for glowing stat cards */
+.stat-card {
+  @apply bg-gradient-to-b from-white/5 to-transparent border border-white/10 rounded-2xl backdrop-blur-md p-6 transition;
+}
+
+.stat-card:hover {
+  @apply border-brand-purple/20 shadow-[0_0_18px_rgba(153,69,255,0.25)];
+}
+
+/* --------------------------------
+   Buttons
+-------------------------------- */
+.btn {
+  @apply inline-flex items-center justify-center rounded-2xl px-4 py-2 font-medium transition;
+}
+
+.btn-primary {
+  @apply bg-brand-purple text-white shadow-glow hover:bg-brand-purple/90 focus:ring-2 focus:ring-brand-purple/40;
+}
+
+.btn-secondary {
+  @apply bg-white/5 text-text-primary hover:bg-white/10 focus:ring-2 focus:ring-white/10;
+}
+
+.btn-success {
+  @apply bg-success/20 text-success hover:bg-success/30;
+}
+
+.btn-danger {
+  @apply bg-danger/20 text-danger hover:bg-danger/30;
+}
+
+/* Button glow for wallet connect etc. */
+.btn-glow {
+  box-shadow: 0 0 12px rgba(153, 69, 255, 0.35);
+}
+
+/* --------------------------------
+   Inputs & Form Fields
+-------------------------------- */
+.input {
+  @apply bg-white/5 border border-white/10 rounded-2xl px-4 py-2 outline-none transition;
+  @apply focus:ring-2 focus:ring-brand-purple/30;
+}
+
+.input:disabled {
+  @apply opacity-60 cursor-not-allowed;
+}
+
+textarea.input {
+  @apply resize-none;
+}
+
+/* --------------------------------
+   Badges & Pills
+-------------------------------- */
+.badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-white/10 text-text-primary;
+}
+
+.badge-success {
+  @apply bg-success/20 text-success;
+}
+
+.badge-danger {
+  @apply bg-danger/20 text-danger;
+}
+
+.badge-purple {
+  @apply bg-brand-purple/20 text-brand-purple;
+}
+
+/* --------------------------------
+   Tables (Recent Bills Section)
+-------------------------------- */
+.table {
+  @apply w-full border-collapse text-left text-sm;
+}
+
+.table th {
+  @apply text-text-muted font-semibold uppercase border-b border-white/10 pb-2;
+}
+
+.table td {
+  @apply border-b border-white/5 py-3;
+}
+
+.table-row {
+  @apply hover:bg-white/5 transition;
+}
+
+/* --------------------------------
+   Toasts & Modals
+-------------------------------- */
+.toast {
+  @apply fixed bottom-6 right-6 rounded-2xl px-4 py-3 shadow-glow border;
+}
+
+.toast-success {
+  @apply bg-success/20 text-success border-success/30;
+}
+
+.toast-error {
+  @apply bg-danger/20 text-danger border-danger/30;
+}
+
+.toast-info {
+  @apply bg-brand-purple/20 text-brand-purple border-brand-purple/30;
+}
+
+/* Modal overlay & card */
+.modal-overlay {
+  @apply fixed inset-0 bg-black/60 grid place-items-center z-50;
+}
+
+.modal-card {
+  @apply card max-w-md w-full p-6 border border-white/10;
+}
+
+/* --------------------------------
+   Navbar & Header
+-------------------------------- */
+.navbar {
+  @apply sticky top-0 z-40 flex items-center justify-between border-b border-white/10 bg-bg/80 backdrop-blur-lg px-8 py-5;
+}
+
+.nav-link {
+  @apply text-text-muted text-sm font-medium transition;
+}
+
+.nav-link:hover {
+  @apply text-text-primary;
+}
+
+.nav-link-active {
+  @apply text-brand-purple;
+}
+
+/* --------------------------------
+   Gradients & Shadows (tokens)
+-------------------------------- */
+.shadow-glow {
+  box-shadow: 0 0 18px rgba(153,69,255,0.35);
+}
+
+.shadow-inset {
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.35);
+}
+
+.glass {
+  @apply backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl;
+}
+
+/* --------------------------------
+   Animations
+-------------------------------- */
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 0 0 rgba(153,69,255,0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(153,69,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(153,69,255,0); }
+}
+
+.animate-pulse-border {
+  animation: pulse-border 1.5s infinite;
+}
+
+/* --------------------------------
+   Scrollbar Customization
+-------------------------------- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0E0717;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(153,69,255,0.4);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(153,69,255,0.6);
+}
