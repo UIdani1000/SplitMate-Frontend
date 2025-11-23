@@ -1,245 +1,190 @@
 /* ================================================
-   SplitMate UI Core Styles (Improved Base)
+   SplitMate UI Core Styles (Improved Base + Shell)
    ================================================ */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* --------------------------------
+/* ------------------------------
    Global Theme & Base Settings
--------------------------------- */
-:root {
-  color-scheme: dark;
-}
+------------------------------ */
+:root { color-scheme: dark; }
 
 html, body {
   @apply bg-bg text-text-primary font-sans antialiased min-h-screen;
 }
 
-/* --------------------------------
-   Layout Utilities
--------------------------------- */
+/* Smooth scroll for internal navigation */
+html { scroll-behavior: smooth; }
+
+/* ------------------------------
+   Background Accent
+------------------------------ */
 .app-bg {
   background:
     radial-gradient(800px 400px at 20% 0%, rgba(153,69,255,.08), transparent 60%),
     radial-gradient(600px 300px at 80% 10%, rgba(0,255,179,.06), transparent 55%);
 }
 
-/* Smooth scroll for internal navigation */
-html {
-  scroll-behavior: smooth;
-}
-
-/* --------------------------------
+/* ------------------------------
    Typography
--------------------------------- */
-h1, h2, h3, h4, h5, h6 {
-  @apply font-display text-text-primary;
-}
+------------------------------ */
+h1, h2, h3, h4, h5, h6 { @apply font-display text-text-primary; }
+p { @apply text-text-primary/90 leading-relaxed; }
+.text-muted { @apply text-text-muted; }
 
-p {
-  @apply text-text-primary/90 leading-relaxed;
-}
+/* ------------------------------
+   Cards (Glass + Glow)
+------------------------------ */
+.card { @apply bg-card/80 backdrop-blur-md border border-white/5 rounded-2xl shadow-inset transition duration-300; }
+.card:hover { @apply border-white/10 shadow-[0_0_12px_rgba(153,69,255,0.15)]; }
 
-.text-muted {
-  @apply text-text-muted;
-}
+.stat-card { @apply bg-gradient-to-b from-white/5 to-transparent border border-white/10 rounded-2xl backdrop-blur-md p-6 transition; }
+.stat-card:hover { @apply border-brand-purple/20 shadow-[0_0_18px_rgba(153,69,255,0.25)]; }
 
-/* --------------------------------
-   Card Styles (Glass + Glow)
--------------------------------- */
-.card {
-  @apply bg-card/80 backdrop-blur-md border border-white/5 rounded-2xl shadow-inset transition duration-300;
-}
-
-.card:hover {
-  @apply border-white/10 shadow-[0_0_12px_rgba(153,69,255,0.15)];
-}
-
-/* Special card for glowing stat cards */
-.stat-card {
-  @apply bg-gradient-to-b from-white/5 to-transparent border border-white/10 rounded-2xl backdrop-blur-md p-6 transition;
-}
-
-.stat-card:hover {
-  @apply border-brand-purple/20 shadow-[0_0_18px_rgba(153,69,255,0.25)];
-}
-
-/* --------------------------------
+/* ------------------------------
    Buttons
--------------------------------- */
-.btn {
-  @apply inline-flex items-center justify-center rounded-2xl px-4 py-2 font-medium transition;
-}
+------------------------------ */
+.btn { @apply inline-flex items-center justify-center rounded-2xl px-4 py-2 font-medium transition; }
+.btn-primary { @apply bg-brand-purple text-white shadow-glow hover:bg-brand-purple/90 focus:ring-2 focus:ring-brand-purple/40; }
+.btn-secondary { @apply bg-white/5 text-text-primary hover:bg-white/10 focus:ring-2 focus:ring-white/10; }
+.btn-success { @apply bg-success/20 text-success hover:bg-success/30; }
+.btn-danger { @apply bg-danger/20 text-danger hover:bg-danger/30; }
+.btn-glow { box-shadow: 0 0 12px rgba(153, 69, 255, 0.35); }
 
-.btn-primary {
-  @apply bg-brand-purple text-white shadow-glow hover:bg-brand-purple/90 focus:ring-2 focus:ring-brand-purple/40;
-}
+/* Icon-only buttons */
+.icon-btn { @apply inline-flex items-center justify-center rounded-xl p-2 bg-white/5 hover:bg-white/10 transition; }
 
-.btn-secondary {
-  @apply bg-white/5 text-text-primary hover:bg-white/10 focus:ring-2 focus:ring-white/10;
-}
-
-.btn-success {
-  @apply bg-success/20 text-success hover:bg-success/30;
-}
-
-.btn-danger {
-  @apply bg-danger/20 text-danger hover:bg-danger/30;
-}
-
-/* Button glow for wallet connect etc. */
-.btn-glow {
-  box-shadow: 0 0 12px rgba(153, 69, 255, 0.35);
-}
-
-/* --------------------------------
+/* ------------------------------
    Inputs & Form Fields
--------------------------------- */
-.input {
-  @apply bg-white/5 border border-white/10 rounded-2xl px-4 py-2 outline-none transition;
-  @apply focus:ring-2 focus:ring-brand-purple/30;
-}
+------------------------------ */
+.input { @apply bg-white/5 border border-white/10 rounded-2xl px-4 py-2 outline-none transition focus:ring-2 focus:ring-brand-purple/30; }
+.input:disabled { @apply opacity-60 cursor-not-allowed; }
+textarea.input { @apply resize-none; }
 
-.input:disabled {
-  @apply opacity-60 cursor-not-allowed;
-}
-
-textarea.input {
-  @apply resize-none;
-}
-
-/* --------------------------------
+/* ------------------------------
    Badges & Pills
--------------------------------- */
-.badge {
-  @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-white/10 text-text-primary;
-}
+------------------------------ */
+.badge { @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-white/10 text-text-primary; }
+.badge-success { @apply bg-success/20 text-success; }
+.badge-danger  { @apply bg-danger/20  text-danger; }
+.badge-purple  { @apply bg-brand-purple/20 text-brand-purple; }
 
-.badge-success {
-  @apply bg-success/20 text-success;
-}
+/* Network badge */
+.badge-network { @apply inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border; }
+.badge-demo  { @apply badge-network border-yellow-400/30 text-yellow-300 bg-yellow-400/10; }
+.badge-main  { @apply badge-network border-brand-purple/30 text-brand-purple bg-brand-purple/15; }
 
-.badge-danger {
-  @apply bg-danger/20 text-danger;
-}
+/* Pills (for Chain/Token selectors) */
+.pill { @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 hover:bg-white/10 transition; }
+.pill-active { @apply bg-brand-purple/20 text-brand-purple; }
 
-.badge-purple {
-  @apply bg-brand-purple/20 text-brand-purple;
-}
-
-/* --------------------------------
+/* ------------------------------
    Tables (Recent Bills Section)
--------------------------------- */
-.table {
-  @apply w-full border-collapse text-left text-sm;
-}
+------------------------------ */
+.table { @apply w-full border-collapse text-left text-sm; }
+.table th { @apply text-text-muted font-semibold uppercase border-b border-white/10 pb-2; }
+.table td { @apply border-b border-white/5 py-3; }
+.table-row { @apply hover:bg-white/5 transition; }
 
-.table th {
-  @apply text-text-muted font-semibold uppercase border-b border-white/10 pb-2;
-}
-
-.table td {
-  @apply border-b border-white/5 py-3;
-}
-
-.table-row {
-  @apply hover:bg-white/5 transition;
-}
-
-/* --------------------------------
+/* ------------------------------
    Toasts & Modals
--------------------------------- */
-.toast {
-  @apply fixed bottom-6 right-6 rounded-2xl px-4 py-3 shadow-glow border;
-}
+------------------------------ */
+.toast { @apply fixed bottom-6 right-6 rounded-2xl px-4 py-3 shadow-glow border; }
+.toast-success { @apply bg-success/20 text-success border-success/30; }
+.toast-error { @apply bg-danger/20 text-danger border-danger/30; }
+.toast-info { @apply bg-brand-purple/20 text-brand-purple border-brand-purple/30; }
+.toast-top { @apply fixed top-4 right-6; }
 
-.toast-success {
-  @apply bg-success/20 text-success border-success/30;
-}
+/* Modal base (z-index higher than drawer) */
+.modal-overlay { @apply fixed inset-0 bg-black/60 grid place-items-center; z-index: 100; cursor: pointer; }
+.modal-card    { @apply card max-w-md w-full p-6 border border-white/10; pointer-events: auto; cursor: default; }
 
-.toast-error {
-  @apply bg-danger/20 text-danger border-danger/30;
-}
+/* Confirm dialog */
+.confirm-overlay { @apply modal-overlay; }
+.confirm-card { @apply modal-card; }
+.confirm-actions { @apply mt-6 flex justify-end gap-2; }
 
-.toast-info {
-  @apply bg-brand-purple/20 text-brand-purple border-brand-purple/30;
-}
+/* Error boundary */
+.error-overlay { @apply fixed inset-0 bg-black/80 grid place-items-center; z-index: 90; }
+.error-card { @apply card max-w-xl w-full p-6 border border-danger/30; }
 
-/* Modal overlay & card */
-.modal-overlay {
-  @apply fixed inset-0 bg-black/60 grid place-items-center z-50;
-}
+/* ------------------------------
+   Navbar & App Shell
+------------------------------ */
+.app-shell   { @apply sticky top-0 z-70 w-full bg-bg/80 backdrop-blur-lg border-b border-white/10; }
+.shell-inner { @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4; }
 
-.modal-card {
-  @apply card max-w-md w-full p-6 border border-white/10;
-}
+.shell-left   { @apply flex items-center gap-3; }
+.shell-logo   { @apply text-2xl font-extrabold text-brand-purple flex items-center gap-2; }
+.shell-center { @apply hidden md:flex items-center gap-2; }
+.shell-right  { @apply flex items-center gap-2; }
+.shell-controls { @apply flex items-center gap-2; }
 
-/* --------------------------------
-   Navbar & Header
--------------------------------- */
-.navbar {
-  @apply sticky top-0 z-40 flex items-center justify-between border-b border-white/10 bg-bg/80 backdrop-blur-lg px-8 py-5;
+/* ------------------------------
+   Dropdowns
+------------------------------ */
+.dropdown { @apply relative inline-block; }
+.dropdown-trigger { @apply pill cursor-pointer; }
+.dropdown-menu {
+  @apply absolute right-0 mt-2 w-48 rounded-2xl bg-card/95 backdrop-blur-md border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.35)] p-1 z-80 hidden;
 }
+.dropdown.open .dropdown-menu { @apply block; }
+.dropdown-item { @apply flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-text-primary/90 hover:bg-white/10 cursor-pointer; }
+.dropdown-item.active { @apply bg-brand-purple/20 text-brand-purple; }
 
-.nav-link {
-  @apply text-text-muted text-sm font-medium transition;
-}
+/* ------------------------------
+   Drawer (Mobile Menu)
+------------------------------ */
+.drawer-overlay { @apply fixed inset-0 bg-black/50 backdrop-blur-sm hidden; z-index: 80; }
+.drawer-panel   { @apply fixed top-0 right-0 h-full w-[85%] max-w-sm bg-bg border-l border-white/10 z-90 transform translate-x-full transition-transform; }
 
-.nav-link:hover {
-  @apply text-text-primary;
-}
+/* Body toggles drawer */
+body.drawer-open .drawer-overlay { display: block !important; }
+body.drawer-open .drawer-panel   { transform: translateX(0) !important; }
 
-.nav-link-active {
-  @apply text-brand-purple;
-}
-
-/* --------------------------------
+/* ------------------------------
    Gradients & Shadows (tokens)
--------------------------------- */
-.shadow-glow {
-  box-shadow: 0 0 18px rgba(153,69,255,0.35);
-}
+------------------------------ */
+.shadow-glow  { box-shadow: 0 0 18px rgba(153,69,255,0.35); }
+.shadow-inset { box-shadow: inset 0 0 8px rgba(0,0,0,0.35); }
+.glass { @apply backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl; }
 
-.shadow-inset {
-  box-shadow: inset 0 0 8px rgba(0,0,0,0.35);
-}
-
-.glass {
-  @apply backdrop-blur-md bg-white/5 border border-white/10 rounded-2xl;
-}
-
-/* --------------------------------
+/* ------------------------------
    Animations
--------------------------------- */
+------------------------------ */
 @keyframes pulse-border {
   0% { box-shadow: 0 0 0 0 rgba(153,69,255,0.4); }
   70% { box-shadow: 0 0 0 10px rgba(153,69,255,0); }
-  100% { box-shadow: 0 0 0 0 rgba(153,69,255,0); }
+  100%{ box-shadow: 0 0 0 0 rgba(153,69,255,0); }
 }
+.animate-pulse-border { animation: pulse-border 1.5s infinite; }
 
-.animate-pulse-border {
-  animation: pulse-border 1.5s infinite;
-}
-
-/* --------------------------------
+/* ------------------------------
    Scrollbar Customization
--------------------------------- */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+------------------------------ */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #0E0717; }
+::-webkit-scrollbar-thumb { background: rgba(153,69,255,0.4); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(153,69,255,0.6); }
 
-::-webkit-scrollbar-track {
-  background: #0E0717;
-}
+/* ------------------------------
+   Z-index helpers
+------------------------------ */
+.z-60 { z-index: 60; }
+.z-70 { z-index: 70; }
+.z-80 { z-index: 80; }
+.z-90 { z-index: 90; }
+.z-100 { z-index: 100; }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(153,69,255,0.4);
-  border-radius: 4px;
-}
+/* ------------------------------
+   Responsive helpers
+------------------------------ */
+.only-desktop { @apply hidden md:inline-flex; }
+.only-mobile  { @apply inline-flex md:hidden; }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(153,69,255,0.6);
-}
+/* ------------------------------
+   Separators
+------------------------------ */
+.hr-soft { @apply border-0 h-px bg-gradient-to-r from-white/0 via-white/10 to-white/0; }
